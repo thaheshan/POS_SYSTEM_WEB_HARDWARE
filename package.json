@@ -1,0 +1,32 @@
+{
+  "name": "hardware-pos-nextjs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@reduxjs/toolkit": "^2.2.7",
+    "react-redux": "^9.1.2",
+    "axios": "^1.7.2",
+    "react-hot-toast": "^2.4.1",
+    "lucide-react": "^0.441.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^22.5.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5"
+  }
+}
