@@ -1,6 +1,6 @@
 # Hardware Shop POS System
 
-## ?? Quick Start
+## ?? Quick Start guide
 
 ```bash
 npm install
