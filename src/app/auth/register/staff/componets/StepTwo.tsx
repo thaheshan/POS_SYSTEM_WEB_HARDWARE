@@ -1,74 +1,82 @@
-import React from 'react'
+"use client";
+import { Mail, Phone, Store, User } from "lucide-react";
+import React from "react";
+import { StaffRegisterData } from "../page";
 
-const StepTwo = ({ data, updateFields, onNext, onBack }: any) => {
+interface StepTwoProps {
+  data: StaffRegisterData;
+  updateFields: (fields: Partial<StaffRegisterData>) => void;
+  onNext: () => void;
+  onBack: () => void;
+}
+const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
+  const canGoNext =
+    data.shopPrivateId.length > 0 && data.shopNameVerification.length > 0;
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-slate-800">Step 2: Staff Information</h2>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-          <input
-            type="text"
-            value={data.fullName}
-            onChange={(e) => updateFields({ fullName: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+    <div className="w-full flex flex-col items-center">
+      <div className="flex flex-col items-center text-center mb-10 mt-10">
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6 ">
+          <Store className="w-9 h-9 text-white" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input
-            type="email"
-            value={data.email}
-            onChange={(e) => updateFields({ email: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-          <input
-            type="tel"
-            value={data.phoneNumber}
-            onChange={(e) => updateFields({ phoneNumber: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-          <select
-            value={data.role}
-            onChange={(e) => updateFields({ role: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Role</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="staff">Staff</option>
-          </select>
-        </div>
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
+          Join Your Shop
+        </h1>
+        <p className="text-slate-500 mt-2 text-sm lg:text-base">
+          Tell us about yourself and request to join a shop
+        </p>
+      </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-6">
-          <button
-            onClick={onBack}
-            className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md border border-slate-300 transition-colors duration-[.1s]"
-          >
-            Back
-          </button>
-          <button
-            onClick={onNext}
-            disabled={!data.fullName || !data.email || !data.phoneNumber || !data.role}
-            className={`px-4 py-2 rounded-md transition-colors duration-[.1s] ${
-              !data.fullName || !data.email || !data.phoneNumber || !data.role
-                ? "bg-slate-300 cursor-notallowed"
-                : "bg-blue-600 hover:bg-blue-hover text-white"
-            }`}
-          >
-            Next Step
-          </button>
-        </div>
+      <div className="w-full space-y-6">
+        {/* Personal Information */}
+        <section className="space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            Personal Information
+          </h3>
+          <div className="grid grid-cols-1 gap-4 opacity-60">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                <input
+                  readOnly
+                  value={data.fullName}
+                  className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
+                />
+              </div>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                <input
+                  readOnly
+                  value={data.email}
+                  className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
+                />
+              </div>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                <input
+                  readOnly
+                  value={data.phoneNumber}
+                  className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default StepTwo
+export default StepTwo;

@@ -44,7 +44,7 @@ export default function StaffRegisterPage() {
     <main className="min-h-screen bg-white flex flex-col items-center">
      
         <div className="w-full">
-          <ProgressBar currentStep={currentStep} totalSteps={3} />
+          <ProgressBar currentStep={currentStep} totalSteps={3} onBack={prevStep} />
         </div>
         <div className="w-full max-w-[540px] px-6 py-12 lg:py-20 flex flex-col items-center">
           {" "}
