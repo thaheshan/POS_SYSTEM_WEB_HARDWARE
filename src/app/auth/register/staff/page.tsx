@@ -41,11 +41,12 @@ export default function StaffRegisterPage() {
   const prevStep = () => setCurrentStep((i) => i - 1);
 
   return (
-    <main className="min-h-screen bg-[#FFFFFF] flex justify-center  ">
-      <div className="w-full ">
-        <ProgressBar currentStep={currentStep} totalSteps={3} />
-        {/* Progress Display */}
-        <div className="my-20 mx-10">
+    <main className="min-h-screen bg-white flex flex-col items-center">
+     
+        <div className="w-full">
+          <ProgressBar currentStep={currentStep} totalSteps={3} />
+        </div>
+        <div className="w-full max-w-[540px] px-6 py-12 lg:py-20 flex flex-col items-center">
           {" "}
           {currentStep === 1 && (
             <StepOne
@@ -64,8 +65,6 @@ export default function StaffRegisterPage() {
           )}
           {currentStep === 3 && <StepThree data={formData} />}
         </div>
-        {/* 4. Conditional Rendering Logic */}
-      </div>
     </main>
   );
 }

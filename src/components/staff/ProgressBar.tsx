@@ -9,11 +9,11 @@ const ProgressBar = ({ currentStep, totalSteps }: ProgressBarProps) => {
 
   return (
     <div className="w-full h-2.5">
-      <div className="p-3 bg-[#FFFFFF] flex justify-between items-center">
-        <button className="text-slate-400 hover:text-slate-600" disabled={currentStep === 1} onClick={() => currentStep > 1 && currentStep--}>
-          <ArrowLeft size={20} />
+      <div className="p-3 md:mx-6 bg-[#FFFFFF] flex justify-between items-center">
+        <button className="text-black hover:text-slate-600" disabled={currentStep === 1} onClick={() => currentStep > 1 && currentStep--}>
+          <ArrowLeft size={20}  />
         </button>
-        <span className="text-sm font-medium text-slate-400">
+        <span className="text-sm font-medium text-[#1A56DB]">
           Step {currentStep} of {totalSteps}
         </span>
         <CircleHelp size={20} className="text-slate-400 hover:text-slate-600" />
