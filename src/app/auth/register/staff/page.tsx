@@ -33,6 +33,16 @@ export default function StaffRegisterPage() {
     shopNameVerification: "",
   });
 
+  const handleSubmit = async() => {
+    try {
+      console.log("Sending data to database:", { ...formData,  }); //Should Be replaced with Actual API Call
+
+      setCurrentStep(3);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    }
+  };
+
   const updateFields = (fields: Partial<StaffRegisterData>) => {
     setFormData((prev) => ({ ...prev, ...fields }));
   };
@@ -42,29 +52,32 @@ export default function StaffRegisterPage() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center">
-     
-        <div className="w-full">
-          <ProgressBar currentStep={currentStep} totalSteps={3} onBack={prevStep} />
-        </div>
-        <div className="w-full max-w-[540px] px-6 py-12 lg:py-20 flex flex-col items-center">
-          {" "}
-          {currentStep === 1 && (
-            <StepOne
-              data={formData}
-              updateFields={updateFields}
-              onNext={nextStep}
-            />
-          )}
-          {currentStep === 2 && (
-            <StepTwo
-              data={formData}
-              updateFields={updateFields}
-              onNext={nextStep}
-              onBack={prevStep}
-            />
-          )}
-          {currentStep === 3 && <StepThree data={formData} />}
-        </div>
+      <div className="w-full">
+        <ProgressBar
+          currentStep={currentStep}
+          totalSteps={3}
+          onBack={prevStep}
+        />
+      </div>
+      <div className="w-full max-w-[540px] px-6 py-12 lg:py-20 flex flex-col items-center">
+        {" "}
+        {currentStep === 1 && (
+          <StepOne
+            data={formData}
+            updateFields={updateFields}
+            onNext={nextStep}
+          />
+        )}
+        {currentStep === 2 && (
+          <StepTwo
+            data={formData}
+            updateFields={updateFields}
+            onNext={handleSubmit}
+            onBack={prevStep}
+          />
+        )}
+        {currentStep === 3 && <StepThree data={formData} />}
+      </div>
     </main>
   );
 }

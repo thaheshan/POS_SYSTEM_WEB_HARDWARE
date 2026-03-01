@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StaffRegisterData } from "../page";
 import {
   BriefcaseBusiness,
+  Check,
   ChevronDown,
   Eye,
   EyeOff,
   Lock,
   Mail,
   Phone,
+  Search,
   Store,
   User,
   UserPlus,
@@ -26,6 +28,38 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const [shopSearch, setShopSearch] = useState("");
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const shopDropdownRef = useRef<HTMLDivElement>(null);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedShop = SHOP_OPTIONS.find((s) => s.id === data.shopId);
+  const selectedRole = STAFF_ROLES.find((r) => r.id === data.role);
+  const filteredShops = SHOP_OPTIONS.filter((shop) =>
+    shop.name.toLowerCase().includes(shopSearch.toLowerCase())
+  );
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        shopDropdownRef.current &&
+        !shopDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShopDropdownOpen(false);
+        setShopSearch("");
+      }
+      if (
+        roleDropdownRef.current &&
+        !roleDropdownRef.current.contains(e.target as Node)
+      ) {
+        setRoleDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const isPasswordValid = data.password.length >= 8;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
@@ -38,8 +72,8 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
     data.fullName.trim().length > 2 &&
     isEmailValid &&
     isPhoneValid &&
-    isPasswordValid &&
-    passwordsMatch &&
+    // isPasswordValid &&
+    // passwordsMatch &&
     agreedToTerms;
   return (
     <div className="w-full flex flex-col items-center">
@@ -67,33 +101,85 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Shop Name <span className="text-red-500">*</span>
           </label>
-          <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none">
-              <Store size={20} />
-            </div>
-
-            <select
-              value={data.shopId}
-              onChange={(e) => updateFields({ shopId: e.target.value })}
-              className={`w-full pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl appearance-none focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer text-slate-400 font-medium ${
+          <div className="relative" ref={shopDropdownRef}>
+            {/* Trigger button */}
+            <button
+              type="button"
+              onClick={() => {
+                setShopDropdownOpen(!shopDropdownOpen);
+                setShopSearch("");
+              }}
+              className={`w-full pl-12 pr-10 py-3.5 bg-white border rounded-xl text-left focus:outline-none focus:ring-4 transition-all cursor-pointer font-medium ${
                 data.shopId.length === 0
-                  ? "border-red-500 focus:ring-red-100"
-                  : "border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  ? "border-red-300 focus:ring-red-100 text-slate-400"
+                  : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10 text-slate-700"
               }`}
             >
-              <option value="" disabled>
-                Select your shop
-              </option>
-              {SHOP_OPTIONS.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.name}
-                </option>
-              ))}
-            </select>
+              {selectedShop ? selectedShop.name : "Select your shop"}
+            </button>
 
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <Store size={20} />
+            </div>
+            <div
+              className={`absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-transform duration-200 ${
+                shopDropdownOpen ? "rotate-180" : ""
+              }`}
+            >
               <ChevronDown size={18} />
             </div>
+
+            {/* Dropdown panel */}
+            {shopDropdownOpen && (
+              <div className="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                {/* Search */}
+                <div className="p-2 border-b border-slate-100">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                    <input
+                      type="text"
+                      value={shopSearch}
+                      onChange={(e) => setShopSearch(e.target.value)}
+                      placeholder="Search shops..."
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Options list — max 5 visible */}
+                <ul className="max-h-[220px] overflow-y-auto py-1">
+                  {filteredShops.length > 0 ? (
+                    filteredShops.map((shop) => (
+                      <li key={shop.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateFields({ shopId: shop.id });
+                            setShopDropdownOpen(false);
+                            setShopSearch("");
+                          }}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                            data.shopId === shop.id
+                              ? "bg-blue-50 text-blue-700 font-semibold"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span>{shop.name}</span>
+                          {data.shopId === shop.id && (
+                            <Check className="size-4 text-blue-600" />
+                          )}
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="px-4 py-3 text-sm text-slate-400 text-center">
+                      No shops found
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
@@ -167,38 +253,64 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Staff Role <span className="text-red-500">*</span>
           </label>
-          <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none">
-              <BriefcaseBusiness size={20} />
-            </div>
-
-            <select
-              value={data.role}
-              onChange={(e) => updateFields({ role: e.target.value })}
-              className={`w-full pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl appearance-none focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer text-slate-400 font-medium ${
+          <div className="relative" ref={roleDropdownRef}>
+            {/* Trigger button */}
+            <button
+              type="button"
+              onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+              className={`w-full pl-12 pr-10 py-3.5 bg-white border rounded-xl text-left focus:outline-none focus:ring-4 transition-all cursor-pointer font-medium ${
                 data.role.length === 0
-                  ? "border-red-500 focus:ring-red-100"
-                  : "border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  ? "border-red-300 focus:ring-red-100 text-slate-400"
+                  : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10 text-slate-700"
               }`}
             >
-              <option value="" disabled>
-                Select staff role
-              </option>
-              {STAFF_ROLES.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.label}
-                </option>
-              ))}
-            </select>
+              {selectedRole ? selectedRole.label : "Select staff role"}
+            </button>
 
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <BriefcaseBusiness size={20} />
+            </div>
+            <div
+              className={`absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-transform duration-200 ${
+                roleDropdownOpen ? "rotate-180" : ""
+              }`}
+            >
               <ChevronDown size={18} />
             </div>
+
+            {/* Dropdown panel */}
+            {roleDropdownOpen && (
+              <div className="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                <ul className="py-1">
+                  {STAFF_ROLES.map((role) => (
+                    <li key={role.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateFields({ role: role.id });
+                          setRoleDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                          data.role === role.id
+                            ? "bg-blue-50 text-blue-700 font-semibold"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{role.label}</span>
+                        {data.role === role.id && (
+                          <Check className="size-4 text-blue-600" />
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Password */}
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Password <span className="text-red-500">*</span>
           </label>
@@ -224,10 +336,10 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <p className="text-[10px] text-slate-400 ml-1 mt-1">
             Minimum 8 characters with letters and numbers
           </p>
-        </div>
+        </div> */}
 
         {/* confirm password */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <label className="text-sm font-semibold text-slate-700 ml-1">
             Confirm Password <span className="text-red-500">*</span>
           </label>
@@ -268,7 +380,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               Passwords do not match
             </p>
           )}
-        </div>
+        </div> */}
 
         <div className=" flex items-start gap-3 my-8">
           <input
