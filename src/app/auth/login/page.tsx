@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { Lock, Mail, Store } from 'lucide-react';
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { Lock, Mail, Store } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState("admin@example.com");
+  const [password, setPassword] = useState("password123");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
@@ -16,16 +17,16 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     const success = await login(email, password);
-    
+
     if (success) {
-      toast.success('Login successful! Welcome back!');
-      router.push('/dashboard');
+      toast.success("Login successful! Welcome back!");
+      router.push("/dashboard");
     } else {
-      toast.error('Invalid credentials. Please try again.');
+      toast.error("Invalid credentials. Please try again.");
     }
-    
+
     setIsLoading(false);
   };
 
@@ -76,6 +77,15 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="flex items-center justify-end">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -87,22 +97,25 @@ export default function LoginPage() {
                   Logging in...
                 </>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
 
           <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm font-semibold text-blue-900 mb-2">?? Demo Credentials:</p>
+            <p className="text-sm font-semibold text-blue-900 mb-2">
+              Demo Credentials:
+            </p>
             <p className="text-sm text-blue-800">
-              <strong>Email:</strong> admin@example.com<br/>
+              <strong>Email:</strong> admin@example.com
+              <br />
               <strong>Password:</strong> password123
             </p>
           </div>
         </div>
 
         <p className="text-center mt-6 text-sm text-gray-600">
-          © 2024 Hardware POS System. All rights reserved.
+          &copy; 2024 Hardware POS System. All rights reserved.
         </p>
       </div>
     </div>
