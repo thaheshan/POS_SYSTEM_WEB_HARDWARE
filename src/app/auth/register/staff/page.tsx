@@ -1,22 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import StepOne from "./componets/StepOne";
-import StepThree from "./componets/StepThree";
-import StepTwo from "./componets/StepTwo";
-import ProgressBar from "@/components/staff/ProgressBar";
-
-export interface StaffRegisterData {
-  shopId: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  role: string;
-  password: string;
-  confirmPassword: string;
-  shopPrivateId: string;
-  shopNameVerification: string;
-}
+import StepOne from "@/components/staff-register/StepOne";
+import StepTwo from "@/components/staff-register/StepTwo";
+import StepThree from "@/components/staff-register/StepThree";
+import ProgressBar from "@/components/staff-register/ProgressBar";
+import { StaffRegisterData } from "@/types/staff";
 
 export default function StaffRegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -33,13 +22,17 @@ export default function StaffRegisterPage() {
     shopNameVerification: "",
   });
 
-  const handleSubmit = async() => {
-    try {
-      console.log("Sending data to database:", { ...formData,  }); //Should Be replaced with Actual API Call
+  const [error, setError] = useState<string | null>(null);
 
+  const handleSubmit = async () => {
+    try {
+      setError(null);
+      console.log("Sending data to database:", { ...formData });
+      // TODO: Replace with actual API call
       setCurrentStep(3);
     } catch (error) {
       console.error("Error submitting form:", error);
+      setError("Registration failed. Please try again.");
     }
   };
 
@@ -47,8 +40,8 @@ export default function StaffRegisterPage() {
     setFormData((prev) => ({ ...prev, ...fields }));
   };
 
-  const nextStep = () => setCurrentStep((i) => i + 1);
-  const prevStep = () => setCurrentStep((i) => i - 1);
+  const nextStep = () => setCurrentStep((i) => Math.min(i + 1, 3));
+  const prevStep = () => setCurrentStep((i) => Math.max(i - 1, 1));
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center">
@@ -56,7 +49,7 @@ export default function StaffRegisterPage() {
         <ProgressBar
           currentStep={currentStep}
           totalSteps={3}
-          onBack={prevStep}
+          onBack={currentStep > 1 ? prevStep : undefined}
         />
       </div>
       <div className="w-full max-w-[540px] px-6 py-12 lg:py-20 flex flex-col items-center">

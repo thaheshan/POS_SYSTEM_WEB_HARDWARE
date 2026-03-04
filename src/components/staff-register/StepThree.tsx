@@ -13,15 +13,24 @@ import {
   Store,
 } from "lucide-react";
 import React from "react";
-import { StaffRegisterData } from "../page";
+import { StaffRegisterData } from "@/types/staff";
 import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface StepThreeProps {
   data: StaffRegisterData;
 }
 
 const StepThree = ({ data }: StepThreeProps) => {
-  const selectedShop = SHOP_OPTIONS.find((shop) => shop.id === data.shopId);
+  const router = useRouter();
+
+  if (!data.fullName || !data.email) {
+    router.replace("/auth/register/staff");
+    return null;
+  }
+
+  const selectedShop = SHOP_OPTIONS.find((shop) => shop.shopPrivateId === data.shopPrivateId);
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -109,7 +118,7 @@ const StepThree = ({ data }: StepThreeProps) => {
           {/* Step 2: Shop Owner Review */}
           <div className="flex gap-4 mb-8 relative">
             <div className="flex-shrink-0 w-7 h-7 bg-orange-400 rounded-full flex items-center justify-center z-10">
-              <Loader className="text-white size-4" />
+              <Loader className="text-white size-4 animate-spin" />
             </div>
             <div>
               <p className="font-semibold text-slate-900 text-sm">
@@ -176,7 +185,7 @@ const StepThree = ({ data }: StepThreeProps) => {
               {selectedShop?.name || "Shop"}
             </p>
             <p className="text-xs text-slate-400">
-              Colombo, Western Province
+              {selectedShop?.location || "Location not available"}
             </p>
           </div>
         </div>
@@ -189,7 +198,7 @@ const StepThree = ({ data }: StepThreeProps) => {
           <div className="flex justify-between py-3 text-sm">
             <span className="text-slate-500">Shop ID</span>
             <span className="font-medium text-slate-900">
-              {data.shopPrivateId || "SHP-ABC-2024-001234"}
+              {data.shopPrivateId || "N/A"}
             </span>
           </div>
           <div className="flex justify-between py-3 text-sm">
@@ -223,13 +232,10 @@ const StepThree = ({ data }: StepThreeProps) => {
         <p className="text-xs text-slate-400">
           Your account is pending approval from the shop owner
         </p>
-        <a
-          href="/auth/login"
-          className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 active:scale-[0.98]"
-        >
+        <Link href="/auth/login" className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 active:scale-[0.98]">
           Go to Login
           <ArrowRight className="size-5" />
-        </a>
+        </Link>
       </div>
     </div>
   );

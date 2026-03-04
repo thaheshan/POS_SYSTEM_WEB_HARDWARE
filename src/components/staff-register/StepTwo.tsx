@@ -12,8 +12,9 @@ import {
   XCircle,
 } from "lucide-react";
 import React, { useState } from "react";
-import { StaffRegisterData } from "../page";
+import { StaffRegisterData } from "@/types/staff";
 import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
+import Link from "next/link";
 
 interface StepTwoProps {
   data: StaffRegisterData;
@@ -21,38 +22,40 @@ interface StepTwoProps {
   onNext: () => void;
   onBack: () => void;
 }
-const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
+const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const selectedShop = SHOP_OPTIONS.find((shop) => shop.id === data.shopId);
+  const selectedShop = SHOP_OPTIONS.find((shop) => shop.shopPrivateId === data.shopPrivateId);
 
   // Password strength checks
-  const hasMinLength = data.password.length >= 8;
-  const hasUppercase = /[A-Z]/.test(data.password);
-  const hasLowercase = /[a-z]/.test(data.password);
-  const hasNumber = /[0-9]/.test(data.password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(data.password);
+  const hasMinLength = (data.password ?? "").length >= 8;
+  const hasUppercase = /[A-Z]/.test(data.password ?? "");
+  const hasLowercase = /[a-z]/.test(data.password ?? "");
+  const hasNumber = /[0-9]/.test(data.password ?? "");
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(data.password ?? "");
   const isPasswordStrong =
     hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
   const passwordsMatch =
-    data.confirmPassword.length > 0 && data.password === data.confirmPassword;
+    (data.confirmPassword ?? "").length > 0 && data.password === data.confirmPassword;
 
   const isShopNameMatch =
-    data.shopNameVerification.trim().length > 0 &&
+    (data.shopNameVerification ?? "").trim().length > 0 &&
     selectedShop != null &&
     selectedShop.name.toLowerCase().trim() ===
-      data.shopNameVerification.toLowerCase().trim();
+      (data.shopNameVerification ?? "").toLowerCase().trim();
 
   const isShopNameError =
-    data.shopNameVerification.trim().length > 0 && !isShopNameMatch;
+    (data.shopNameVerification ?? "").trim().length > 0 && !isShopNameMatch;
 
   const canGoNext =
-    data.shopPrivateId.length > 0 &&
-    data.shopNameVerification.length > 0 &&
+    (data.shopPrivateId ?? "").length > 0 &&
+    (data.shopNameVerification ?? "").length > 0 &&
     isShopNameMatch &&
     isPasswordStrong &&
-    passwordsMatch;
+    passwordsMatch &&
+    agreedToTerms;
   return (
     <div className="w-full flex flex-col items-center">
       <div className="flex flex-col items-center text-center mb-10 mt-10">
@@ -222,6 +225,7 @@ const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
               type="button"
               onClick={() => setShowPass(!showPass)}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              aria-label={showPass ? "Hide password" : "Show password"}
             >
               {showPass ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
@@ -261,7 +265,7 @@ const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
           <div className="relative group">
             <Lock
               className={`absolute left-4 top-1/2 -translate-y-1/2 size-5 transition-colors ${
-                data.confirmPassword.length > 0 && !passwordsMatch
+                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
                   ? "text-red-500"
                   : "text-slate-400 group-focus-within:text-blue-600"
               }`}
@@ -274,7 +278,7 @@ const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
               }
               placeholder="Re-enter your password"
               className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl outline-none transition-all ${
-                data.confirmPassword.length > 0 && !passwordsMatch
+                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
                   ? "border-red-500 focus:ring-2 focus:ring-red-500/10"
                   : "border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
               }`}
@@ -287,11 +291,33 @@ const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
               {showConfirm ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
-          {data.confirmPassword.length > 0 && !passwordsMatch && (
+          {(data.confirmPassword ?? "").length > 0 && !passwordsMatch && (
             <p className="text-xs text-red-500 mt-1 font-medium">
               Passwords do not match
             </p>
           )}
+        </div>
+      </section>
+      {/* Terms and Conditions */}
+      <section className="w-full  space-y-4">
+        <div className=" flex max-w-[250px] items-start gap-3 my-8 ">
+          <input
+            type="checkbox"
+            id="terms"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+          />
+          <label htmlFor="terms" className="text-sm text-slate-600 leading-relaxed cursor-pointer">
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="text-blue-600 font-medium hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="text-blue-600 font-medium hover:underline">
+              Privacy Policy
+            </Link>
+          </label>
         </div>
       </section>
 
@@ -300,13 +326,13 @@ const StepTwo = ({ data, updateFields, onNext, onBack }: StepTwoProps) => {
         type="button"
         onClick={onNext}
         disabled={!canGoNext}
-        className={`w-full mt-10 py-4 rounded-xl font-bold transition-all duration-200 ${
+        className={`w-full mt-5 py-4 rounded-xl font-bold transition-all duration-200 ${
           canGoNext
             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 active:scale-[0.98]"
             : "bg-slate-100 text-slate-400 cursor-not-allowed"
         }`}
       >
-        Create Account
+        Next
       </button>
 
       {/* Sign In Link & Footer */}
