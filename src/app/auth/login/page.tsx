@@ -102,7 +102,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center mt-6 text-sm text-gray-600">
-          © 2024 Hardware POS System. All rights reserved.
+          ï¿½ 2024 Hardware POS System. All rights reserved.
         </p>
       </div>
     </div>
