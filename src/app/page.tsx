@@ -22,11 +22,10 @@ export default function Home() {
     if (token) {
       router.push('/dashboard');
     } else {
-      setChecked(true); // No token → show marketing page
+      setChecked(true);
     }
   }, [router]);
 
-  // Show nothing while checking auth (avoids flash)
   if (!checked) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -35,7 +34,6 @@ export default function Home() {
     );
   }
 
-  // Not logged in → show marketing page
   return (
     <>
       <Header />
