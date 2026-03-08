@@ -1,0 +1,109 @@
+'use client';
+
+import React, { createContext, useContext, useState } from 'react';
+
+export interface ShopData {
+  shopName: string;
+  businessRegistration: string;
+  shopAddress: string;
+  city: string;
+  postalCode: string;
+  district: string;
+  province: string;
+  tin: string;
+  vat: string;
+  vatDate: string;
+}
+
+export interface OwnerData {
+  fullName: string;
+  email: string;
+  mobileNumber: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface PricingData {
+  plan: 'starter' | 'professional' | 'enterprise';
+}
+
+export interface RegistrationData {
+  shop: ShopData;
+  owner: OwnerData;
+  pricing: PricingData;
+}
+
+interface RegistrationContextType {
+  currentStep: number;
+  data: Partial<RegistrationData>;
+  setCurrentStep: (step: number) => void;
+  updateShopData: (data: Partial<ShopData>) => void;
+  updateOwnerData: (data: Partial<OwnerData>) => void;
+  updatePricingData: (data: Partial<PricingData>) => void;
+  resetData: () => void;
+}
+
+const RegistrationContext = createContext<RegistrationContextType | undefined>(undefined);
+
+export function RegistrationProvider({ children }: { children: React.ReactNode }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [data, setData] = useState<Partial<RegistrationData>>({
+    shop: {},
+    owner: {},
+    pricing: {},
+  });
+
+  const updateShopData = (shopData: Partial<ShopData>) => {
+    setData((prev) => ({
+      ...prev,
+      shop: { ...prev.shop, ...shopData },
+    }));
+  };
+
+  const updateOwnerData = (ownerData: Partial<OwnerData>) => {
+    setData((prev) => ({
+      ...prev,
+      owner: { ...prev.owner, ...ownerData },
+    }));
+  };
+
+  const updatePricingData = (pricingData: Partial<PricingData>) => {
+    setData((prev) => ({
+      ...prev,
+      pricing: { ...prev.pricing, ...pricingData },
+    }));
+  };
+
+  const resetData = () => {
+    setCurrentStep(1);
+    setData({
+      shop: {},
+      owner: {},
+      pricing: {},
+    });
+  };
+
+  return (
+    <RegistrationContext.Provider
+      value={{
+        currentStep,
+        data,
+        setCurrentStep,
+        updateShopData,
+        updateOwnerData,
+        updatePricingData,
+        resetData,
+      }}
+    >
+      {children}
+    </RegistrationContext.Provider>
+  );
+}
+
+export function useRegistration() {
+  const context = useContext(RegistrationContext);
+  if (!context) {
+    throw new Error('useRegistration must be used within RegistrationProvider');
+  }
+  return context;
+}
