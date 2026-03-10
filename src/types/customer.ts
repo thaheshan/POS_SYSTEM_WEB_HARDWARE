@@ -13,3 +13,5 @@ export interface Customer {
   isActive: boolean;
   createdAt: string;
 }
+
+export type RegistrationStep = 1 | 2 | 3 | 4;
