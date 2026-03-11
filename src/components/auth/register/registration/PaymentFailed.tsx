@@ -1,28 +1,21 @@
-'use client';
+"use client";
 import ProgressBar from "@/components/staff-register/ProgressBar";
 import { AlertCircle, Headphones, X } from "lucide-react";
 import React from "react";
+import { MockPaymentErrors } from "@/utils/ShopPaymentDetails";
+import { useRouter } from "next/navigation";
 
-interface PaymentFailedProps {
-  errorCode?: string;
-  errorMessage?: string;
-  onRetry?: () => void;
-  onChangePaymentMethod?: () => void;
-}
-
-const PaymentFailed = ({
-  errorCode = "PAYMENT_DECLINED_001",
-  errorMessage = "Your card was declined by your bank. Please check your card details or try a different payment method.",
-  onRetry,
-  onChangePaymentMethod,
-}: PaymentFailedProps) => {
-  const commonIssues = [
-    "Insufficient funds in your account",
-    "Incorrect card details entered",
-    "Card expired or blocked",
-    "Transaction limit exceeded",
-  ];
-
+const PaymentFailed = () => {
+  const error = MockPaymentErrors;
+  const router = useRouter();
+  console.log(error.commonIssues);
+  const handleRetryPayment = () => {
+    // Logic to retry the payment process
+    router.push("/auth/register/payment"); // Redirect to payment page
+  };
+  const onChangePaymentMethod = () => {
+    router.push("/auth/register/payment?changeMethod=true");
+  };
   return (
     <div className="w-full flex flex-col items-center">
       <div className="w-full flex flex-col mb-14">
@@ -30,9 +23,7 @@ const PaymentFailed = ({
       </div>
 
       {/* Failure Hero Section */}
-      <div
-        className="w-full flex md:max-w-[448px] h-auto flex-col items-center text-center mt-10 bg-no-repeat bg-center"
-      >
+      <div className="w-full flex md:max-w-[448px] h-auto flex-col items-center text-center mt-10 bg-no-repeat bg-center">
         {/* Failure Icon */}
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center w-[90px] h-[90px] bg-gradient-to-bl from-[#B91C1C] to-[#991B1B] rounded-full shadow-md shadow-red-500/20 mb-2">
@@ -51,12 +42,12 @@ const PaymentFailed = ({
           <p className="text-sm text-slate-600 mb-3">
             Error Code:{" "}
             <span className="font-mono font-semibold text-[#B91C1C]">
-              {errorCode}
+              {error.errorCode}
             </span>
           </p>
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[#B91C1C] mt-0.5 flex-shrink-0" />
-            <span className="text-sm text-slate-700">{errorMessage}</span>
+            <span className="text-sm text-slate-700">{error.errorMessage}</span>
           </div>
         </div>
       </div>
@@ -65,7 +56,7 @@ const PaymentFailed = ({
       <div className="w-full max-w-[300px] md:max-w-[448px] text-center mt-6 mb-8">
         <h2 className="text-lg font-bold text-slate-900 mb-4">Common Issues</h2>
         <ul className="space-y-3 text-left">
-          {commonIssues.map((issue, i) => (
+          {error.commonIssues.map((issue, i) => (
             <li key={i} className="flex items-center gap-3">
               <span className="w-1.5 h-1.5 rounded-full bg-[#1A56DB] flex-shrink-0" />
               <span className="text-sm text-slate-600">{issue}</span>
@@ -77,7 +68,7 @@ const PaymentFailed = ({
       {/* Action Buttons */}
       <div className="w-full max-w-[300px] md:max-w-[448px] flex flex-col gap-3 mb-4">
         <button
-          onClick={onRetry}
+          onClick={handleRetryPayment}
           className="w-full py-2.5 bg-gradient-to-tr from-[#1E429F] to-[#1A56DB] hover:bg-[#1648c0] text-white font-semibold rounded-full transition-colors"
         >
           Try Again

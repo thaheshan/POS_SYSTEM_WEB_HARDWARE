@@ -9,3 +9,8 @@ export interface RegistrationDetails {
   userEmail: string;
 }
 
+export interface PaymentErrorDetails {
+  errorCode: string;
+  errorMessage: string;
+  commonIssues: string[];
+}
