@@ -13,9 +13,10 @@ export default function ShopRegistraionComplete() {
 
   return (
     <div className="w-full flex flex-col items-center ">
-      <div className="w-full flex flex-col mb-14">
+      {/* <div className="w-full flex flex-col mb-14">
         <ProgressBar currentStep={4} totalSteps={4} />
-      </div>
+       
+      </div> */}
       <div className="w-full flex md:max-w-[448px] h-auto flex-col items-center text-center mt-10 bg-no-repeat bg-center">
         <div className="flex items-center justify-center w-[100px] h-[100px] bg-gradient-to-bl from-[#046C4E] to-[#0E9F6E] rounded-full shadow-md shadow-green-500/20 mb-2">
           <Check className="w-10 h-10 text-white stroke-[3.75px]" />
