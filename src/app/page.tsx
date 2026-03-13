@@ -1,7 +1,7 @@
 'use client';
-
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import SplashScreen from '@/components/splash/SplashScreen';
 import { Header } from '@/components/marketing/Header';
 import { Hero } from '@/components/marketing/Hero';
 import { Features } from '@/components/marketing/Features';
@@ -15,23 +15,25 @@ import { Footer } from '@/components/marketing/Footer';
 
 export default function Home() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       router.push('/dashboard');
-    } else {
-      setChecked(true);
+      return;
     }
+
+    // Show splash for 2.5 seconds then reveal marketing page
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+
+    return () => clearTimeout(timer);
   }, [router]);
 
-  if (!checked) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-      </div>
-    );
+  if (showSplash) {
+    return <SplashScreen />;
   }
 
   return (
