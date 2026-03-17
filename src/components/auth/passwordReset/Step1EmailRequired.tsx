@@ -107,7 +107,7 @@ export default function Step1EmailRequired({
       <div className="mt-8 text-sm text-gray-500">
         Don't have an account?{" "}
         <Link
-          href="/auth/register"
+          href="/auth/register/staff"
           className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
         >
           Sign up
