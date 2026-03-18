@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Check, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/auth/register/ui/button";
 
 interface PricingCardProps {
   name: string;

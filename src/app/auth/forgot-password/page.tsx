@@ -54,7 +54,11 @@ export default function ForgotPasswordPage() {
           )}
 
           {resetState.step === 2 && (
-            <Step2Verification email={resetState.email} onNext={goToNextStep} />
+            <Step2Verification email={resetState.email} onNext={goToNextStep} code={""} onCodeChange={function (code: string): void {
+              throw new Error("Function not implemented.");
+            } } onBack={function (): void {
+              throw new Error("Function not implemented.");
+            } } />
           )}
 
           {resetState.step === 3 && (

@@ -14,13 +14,13 @@ export default function SignupTypeSelector() {
   const handleShopOwnerClick = () => {
     setSelectedType('shop-owner');
     // Navigate to shop owner signup
-    router.push('/auth/signup/shop-owner');
+    router.push('/auth/register/shop-owner');
   };
 
   const handleAdminStaffClick = () => {
     setSelectedType('admin-staff');
     // Navigate to admin/staff signup
-    router.push('/auth/signup/admin-staff');
+    router.push('/auth/register/staff');
   };
 
   const handleBackClick = () => {

@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRegistration } from '@/lib/registration-context';
-import { ownerDataSchema, OwnerDataForm } from '@/lib/validation-schemas';
-import { Button } from '@/components/ui/button';
+import { useRegistration } from '@/lib/register/registration-context';
+import { ownerDataSchema, OwnerDataForm } from '@/lib/register/validation-schemas';
+import { Button } from '@/components/auth/register/ui/button';
 import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface Step2OwnerInfoProps {
