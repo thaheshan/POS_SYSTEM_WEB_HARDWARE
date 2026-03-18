@@ -9,11 +9,9 @@ import {
   Phone,
   Store,
   User,
-  XCircle,
 } from "lucide-react";
 import React, { useState } from "react";
 import { StaffRegisterData } from "@/types/staff";
-import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
 import Link from "next/link";
 
 interface StepTwoProps {
@@ -22,14 +20,12 @@ interface StepTwoProps {
   onNext: () => void;
   onBack: () => void;
 }
+
 const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const selectedShop = SHOP_OPTIONS.find((shop) => shop.shopPrivateId === data.shopPrivateId);
-
-  // Password strength checks
   const hasMinLength = (data.password ?? "").length >= 8;
   const hasUppercase = /[A-Z]/.test(data.password ?? "");
   const hasLowercase = /[a-z]/.test(data.password ?? "");
@@ -38,28 +34,20 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
   const isPasswordStrong =
     hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
   const passwordsMatch =
-    (data.confirmPassword ?? "").length > 0 && data.password === data.confirmPassword;
-
-  const isShopNameMatch =
-    (data.shopNameVerification ?? "").trim().length > 0 &&
-    selectedShop != null &&
-    selectedShop.name.toLowerCase().trim() ===
-      (data.shopNameVerification ?? "").toLowerCase().trim();
-
-  const isShopNameError =
-    (data.shopNameVerification ?? "").trim().length > 0 && !isShopNameMatch;
+    (data.confirmPassword ?? "").length > 0 &&
+    data.password === data.confirmPassword;
 
   const canGoNext =
     (data.shopPrivateId ?? "").length > 0 &&
-    (data.shopNameVerification ?? "").length > 0 &&
-    isShopNameMatch &&
     isPasswordStrong &&
     passwordsMatch &&
     agreedToTerms;
+
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Header */}
       <div className="flex flex-col items-center text-center mb-10 mt-10">
-        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6 ">
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6">
           <Store className="w-9 h-9 text-white" />
         </div>
         <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
@@ -119,19 +107,17 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           </div>
         </section>
 
-        {/* Shop Information */}
+        {/* Shop Details */}
         <section className="space-y-4 border-b-2 border-slate-200 pb-6">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Shop Details
           </h3>
-          <div className="flex items-center justify-start p-4 bg-[#FEFCE8] border border-1 border-[#FEF08A] rounded-lg">
-            <Info className="md:w-[16px] md:h-[16px] text-[#CA8A04] mr-2" />
+          <div className="flex items-center justify-start p-4 bg-[#FEFCE8] border border-[#FEF08A] rounded-lg">
+            <Info className="md:w-[16px] md:h-[16px] text-[#CA8A04] mr-2 shrink-0" />
             <p className="text-[#713F12] text-[12px]">
               Ask your shop owner for the Shop Private ID
             </p>
           </div>
-
-          {/* Shop Private Id */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Shop Private ID <span className="text-red-500">*</span>
@@ -141,61 +127,13 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
               <input
                 type="text"
                 value={data.shopPrivateId}
-                onChange={(e) =>
-                  updateFields({ shopPrivateId: e.target.value })
-                }
+                onChange={(e) => updateFields({ shopPrivateId: e.target.value })}
                 placeholder="Enter Shop Private ID"
                 className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <p className="text-slate-500 text-xs mt-1">
               Unique identifier provided by your shop owner
-            </p>
-          </div>
-
-          {/* Shop Name Verification */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Shop Name (Verification) <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
-              <input
-                type="text"
-                value={data.shopNameVerification}
-                onChange={(e) =>
-                  updateFields({ shopNameVerification: e.target.value })
-                }
-                placeholder="Enter Shop Name to Verify"
-                className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl focus:outline-none transition-all ${
-                  isShopNameMatch
-                    ? "border-green-500 focus:ring-2 focus:ring-green-500/20"
-                    : isShopNameError
-                    ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
-                    : "border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                }`}
-              />
-              {isShopNameMatch && (
-                <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 size-5" />
-              )}
-              {isShopNameError && (
-                <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 size-5" />
-              )}
-            </div>
-            <p
-              className={`text-xs mt-1 ${
-                isShopNameMatch
-                  ? "text-green-600"
-                  : isShopNameError
-                  ? "text-red-500"
-                  : "text-slate-500"
-              }`}
-            >
-              {isShopNameMatch
-                ? "Shop verified successfully!"
-                : isShopNameError
-                ? "Shop name does not match. Please check with your shop owner."
-                : "Must match the registered shop name"}
             </p>
           </div>
         </section>
@@ -230,8 +168,6 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
               {showPass ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
-
-          {/* Password Strength */}
           <p className="text-xs text-slate-400 mt-2 mb-1">Password strength</p>
           <ul className="space-y-1 ml-1">
             {[
@@ -243,13 +179,9 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             ].map((rule) => (
               <li key={rule.label} className="flex items-center gap-2 text-sm">
                 <CheckCircle
-                  className={`size-4 ${
-                    rule.met ? "text-green-500" : "text-slate-300"
-                  }`}
+                  className={`size-4 ${rule.met ? "text-green-500" : "text-slate-300"}`}
                 />
-                <span
-                  className={rule.met ? "text-slate-700" : "text-slate-400"}
-                >
+                <span className={rule.met ? "text-slate-700" : "text-slate-400"}>
                   {rule.label}
                 </span>
               </li>
@@ -273,9 +205,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             <input
               type={showConfirm ? "text" : "password"}
               value={data.confirmPassword}
-              onChange={(e) =>
-                updateFields({ confirmPassword: e.target.value })
-              }
+              onChange={(e) => updateFields({ confirmPassword: e.target.value })}
               placeholder="Re-enter your password"
               className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl outline-none transition-all ${
                 (data.confirmPassword ?? "").length > 0 && !passwordsMatch
@@ -298,9 +228,10 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           )}
         </div>
       </section>
+
       {/* Terms and Conditions */}
-      <section className="w-full  space-y-4">
-        <div className=" flex max-w-[250px] items-start gap-3 my-8 ">
+      <section className="w-full space-y-4">
+        <div className="flex max-w-[250px] items-start gap-3 my-8">
           <input
             type="checkbox"
             id="terms"
@@ -308,13 +239,24 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             onChange={(e) => setAgreedToTerms(e.target.checked)}
             className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
           />
-          <label htmlFor="terms" className="text-sm text-slate-600 leading-relaxed cursor-pointer">
+          <label
+            htmlFor="terms"
+            className="text-sm text-slate-600 leading-relaxed cursor-pointer"
+          >
             I agree to the{" "}
-            <Link href="/terms" target="_blank" className="text-blue-600 font-medium hover:underline">
+            <Link
+              href="/terms"
+              target="_blank"
+              className="text-blue-600 font-medium hover:underline"
+            >
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" target="_blank" className="text-blue-600 font-medium hover:underline">
+            <Link
+              href="/privacy"
+              target="_blank"
+              className="text-blue-600 font-medium hover:underline"
+            >
               Privacy Policy
             </Link>
           </label>
@@ -335,17 +277,18 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
         Next
       </button>
 
-      {/* Sign In Link & Footer */}
+      {/* Sign In Link */}
       <div className="flex flex-col items-center mt-10 gap-1">
         <p className="text-sm text-slate-500">Already have an account?</p>
-        <a
+        <Link
           href="/auth/login"
           className="text-sm text-blue-600 font-semibold hover:underline"
         >
           Sign In to Your Account
-        </a>
+        </Link>
       </div>
 
+      {/* Footer */}
       <div className="flex flex-col items-center mt-8 gap-0.5 text-xs text-slate-400">
         <span>v1.0.0</span>
         <span>&copy; {new Date().getFullYear()} Futura Solutions PVT LTD</span>

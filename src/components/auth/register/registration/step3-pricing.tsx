@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRegistration } from '@/lib/registration-context';
+import { useRegistration } from '@/lib/register/registration-context';
 import { PricingCard } from './pricing-card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/auth/register/ui/button';
 import { Shield, RotateCcw, Headphones } from 'lucide-react';
 
 interface Step3PricingProps {

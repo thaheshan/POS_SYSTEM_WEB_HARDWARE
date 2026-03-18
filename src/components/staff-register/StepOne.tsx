@@ -6,9 +6,6 @@ import {
   BriefcaseBusiness,
   Check,
   ChevronDown,
-  Eye,
-  EyeOff,
-  Lock,
   Mail,
   Phone,
   Search,
@@ -25,12 +22,10 @@ interface StepOneProps {
 }
 
 const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const [shopSearch, setShopSearch] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
   const shopDropdownRef = useRef<HTMLDivElement>(null);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -68,11 +63,14 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
     data.shopId.length > 0 &&
     data.fullName.trim().length > 2 &&
     isEmailValid &&
-    isPhoneValid ;
+    isPhoneValid &&
+    data.role.length > 0;
+
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Header */}
       <div className="flex flex-col items-center text-center mb-10 mt-10">
-        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6 ">
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6">
           <UserPlus className="w-7 h-7 text-white" />
         </div>
         <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
@@ -96,7 +94,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
             Shop Name <span className="text-red-500">*</span>
           </label>
           <div className="relative" ref={shopDropdownRef}>
-            {/* Trigger button */}
             <button
               type="button"
               onClick={() => {
@@ -111,7 +108,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
             >
               {selectedShop ? selectedShop.name : "Select your shop"}
             </button>
-
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <Store size={20} />
             </div>
@@ -123,10 +119,8 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               <ChevronDown size={18} />
             </div>
 
-            {/* Dropdown panel */}
             {shopDropdownOpen && (
               <div className="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                {/* Search */}
                 <div className="p-2 border-b border-slate-100">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
@@ -140,8 +134,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                     />
                   </div>
                 </div>
-
-                {/* Options list — max 5 visible */}
                 <ul className="max-h-[220px] overflow-y-auto py-1">
                   {filteredShops.length > 0 ? (
                     filteredShops.map((shop) => (
@@ -190,13 +182,13 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               className="w-full pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-700 font-medium"
               placeholder="Enter full name"
             />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <User size={20} />
             </div>
           </div>
         </div>
 
-        {/* email */}
+        {/* Email */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Email Address <span className="text-red-500">*</span>
@@ -213,13 +205,13 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               }`}
               placeholder="staff@abchardware.lk"
             />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <Mail size={20} />
             </div>
           </div>
         </div>
 
-        {/* phone number */}
+        {/* Phone Number */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Phone Number <span className="text-red-500">*</span>
@@ -236,19 +228,18 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               }`}
               placeholder="+94 77 000 0000"
             />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <Phone size={20} />
             </div>
           </div>
         </div>
 
-        {/* Roles */}
+        {/* Staff Role */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Staff Role <span className="text-red-500">*</span>
           </label>
           <div className="relative" ref={roleDropdownRef}>
-            {/* Trigger button */}
             <button
               type="button"
               onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
@@ -260,7 +251,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
             >
               {selectedRole ? selectedRole.label : "Select staff role"}
             </button>
-
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <BriefcaseBusiness size={20} />
             </div>
@@ -272,7 +262,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               <ChevronDown size={18} />
             </div>
 
-            {/* Dropdown panel */}
             {roleDropdownOpen && (
               <div className="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
                 <ul className="py-1">
@@ -303,6 +292,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           </div>
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={!canGoNext}
@@ -312,11 +302,12 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
         >
+          
           Next
         </button>
       </form>
 
-      {/* Sign In Link & Footer */}
+      {/* Sign In Link */}
       <div className="flex flex-col items-center mt-10 gap-1">
         <p className="text-sm text-slate-500">Already have an account?</p>
         <a
@@ -327,6 +318,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
         </a>
       </div>
 
+      {/* Footer */}
       <div className="flex flex-col items-center mt-8 gap-0.5 text-xs text-slate-400">
         <span>v1.0.0</span>
         <span>&copy; {new Date().getFullYear()} Futura Solutions PVT LTD</span>

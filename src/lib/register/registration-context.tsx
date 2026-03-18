@@ -48,9 +48,28 @@ const RegistrationContext = createContext<RegistrationContextType | undefined>(u
 export function RegistrationProvider({ children }: { children: React.ReactNode }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<Partial<RegistrationData>>({
-    shop: {},
-    owner: {},
-    pricing: {},
+    shop: {
+      shopName: '',
+      businessRegistration: '',
+      shopAddress: '',
+      city: '',
+      postalCode: '',
+      district: '',
+      province: '',
+      tin: '',
+      vat: '',
+      vatDate: ''
+    },
+    owner: {
+      fullName: '',
+      email: '',
+      mobileNumber: '',
+      password: '',
+      confirmPassword: ''
+    },
+    pricing: {
+      plan: 'starter'
+    },
   });
 
   const updateShopData = (shopData: Partial<ShopData>) => {
@@ -77,9 +96,28 @@ export function RegistrationProvider({ children }: { children: React.ReactNode }
   const resetData = () => {
     setCurrentStep(1);
     setData({
-      shop: {},
-      owner: {},
-      pricing: {},
+      shop: {
+        shopName: '',
+        businessRegistration: '',
+        shopAddress: '',
+        city: '',
+        postalCode: '',
+        district: '',
+        province: '',
+        tin: '',
+        vat: '',
+        vatDate: ''
+      },
+      owner: {
+        fullName: '',
+        email: '',
+        mobileNumber: '',
+        password: '',
+        confirmPassword: ''
+      },
+      pricing: {
+        plan: 'starter'
+      },
     });
   };
 

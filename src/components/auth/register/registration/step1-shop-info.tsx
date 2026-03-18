@@ -3,10 +3,10 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRegistration } from '@/lib/registration-context';
-import { shopDataSchema, ShopDataForm } from '@/lib/validation-schemas';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useRegistration } from '@/lib/register/registration-context';
+import { shopDataSchema, ShopDataForm } from '@/lib/register/validation-schemas';
+import { Input } from '@/components/auth/register/ui/input';
+import { Button } from '@/components/auth/register/ui/button';
 import { Store } from 'lucide-react';
 import {
   Select,
@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/auth/register/ui/select';
 
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 const DISTRICTS = ['District 1', 'District 2', 'District 3', 'District 4'];
@@ -100,7 +100,7 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
                 Business Registration Number <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📋</span>
+               
                 <input
                   type="text"
                   placeholder="BR-2024-001234"
@@ -120,7 +120,7 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
                 Shop Address <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-3 text-gray-400">📍</span>
+               
                 <textarea
                   placeholder="123 Galle Road, Dehwala"
                   {...register('shopAddress')}
@@ -223,7 +223,6 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
                 Tax Identification Number (TIN) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📋</span>
                 <input
                   type="text"
                   placeholder="TAX-ABC-123456"
@@ -240,7 +239,6 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
                 VAT Registration Number <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📋</span>
                 <input
                   type="text"
                   placeholder="VAT-UK-987654"
@@ -257,7 +255,6 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
                 VAT Registration Date <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📅</span>
                 <input
                   type="text"
                   placeholder="mm/dd/yyyy"
