@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRegistration } from '@/lib/registration-context';
+import { useRegistration} from '@/lib/register/registration-context';
 import { ChevronLeft, HelpCircle } from 'lucide-react';
 
 interface RegistrationHeaderProps {

@@ -31,7 +31,7 @@ const ProgressBar = ({ currentStep, totalSteps, onBack }: ProgressBarProps) => {
         </a>
       </div>
       <div
-        className="w-full h-1.5 overflow-hidden"
+        className="w-full h-1.5 overflow-hidden bg-gray-300"
         role="progressbar"
         aria-valuenow={currentStep}
         aria-valuemin={1}

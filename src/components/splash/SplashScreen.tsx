@@ -4,20 +4,11 @@ import { Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-const TARGET_ROUTE = "/role-selection";
 const BG_IMAGE =
-  "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1920&q=80";
+  "/images/splash-bg.png";
 
 export default function SplashScreen() {
-  const router = useRouter()
-  useEffect(() => {
-    // Keep splash visible briefly, then continue to role selection.
-    const redirectTimer = setTimeout(() => {
-      router.replace(TARGET_ROUTE);
-    }, 2800);
-
-    return () => clearTimeout(redirectTimer);
-  }, [router]);
+ 
 
   return (
     <main className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">

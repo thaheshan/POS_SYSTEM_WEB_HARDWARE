@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Check, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { Check, Zap } from "lucide-react";
+import { Button } from "@/components/auth/register/ui/button";
 
 interface PricingCardProps {
   name: string;
@@ -12,7 +12,7 @@ interface PricingCardProps {
   badge?: string;
   features: string[];
   buttonText: string;
-  buttonVariant?: 'primary' | 'secondary' | 'success';
+  buttonVariant?: "primary" | "secondary" | "success";
   isHighlighted?: boolean;
   onSelect: () => void;
   subtext?: string;
@@ -22,11 +22,11 @@ export function PricingCard({
   name,
   description,
   price,
-  period = '/month',
+  period = "/month",
   badge,
   features,
   buttonText,
-  buttonVariant = 'secondary',
+  buttonVariant = "secondary",
   isHighlighted = false,
   onSelect,
   subtext,
@@ -35,8 +35,8 @@ export function PricingCard({
     <div
       className={`rounded-2xl border transition-all duration-300 ${
         isHighlighted
-          ? 'border-0 bg-gradient-to-b from-blue-600 to-blue-700 shadow-2xl scale-105'
-          : 'border-gray-200 bg-white shadow-lg'
+          ? "border-0 bg-gradient-to-b from-blue-600 to-blue-700 shadow-2xl scale-105"
+          : "border-gray-200 bg-white shadow-lg"
       }`}
     >
       {/* Badge */}
@@ -52,14 +52,14 @@ export function PricingCard({
         {/* Header */}
         <h3
           className={`text-xl font-bold mb-1 ${
-            isHighlighted ? 'text-white' : 'text-gray-900'
+            isHighlighted ? "text-white" : "text-gray-900"
           }`}
         >
           {name}
         </h3>
         <p
           className={`text-sm mb-6 ${
-            isHighlighted ? 'text-blue-100' : 'text-gray-600'
+            isHighlighted ? "text-blue-100" : "text-gray-600"
           }`}
         >
           {description}
@@ -70,14 +70,14 @@ export function PricingCard({
           <div className="flex items-baseline gap-1">
             <span
               className={`text-4xl font-bold ${
-                isHighlighted ? 'text-white' : 'text-blue-600'
+                isHighlighted ? "text-white" : "text-blue-600"
               }`}
             >
               Rs. {price}
             </span>
             <span
               className={`text-sm ${
-                isHighlighted ? 'text-blue-100' : 'text-gray-600'
+                isHighlighted ? "text-blue-100" : "text-gray-600"
               }`}
             >
               {period}
@@ -86,7 +86,7 @@ export function PricingCard({
           {subtext && (
             <p
               className={`text-xs mt-2 ${
-                isHighlighted ? 'text-blue-100' : 'text-gray-500'
+                isHighlighted ? "text-blue-100" : "text-gray-500"
               }`}
             >
               {subtext}
@@ -99,12 +99,12 @@ export function PricingCard({
           onClick={onSelect}
           className={`w-full mb-8 py-3 font-semibold rounded-lg transition-colors ${
             isHighlighted
-              ? 'bg-white text-blue-600 hover:bg-gray-100'
-              : buttonVariant === 'success'
-                ? 'bg-teal-500 hover:bg-teal-600 text-white'
-                : buttonVariant === 'primary'
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'border-2 border-teal-500 text-teal-500 hover:bg-teal-50'
+              ? "bg-white text-blue-600 hover:bg-gray-100"
+              : buttonVariant === "success"
+              ? "bg-teal-500 hover:bg-teal-600 text-white"
+              : buttonVariant === "primary"
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "border-2 border-teal-500 text-teal-500 hover:bg-teal-50"
           }`}
         >
           {buttonText}
@@ -116,12 +116,12 @@ export function PricingCard({
             <div key={index} className="flex items-start gap-3">
               <Check
                 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                  isHighlighted ? 'text-white' : 'text-teal-500'
+                  isHighlighted ? "text-white" : "text-teal-500"
                 }`}
               />
               <span
                 className={`text-sm ${
-                  isHighlighted ? 'text-white' : 'text-gray-700'
+                  isHighlighted ? "text-white" : "text-gray-700"
                 }`}
               >
                 {feature}

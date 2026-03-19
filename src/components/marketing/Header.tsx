@@ -35,7 +35,7 @@ export function Header() {
               Login
             </Button>
           </Link>
-          <Link href="/auth/register/staff">
+          <Link href="/auth/register/role">
             <Button className="bg-teal-600 hover:bg-teal-700 text-white">
               Get Started
             </Button>
