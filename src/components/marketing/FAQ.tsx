@@ -1,77 +1,87 @@
 'use client';
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/marketing/ui/accordion';
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 const faqs = [
   {
-    question: 'How long does the installation process take?',
+    question: 'How long is the setup process?',
     answer:
-      'Our standard installation takes 1-3 days depending on your store size and current systems. We also provide full training to your staff during this time.',
-  },
-  {
-    question: 'Can I migrate my existing data from another POS system?',
-    answer:
-      'Yes! We support data migration from all major POS systems. Our technical team will handle the entire migration process to ensure zero data loss.',
-  },
-  {
-    question: 'Is internet connection required to operate the POS?',
-    answer:
-      'Our system works in offline mode for basic transactions. When internet is available, it automatically syncs all data to the cloud. This ensures uninterrupted service.',
+      'Setup typically takes 2-3 hours with our guided onboarding. Our support team will assist you throughout the process to ensure everything is configured correctly.',
   },
   {
     question: 'What payment methods are supported?',
     answer:
-      'We support all major payment methods including cards (Visa, Mastercard, Amex), digital wallets (Google Pay, Apple Pay), UPI, and cash payments.',
+      'We support Cash, Credit/Debit Cards, Mobile Money (FnM, eZ Cash, genie), Bank Transfers, Cheques, and Credit Sales with full payment reconciliation.',
   },
   {
-    question: 'How is my data secured and backed up?',
+    question: 'Can I integrate with my existing systems?',
     answer:
-      'Your data is encrypted in transit and at rest using bank-level AES-256 encryption. We perform automatic daily backups and maintain 99.9% uptime guarantee.',
+      'Yes, we provide API integration with accounting software, e-commerce platforms, and other business tools. Custom integrations are available.',
   },
   {
-    question: 'Do you offer discounts for annual plans?',
+    question: 'Is my data secure?',
     answer:
-      'Yes, we offer 20% discount on annual plans and additional discounts for multi-location setups. Contact our sales team for a custom quote.',
+      'We use bank-level encryption (SSL/TLS), regular security audits, automatic backups, and comply with international data protection standards.',
+  },
+  {
+    question: 'What if I need more than one location?',
+    answer:
+      'All Professional and Enterprise plans support multiple locations with centralized management and real-time synchronization.',
   },
 ];
 
 export function FAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
   return (
-    <section id="faq" className="py-16 md:py-24 bg-gradient-to-b from-green-50 to-white">
+    <section id="faq" className="py-20 md:py-28" style={{ backgroundColor: '#e8f5ee' }}>
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
             Frequently Asked Questions
           </h2>
-          <p className="text-lg text-gray-600">
-            Find answers to common questions about our POS system
-          </p>
         </div>
 
-        {/* FAQ Accordion */}
-        <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="border-2 border-gray-200 rounded-lg px-6 data-[state=open]:border-teal-300 data-[state=open]:bg-teal-50"
-              >
-                <AccordionTrigger className="text-left font-semibold text-gray-900 hover:text-teal-600 py-4">
+        {/* FAQ Cards — collapsible display */}
+        <div className="max-w-2xl mx-auto space-y-4">
+          {faqs.map((faq, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-2xl px-7 py-6 shadow-sm border border-gray-100 cursor-pointer transition-all duration-300 hover:shadow-md"
+              onClick={() => toggleFaq(index)}
+            >
+              <div className="flex justify-between items-center gap-4">
+                <h3 className="font-semibold text-gray-900 text-sm">
                   {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600 pb-4">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                </h3>
+                <ChevronDown
+                  size={18}
+                  className={`text-gray-500 transition-transform duration-300 flex-shrink-0 ${
+                    openIndex === index ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
+              <div
+                className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-in-out ${
+                  openIndex === index
+                    ? "grid-rows-[1fr] opacity-100 mt-4"
+                    : "grid-rows-[0fr] opacity-0 mt-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <p className="text-gray-500 text-xs leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

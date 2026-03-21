@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-slate-900 text-gray-300">
+    <footer id="about" className="bg-slate-900 text-gray-300">
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
@@ -13,11 +13,13 @@ export function Footer() {
               <div className="w-7 h-7 bg-teal-600 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-xs">P</span>
               </div>
-              <span className="font-bold text-sm text-white tracking-wide">HARDWARE</span>
+              <span className="font-bold text-sm text-white tracking-wide">
+                HARDWARE
+              </span>
             </div>
             <p className="text-sm">
-              Revolutionary POS system for hardware stores. Built for simplicity,
-              designed for growth.
+              Revolutionary POS system for hardware stores. Built for
+              simplicity, designed for growth.
             </p>
           </div>
 

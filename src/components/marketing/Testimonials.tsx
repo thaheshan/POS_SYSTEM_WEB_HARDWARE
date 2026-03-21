@@ -1,80 +1,91 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/marketing/ui/card';
-import { Star } from 'lucide-react';
+import { Star } from "lucide-react";
+import Image from "next/image";
+import { Card } from "@/components/marketing/ui/card";
 
 const testimonials = [
   {
-    name: 'Rajesh Kumar',
-    title: 'Owner, Singh Hardware Store',
+    name: "Roshan Silva",
+    title: "Owner, Silva Hardware Store",
     quote:
-      'This POS system has completely transformed how we manage our store. Inventory tracking is now automatic and we rarely run out of stock.',
-    image: '👨‍💼',
+      "The POS system has transformed our store operations. We've reduced checkout time by 40% and inventory discrepancies are now almost zero.",
+    avatar: "https://i.pravatar.cc/80?img=12",
     rating: 5,
   },
   {
-    name: 'Priya Sharma',
-    title: 'Manager, Sharma Tools & Hardware',
+    name: "Amara Fernando",
+    title: "Manager, Central Hardware",
     quote:
-      'The customer support team is incredible. They helped us set up everything in just one day. Our checkout process is 3x faster now.',
-    image: '👩‍💼',
+      "Excellent customer support and intuitive interface. Our staff was trained within hours. Highly recommended for any hardware retailer.",
+    avatar: "https://i.pravatar.cc/80?img=47",
     rating: 5,
   },
   {
-    name: 'Amit Patel',
-    title: 'Director, Patel Hardware Chain',
+    name: "Kapila Perera",
+    title: "Director, Colombo Hardware Co.",
     quote:
-      'Managing multiple locations has never been easier. Real-time sync across all stores gives us complete visibility into our business.',
-    image: '👨‍💼',
+      "The real-time analytics have given us insights we never had before. We're now making better decisions about inventory and pricing.",
+    avatar: "https://i.pravatar.cc/80?img=68",
     rating: 5,
   },
 ];
 
 export function Testimonials() {
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
+    <section id="testimonials" className="py-20 md:py-28 bg-white">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <p className="text-teal-600 font-semibold mb-2">
-            TRUSTED BY 500+ HARDWARE STORES
+        <div className="text-center mb-14">
+          <p className="text-emerald-600 font-semibold tracking-widest text-xs mb-3 uppercase">
+            CLIENT SUCCESS
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-            Trusted by 500+ Hardware Stores
+            Trusted by 50+ Hardware Stores
           </h2>
         </div>
 
         {/* Testimonials Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-7 max-w-6xl mx-auto">
           {testimonials.map((testimonial, index) => (
             <Card
               key={index}
-              className="p-8 border-2 border-gray-200 hover:border-teal-300 hover:shadow-lg transition-all"
+              className="p-7 border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 rounded-2xl flex flex-col shadow-sm"
+              style={{ backgroundColor: "#F9FAFB" }}
             >
               {/* Star Rating */}
-              <div className="flex gap-1 mb-4">
+              <div className="flex gap-1 mb-5">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
                   <Star
                     key={i}
-                    size={18}
-                    className="fill-yellow-400 text-yellow-400"
+                    size={16}
+                    className="fill-amber-400 text-amber-400"
                   />
                 ))}
               </div>
 
               {/* Quote */}
-              <p className="text-gray-700 mb-6 leading-relaxed italic">
-                &quot;{testimonial.quote}&quot;
+              <p className="text-gray-700 text-sm mb-6 leading-relaxed flex-grow">
+                &ldquo;{testimonial.quote}&rdquo;
               </p>
 
               {/* Author */}
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">{testimonial.image}</div>
+              <div className="flex items-center gap-3 mt-auto">
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+                  <Image
+                    src={testimonial.avatar}
+                    alt={testimonial.name}
+                    width={40}
+                    height={40}
+                    className="object-cover w-full h-full"
+                    unoptimized
+                  />
+                </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-bold text-gray-900 text-sm">
                     {testimonial.name}
                   </p>
-                  <p className="text-sm text-gray-600">{testimonial.title}</p>
+                  <p className="text-xs text-gray-500">{testimonial.title}</p>
                 </div>
               </div>
             </Card>
