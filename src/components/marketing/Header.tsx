@@ -3,6 +3,7 @@
 import { Menu, Store, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/marketing/ui/button";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,18 +107,19 @@ export function Header() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden md:flex items-center gap-2.5">
-          <Link
-            href="/auth/login"
-            className="inline-flex h-9 items-center justify-center rounded-md border border-[#0f766e] px-7 text-[13px] font-medium text-[#0f766e] transition-colors hover:bg-[#f0fdfb]"
+          <Button
+            asChild
+            variant="outline"
+            className="h-9 border-[#0f766e] px-7 text-[13px] font-medium text-[#0f766e] transition-colors hover:bg-[#f0fdfb]"
           >
-            Login
-          </Link>
-          <Link
-            href="/auth/register/role"
-            className="inline-flex h-9 items-center justify-center rounded-md bg-[#0f8f6d] px-7 text-[13px] font-medium text-white transition-colors hover:bg-[#0d7c5f]"
+            <Link href="/auth/login">Login</Link>
+          </Button>
+          <Button
+            asChild
+            className="h-9 bg-[#0f8f6d] px-7 text-[13px] font-medium text-white transition-colors hover:bg-[#0d7c5f]"
           >
-            Get Started
-          </Link>
+            <Link href="/auth/register/role">Get Started</Link>
+          </Button>
         </div>
 
         {/* Mobile Menu Button */}
@@ -151,18 +153,19 @@ export function Header() {
                 {link.label}
               </a>
             ))}
-            <Link
-              href="/auth/login"
-              className="inline-flex h-10 w-full items-center justify-center rounded-md border border-[#0f766e] px-4 text-sm font-medium text-[#0f766e]"
+            <Button
+              asChild
+              variant="outline"
+              className="h-10 w-full border-[#0f766e] px-4 text-sm font-medium text-[#0f766e]"
             >
-              Login
-            </Link>
-            <Link
-              href="/auth/register/role"
-              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[#0f8f6d] px-4 text-sm font-medium text-white"
+              <Link href="/auth/login">Login</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-10 w-full bg-[#0f8f6d] px-4 text-sm font-medium text-white"
             >
-              Get Started
-            </Link>
+              <Link href="/auth/register/role">Get Started</Link>
+            </Button>
           </div>
         </div>
       )}
