@@ -1,88 +1,98 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/marketing/ui/card';
+import { Card } from "@/components/marketing/ui/card";
 import {
-  Zap,
-  TrendingUp,
+  ShoppingCart,
+  Package,
+  BarChart3,
   Users,
-  Settings,
-  Shield,
-  Headphones,
-} from 'lucide-react';
+  Store,
+  ShieldCheck,
+} from "lucide-react";
 
 const features = [
   {
-    icon: Zap,
-    title: 'Lightning Fast',
+    icon: ShoppingCart,
+    title: "Advanced POS Checkout",
     description:
-      'Process transactions in seconds with our optimized point-of-sale system',
+      "Fast, intuitive checkout system with support for multiple payment methods, discounts, and customer management.",
   },
   {
-    icon: TrendingUp,
-    title: 'Inventory Analytics',
+    icon: Package,
+    title: "Real-time Inventory",
     description:
-      'Get real-time insights into your stock levels and sales trends',
+      "Track stock levels across all locations with automatic low-stock alerts and reorder points.",
+  },
+  {
+    icon: BarChart3,
+    title: "Comprehensive Analytics",
+    description:
+      "In-depth reports on sales, inventory, customers, and financial performance to guide business decisions.",
   },
   {
     icon: Users,
-    title: 'Customer Management',
+    title: "Customer Management",
     description:
-      'Build customer profiles and track purchase history effortlessly',
+      "Maintain customer profiles, loyalty programs, credit management, and purchase history.",
   },
   {
-    icon: Settings,
-    title: 'Easy Configuration',
+    icon: Store,
+    title: "Multi-location Support",
     description:
-      'Customize workflows and settings to match your business needs',
+      "Manage multiple warehouses and branches from a single dashboard with cloud synchronization.",
   },
   {
-    icon: Shield,
-    title: 'Enterprise Security',
+    icon: ShieldCheck,
+    title: "Enterprise Security",
     description:
-      'Bank-level encryption and compliance with industry standards',
-  },
-  {
-    icon: Headphones,
-    title: '24/7 Support',
-    description:
-      'Our expert support team is always available to help you succeed',
+      "Bank-level encryption, role-based access control, and comprehensive audit trails.",
   },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="py-16 md:py-24 bg-white">
+    <section id="features" className="py-20 md:py-28 bg-white">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <p className="text-teal-600 font-semibold mb-2">CORE FEATURES</p>
+        <div className="text-center mb-14">
+          <p
+            className="font-semibold tracking-widest text-xs mb-3 uppercase"
+            style={{ color: "#059669" }}
+          >
+            POWERFUL FEATURES
+          </p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Everything You Need to Run Your Store
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Comprehensive suite of tools designed specifically for hardware
-            retailers to streamline operations
+          <p className="text-sm text-gray-500 max-w-xl mx-auto leading-relaxed">
+            Complete suite of tools designed to manage every aspect of your
+            hardware store operations
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
               <Card
                 key={index}
-                className="p-8 border-2 border-teal-100 hover:border-teal-300 hover:shadow-lg transition-all"
+                className="p-8 border border-gray-100 hover:shadow-xl hover:-translate-y-1 hover:border-emerald-100 transition-all duration-300 bg-gray-50 text-center flex flex-col items-center rounded-2xl group"
               >
-                <div className="mb-4">
-                  <div className="inline-flex p-3 bg-teal-100 rounded-lg">
-                    <Icon size={28} className="text-teal-600" />
-                  </div>
+                <div
+                  className="mb-5 h-14 w-14 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: "#059669" }}
+                >
+                  <Icon
+                    size={30}
+                    strokeWidth={2.2}
+                    style={{ color: "#FFFFFF" }}
+                  />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-500 text-xs leading-relaxed">
                   {feature.description}
                 </p>
               </Card>

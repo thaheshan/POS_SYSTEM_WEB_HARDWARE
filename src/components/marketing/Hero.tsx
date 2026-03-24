@@ -1,69 +1,113 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/marketing/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { Button } from "@/components/marketing/ui/button";
+import { CheckCircle2, ShieldCheck, Link2, Clock } from "lucide-react";
+import Image from "next/image";
 
 export function Hero() {
   return (
-    <section className="bg-gradient-to-br from-teal-600 to-teal-700 text-white py-20 md:py-32">
+    <section
+      id="Hero"
+      className="text-white py-20 md:py-32"
+      style={{
+        background:
+          "linear-gradient(135deg, #064E3B 0%, #047857 35%, #059669 70%, #10B981 100%)",
+      }}
+    >
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Content */}
-          <div className="text-center md:text-left">
-            <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6 text-balance">
+        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+          {/* Left Content */}
+          <div className="text-center lg:text-left">
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-6">
               Revolutionary POS System for Hardware Stores
             </h1>
-            <p className="text-xl text-teal-50 mb-10 leading-relaxed max-w-3xl">
-              Streamline your inventory, sales, and customer management all in one powerful platform built specifically for hardware retailers.
+            <p className="text-base md:text-lg text-emerald-100 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Streamline your inventory, sales, and customer management all in
+              one powerful platform built specifically for hardware retailers.
             </p>
 
             {/* Feature List */}
-            <ul className="space-y-3 mb-10">
-              <li className="flex items-center gap-3 justify-center md:justify-start">
-                <CheckCircle2 size={20} className="text-teal-200 flex-shrink-0" />
-                <span className="text-lg">Real-time inventory tracking and management</span>
+            <ul className="space-y-3 mb-8 max-w-lg mx-auto lg:mx-0">
+              <li className="flex items-center gap-3 justify-center lg:justify-start">
+                <CheckCircle2
+                  size={20}
+                  className="text-emerald-200 flex-shrink-0"
+                />
+                <span className="text-base text-emerald-50">
+                  Real-time inventory tracking and management
+                </span>
               </li>
-              <li className="flex items-center gap-3 justify-center md:justify-start">
-                <CheckCircle2 size={20} className="text-teal-200 flex-shrink-0" />
-                <span className="text-lg">Advanced analytics and reporting tools</span>
+              <li className="flex items-center gap-3 justify-center lg:justify-start">
+                <CheckCircle2
+                  size={20}
+                  className="text-emerald-200 flex-shrink-0"
+                />
+                <span className="text-base text-emerald-50">
+                  Advanced analytics and reporting tools
+                </span>
               </li>
-              <li className="flex items-center gap-3 justify-center md:justify-start">
-                <CheckCircle2 size={20} className="text-teal-200 flex-shrink-0" />
-                <span className="text-lg">Multi-location support and cloud-based sync</span>
+              <li className="flex items-center gap-3 justify-center lg:justify-start">
+                <CheckCircle2
+                  size={20}
+                  className="text-emerald-200 flex-shrink-0"
+                />
+                <span className="text-base text-emerald-50">
+                  Multi-location support and cloud-based sync
+                </span>
               </li>
-              <li className="flex items-center gap-3 justify-center md:justify-start">
-                <CheckCircle2 size={20} className="text-teal-200 flex-shrink-0" />
-                <span className="text-lg">24/7 dedicated customer support</span>
+              <li className="flex items-center gap-3 justify-center lg:justify-start">
+                <CheckCircle2
+                  size={20}
+                  className="text-emerald-200 flex-shrink-0"
+                />
+                <span className="text-base text-emerald-50">
+                  24/7 dedicated customer support
+                </span>
               </li>
             </ul>
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start mb-12">
-              <Button className="bg-white text-teal-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
+              <Button className="bg-white text-emerald-800 hover:bg-emerald-50 font-semibold text-base px-7 py-5 shadow-md rounded-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
                 Start Free Trial
               </Button>
               <Button
                 variant="outline"
-                className="border-white text-white hover:bg-teal-700 font-semibold text-lg px-8 py-6"
+                className="border-2 border-white text-white bg-transparent hover:bg-white/10 font-semibold text-base px-7 py-5 rounded-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
               >
-                Watch Demo
+                View Demo
               </Button>
             </div>
 
-            {/* Trust Badge */}
-            <div className="flex flex-col sm:flex-row items-center gap-6 text-sm text-teal-100 justify-center md:justify-start">
+            {/* Trust Badges */}
+            <div className="flex flex-wrap items-center gap-5 text-sm text-emerald-100 justify-center lg:justify-start font-medium">
               <div className="flex items-center gap-2">
-                <span className="inline-block w-4 h-4 bg-teal-300 rounded-full"></span>
-                Trusted by 500+ stores
+                <ShieldCheck size={16} className="text-emerald-200" />
+                <span>Trusted by 50+ stores</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block w-4 h-4 bg-teal-300 rounded-full"></span>
-                99.9% Uptime SLA
+                <Link2 size={16} className="text-emerald-200" />
+                <span>99.9% Uptime SLA</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block w-4 h-4 bg-teal-300 rounded-full"></span>
-                24/7 Support
+                <Clock size={16} className="text-emerald-200" />
+                <span>24/7 Support</span>
               </div>
+            </div>
+          </div>
+
+          {/* Right Content — Dashboard Screenshot */}
+          <div className="hidden lg:block">
+            <div className="relative rounded-2xl overflow-hidden transition-all duration-500 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-900/50">
+              <Image
+                src="/images/img.png"
+                alt="Hardware POS System Dashboard"
+                width={800}
+                height={560}
+                className="object-cover w-full h-auto"
+                unoptimized
+                priority
+              />
             </div>
           </div>
         </div>

@@ -2,89 +2,88 @@
 
 import { Card } from '@/components/marketing/ui/card';
 import {
-  Barcode,
   ShoppingCart,
+  Package,
+  LineChart,
   Users,
-  BarChart3,
-  Lock,
-  Smartphone,
+  ClipboardList,
+  Settings,
+  Check
 } from 'lucide-react';
 
 const modules = [
   {
-    icon: Barcode,
+    icon: ShoppingCart,
     title: 'Point of Sale',
-    description: 'Fast, reliable transaction processing with multiple payment options',
-    features: ['Card payments', 'Cash handling', 'Quick transactions'],
+    description: 'Complete checkout system with product search, discounts, and payment processing',
+    features: ['Multiple payment methods', 'Quick item lookup', 'Discount & loyalty points', 'Receipt printing'],
   },
   {
-    icon: ShoppingCart,
+    icon: Package,
     title: 'Inventory Management',
-    description: 'Track stock levels across multiple locations in real-time',
-    features: ['Stock tracking', 'Auto-reorder', 'Multi-location sync'],
+    description: 'Real-time stock tracking, adjustments, and automated reorder points',
+    features: ['Stock level monitoring', 'Low stock alerts', 'Stock transfers', 'Physical counting'],
+  },
+  {
+    icon: LineChart,
+    title: 'Reports & Analytics',
+    description: 'Comprehensive reports on sales, inventory, and financial performance',
+    features: ['Sales reports', 'Profit & Loss statements', 'Inventory analytics', 'Custom reports'],
   },
   {
     icon: Users,
     title: 'Customer Management',
-    description: 'Build customer relationships and loyalty programs',
-    features: ['Profile management', 'Purchase history', 'Rewards program'],
+    description: 'Maintain customer profiles, loyalty programs, and purchase history',
+    features: ['Customer profiles', 'Loyalty programs', 'Credit management', 'Purchase history'],
   },
   {
-    icon: BarChart3,
-    title: 'Reports & Analytics',
-    description: 'Deep insights into sales, inventory, and business performance',
-    features: ['Sales reports', 'Trend analysis', 'Custom dashboards'],
+    icon: ClipboardList,
+    title: 'Purchase Orders',
+    description: 'Manage supplier orders, goods receipt, and payment tracking',
+    features: ['Create purchase orders', 'Goods receipt notes', 'Supplier management', 'Payment tracking'],
   },
   {
-    icon: Lock,
-    title: 'Security & Compliance',
-    description: 'Enterprise-grade security with industry compliance built-in',
-    features: ['Data encryption', 'User permissions', 'Audit logs'],
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile Access',
-    description: 'Manage your store from anywhere with mobile apps',
-    features: ['iOS & Android', 'Offline mode', 'Real-time sync'],
+    icon: Settings,
+    title: 'Settings & Admin',
+    description: 'System configuration, user management, and security settings',
+    features: ['User management', 'Role-based access', 'System configuration', 'Backup & security'],
   },
 ];
 
 export function Modules() {
   return (
-    <section id="modules" className="py-16 md:py-24 bg-white">
+    <section id="modules" className="py-20 md:py-28 bg-white">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <p className="text-teal-600 font-semibold mb-2">COMPREHENSIVE SUITE</p>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+        <div className="text-center mb-14">
+          <p className="text-emerald-600 font-semibold tracking-widest text-xs mb-3 uppercase">SYSTEM MODULES</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
             Comprehensive Module Suite
           </h2>
         </div>
 
         {/* Modules Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {modules.map((module, index) => {
             const Icon = module.icon;
             return (
               <Card
                 key={index}
-                className="p-6 border-2 border-teal-100 hover:border-teal-300 transition-all"
+                className="p-7 border border-emerald-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white rounded-xl"
               >
-                <div className="mb-4">
-                  <div className="inline-flex p-3 bg-teal-100 rounded-lg">
-                    <Icon size={24} className="text-teal-600" />
-                  </div>
+                <div className="mb-3">
+                  <Icon size={22} className="text-emerald-600" strokeWidth={2} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-base font-bold text-gray-900 mb-2">
                   {module.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-500 text-xs mb-5 leading-relaxed">
                   {module.description}
                 </p>
-                <ul className="space-y-2 text-sm">
+                <ul className="space-y-2">
                   {module.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-gray-600">
-                      <span className="inline-block w-1.5 h-1.5 bg-teal-600 rounded-full"></span>
+                    <li key={i} className="flex items-center gap-2 text-xs text-gray-600">
+                      <Check size={13} className="text-emerald-600 flex-shrink-0" strokeWidth={3} />
                       {feature}
                     </li>
                   ))}
