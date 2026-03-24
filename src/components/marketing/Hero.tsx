@@ -83,7 +83,7 @@ export function Hero() {
             <div className="flex flex-wrap items-center gap-5 text-sm text-emerald-100 justify-center lg:justify-start font-medium">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={16} className="text-emerald-200" />
-                <span>Trusted by 500+ stores</span>
+                <span>Trusted by 50+ stores</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link2 size={16} className="text-emerald-200" />

@@ -19,14 +19,15 @@ export function CTA() {
         </h2>
         <p className="text-emerald-100 text-base mb-10 leading-relaxed">
           Join 500+ hardware stores already using our POS system to streamline
-          operations and boost revenue. Start your free 14-day trial today with
+          operations and boost revenue. Start your free 30-day trial today with
           no obligations.
         </p>
-        <Link href="/auth/register/role">
-          <Button className="bg-white text-emerald-800 hover:bg-gray-50 font-bold px-10 py-5 text-base rounded-lg shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5">
-            Start Your Free Trial Today
-          </Button>
-        </Link>
+        <Button
+          asChild
+          className="bg-white text-emerald-800 hover:bg-gray-50 font-bold px-10 py-5 text-base rounded-lg shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+        >
+          <Link href="/auth/register/role">Start Your Free Trial Today</Link>
+        </Button>
       </div>
     </section>
   );

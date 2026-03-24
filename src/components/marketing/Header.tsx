@@ -94,6 +94,9 @@ export function Header() {
               key={link.label}
               href={link.href}
               onClick={() => setActiveSection(link.sectionId)}
+              aria-current={
+                activeSection === link.sectionId ? "page" : undefined
+              }
               className={`relative pb-0.5 text-[13px] font-medium transition-colors ${
                 activeSection === link.sectionId
                   ? "text-[#059669] after:absolute after:-bottom-[2px] after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-[#059669]"
@@ -144,6 +147,9 @@ export function Header() {
                   setActiveSection(link.sectionId);
                   setIsOpen(false);
                 }}
+                aria-current={
+                  activeSection === link.sectionId ? "page" : undefined
+                }
                 className={`block w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   activeSection === link.sectionId
                     ? "text-[#059669] bg-emerald-50"
