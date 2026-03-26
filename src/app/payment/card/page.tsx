@@ -21,14 +21,18 @@ export default function CardDetailsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!termsAgreed) {
+      return;
+    }
+
     router.push("/payment/processing");
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col font-sans mb-10">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <CheckoutHeader step={3} totalSteps={4} backLink="/payment/method" />
 
-      <main className="flex-grow flex flex-col items-center py-10 px-4 sm:px-6 w-full max-w-3xl mx-auto">
+      <main className="flex-grow flex flex-col items-center py-8 md:py-10 px-4 sm:px-6 w-full max-w-3xl mx-auto">
         {/* Card Mockup */}
         <CardMockup
           cardNumber={cardNumber}
@@ -37,8 +41,8 @@ export default function CardDetailsPage() {
         />
 
         {/* Card Form */}
-        <div className="w-full max-w-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 md:p-7 mb-8">
+          <form onSubmit={handleSubmit} className="space-y-7">
             <CardForm
               cardNumber={cardNumber}
               setCardNumber={setCardNumber}
@@ -62,6 +66,7 @@ export default function CardDetailsPage() {
             <OrderSummary
               amount="Rs. 0 (Trial)"
               buttonText="Confirm & Start Trial"
+              disabled={!termsAgreed}
             />
           </form>
         </div>

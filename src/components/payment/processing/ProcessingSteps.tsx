@@ -11,7 +11,7 @@ export default function ProcessingSteps({
   activeStep,
 }: ProcessingStepsProps) {
   return (
-    <div className="w-full space-y-4 mb-16 px-8">
+    <div className="w-full space-y-3 mb-10 sm:mb-12 px-2 sm:px-4">
       {steps.map((text, index) => {
         const isCompleted = index < activeStep;
         const isActive = index === activeStep;
@@ -36,7 +36,7 @@ export default function ProcessingSteps({
               {isCompleted && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
             </div>
             <span
-              className={`text-sm font-medium ${
+              className={`text-sm font-medium leading-relaxed ${
                 isCompleted ? "text-white" : "text-blue-50"
               }`}
             >

@@ -18,27 +18,27 @@ export default function PaymentMethodOptions({
 }: PaymentMethodOptionsProps) {
   return (
     <div>
-      <h3 className="text-base font-bold text-gray-900 mb-3 px-1">
+      <h3 className="text-base font-bold text-slate-900 mb-3 px-1">
         Select Payment Method
       </h3>
 
       <div className="space-y-3">
         {/* Credit / Debit Card */}
         <label
-          className={`relative flex items-center p-5 border rounded-xl cursor-pointer transition-all ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
             selectedMethod === "card"
-              ? "border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm"
-              : "border-gray-200 bg-white hover:border-gray-300"
+              ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
           }`}
         >
-          <div className="flex-shrink-0 w-12 h-12 bg-[#2563EB] rounded-lg flex items-center justify-center mr-4">
+          <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#2563EB] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
             <CreditCard className="w-6 h-6 text-white" />
           </div>
           <div className="flex-grow">
-            <div className="font-bold text-gray-900 text-base">
+            <div className="font-bold text-slate-900 text-sm sm:text-base">
               Credit / Debit Card
             </div>
-            <div className="text-gray-500 text-xs mb-2 mt-0.5">
+            <div className="text-slate-500 text-xs mb-2 mt-0.5">
               Visa, Mastercard, Amex
             </div>
             <div className="flex gap-2">
@@ -58,7 +58,7 @@ export default function PaymentMethodOptions({
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                 selectedMethod === "card"
                   ? "border-blue-600"
-                  : "border-gray-300"
+                  : "border-slate-300"
               }`}
             >
               {selectedMethod === "card" && (
@@ -78,20 +78,20 @@ export default function PaymentMethodOptions({
 
         {/* Bank Transfer */}
         <label
-          className={`relative flex items-center p-5 border rounded-xl cursor-pointer transition-all ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
             selectedMethod === "bank"
-              ? "border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm"
-              : "border-gray-200 bg-white hover:border-gray-300"
+              ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
           }`}
         >
-          <div className="flex-shrink-0 w-12 h-12 bg-[#059669] rounded-lg flex items-center justify-center mr-4">
+          <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#059669] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
             <Landmark className="w-6 h-6 text-white" />
           </div>
           <div className="flex-grow">
-            <div className="font-bold text-gray-900 text-base">
+            <div className="font-bold text-slate-900 text-sm sm:text-base">
               Bank Transfer
             </div>
-            <div className="text-gray-500 text-xs mt-0.5">
+            <div className="text-slate-500 text-xs mt-0.5">
               Direct bank deposit
             </div>
           </div>
@@ -100,7 +100,7 @@ export default function PaymentMethodOptions({
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                 selectedMethod === "bank"
                   ? "border-blue-600"
-                  : "border-gray-300"
+                  : "border-slate-300"
               }`}
             >
               {selectedMethod === "bank" && (
@@ -120,20 +120,20 @@ export default function PaymentMethodOptions({
 
         {/* Mobile Payment */}
         <label
-          className={`relative flex items-center p-5 border rounded-xl cursor-pointer transition-all ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
             selectedMethod === "mobile"
-              ? "border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm"
-              : "border-gray-200 bg-white hover:border-gray-300"
+              ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
           }`}
         >
-          <div className="flex-shrink-0 w-12 h-12 bg-[#FF5722] rounded-lg flex items-center justify-center mr-4">
+          <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#FF5722] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
             <Smartphone className="w-6 h-6 text-white" />
           </div>
           <div className="flex-grow">
-            <div className="font-bold text-gray-900 text-base">
+            <div className="font-bold text-slate-900 text-sm sm:text-base">
               Mobile Payment
             </div>
-            <div className="text-gray-500 text-xs mt-0.5">
+            <div className="text-slate-500 text-xs mt-0.5">
               FriMi, eZ Cash, genie
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function PaymentMethodOptions({
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                 selectedMethod === "mobile"
                   ? "border-blue-600"
-                  : "border-gray-300"
+                  : "border-slate-300"
               }`}
             >
               {selectedMethod === "mobile" && (
@@ -162,20 +162,20 @@ export default function PaymentMethodOptions({
 
         {/* Pay by Invoice */}
         <label
-          className={`relative flex items-center p-5 border rounded-xl cursor-pointer transition-all ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
             selectedMethod === "invoice"
-              ? "border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm"
-              : "border-gray-200 bg-white hover:border-gray-300"
+              ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
           }`}
         >
-          <div className="flex-shrink-0 w-12 h-12 bg-[#64748B] rounded-lg flex items-center justify-center mr-4">
+          <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#64748B] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div className="flex-grow">
-            <div className="font-bold text-gray-900 text-base">
+            <div className="font-bold text-slate-900 text-sm sm:text-base">
               Pay by Invoice
             </div>
-            <div className="text-gray-500 text-xs mt-0.5">
+            <div className="text-slate-500 text-xs mt-0.5">
               Receive invoice via email
             </div>
           </div>
@@ -184,7 +184,7 @@ export default function PaymentMethodOptions({
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                 selectedMethod === "invoice"
                   ? "border-blue-600"
-                  : "border-gray-300"
+                  : "border-slate-300"
               }`}
             >
               {selectedMethod === "invoice" && (
@@ -204,9 +204,9 @@ export default function PaymentMethodOptions({
       </div>
 
       {/* Encryption Alert */}
-      <div className="mt-6 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl p-4 flex items-center gap-3">
+      <div className="mt-6 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl p-4 flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-[#059669] flex-shrink-0" />
-        <p className="text-[#065F46] text-xs font-medium">
+        <p className="text-[#065F46] text-xs sm:text-sm font-medium leading-relaxed">
           Your payment information is encrypted and secure. We never store your
           card details.
         </p>
