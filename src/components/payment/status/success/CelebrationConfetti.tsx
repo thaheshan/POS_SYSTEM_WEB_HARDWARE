@@ -30,7 +30,7 @@ export default function CelebrationConfetti() {
         height={size.height}
         numberOfPieces={300}
         gravity={0.16}
-        recycle
+        recycle={false}
         colors={["#2563EB", "#16A34A", "#F97316", "#EAB308"]}
       />
     </div>

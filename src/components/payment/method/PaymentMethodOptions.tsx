@@ -78,10 +78,10 @@ export default function PaymentMethodOptions({
 
         {/* Bank Transfer */}
         <label
-          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl transition-all duration-200 opacity-50 cursor-not-allowed ${
             selectedMethod === "bank"
               ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
-              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+              : "border-slate-200 bg-white"
           }`}
         >
           <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#059669] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
@@ -93,6 +93,11 @@ export default function PaymentMethodOptions({
             </div>
             <div className="text-slate-500 text-xs mt-0.5">
               Direct bank deposit
+            </div>
+            <div className="mt-2">
+              <span className="px-3 py-1 text-xs font-bold text-amber-600 bg-amber-100 rounded-full">
+                Coming soon
+              </span>
             </div>
           </div>
           <div className="flex-shrink-0 ml-4">
@@ -114,16 +119,17 @@ export default function PaymentMethodOptions({
             value="bank"
             checked={selectedMethod === "bank"}
             onChange={() => onMethodSelect("bank")}
+            disabled={true}
             className="sr-only"
           />
         </label>
 
         {/* Mobile Payment */}
         <label
-          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl transition-all duration-200 opacity-50 cursor-not-allowed ${
             selectedMethod === "mobile"
               ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
-              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+              : "border-slate-200 bg-white"
           }`}
         >
           <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#FF5722] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
@@ -135,6 +141,11 @@ export default function PaymentMethodOptions({
             </div>
             <div className="text-slate-500 text-xs mt-0.5">
               FriMi, eZ Cash, genie
+            </div>
+            <div className="mt-2">
+              <span className="px-3 py-1 text-xs font-bold text-amber-600 bg-amber-100 rounded-full">
+                Coming soon
+              </span>
             </div>
           </div>
           <div className="flex-shrink-0 ml-4">
@@ -156,16 +167,17 @@ export default function PaymentMethodOptions({
             value="mobile"
             checked={selectedMethod === "mobile"}
             onChange={() => onMethodSelect("mobile")}
+            disabled={true}
             className="sr-only"
           />
         </label>
 
         {/* Pay by Invoice */}
         <label
-          className={`relative flex items-center p-4 sm:p-5 border rounded-xl cursor-pointer transition-all duration-200 ${
+          className={`relative flex items-center p-4 sm:p-5 border rounded-xl transition-all duration-200 opacity-50 cursor-not-allowed ${
             selectedMethod === "invoice"
               ? "border-blue-600 bg-white ring-2 ring-blue-100 shadow-sm"
-              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+              : "border-slate-200 bg-white"
           }`}
         >
           <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-[#64748B] rounded-lg flex items-center justify-center mr-3 sm:mr-4">
@@ -177,6 +189,11 @@ export default function PaymentMethodOptions({
             </div>
             <div className="text-slate-500 text-xs mt-0.5">
               Receive invoice via email
+            </div>
+            <div className="mt-2">
+              <span className="px-3 py-1 text-xs font-bold text-amber-600 bg-amber-100 rounded-full">
+                Coming soon
+              </span>
             </div>
           </div>
           <div className="flex-shrink-0 ml-4">
@@ -198,6 +215,7 @@ export default function PaymentMethodOptions({
             value="invoice"
             checked={selectedMethod === "invoice"}
             onChange={() => onMethodSelect("invoice")}
+            disabled={true}
             className="sr-only"
           />
         </label>

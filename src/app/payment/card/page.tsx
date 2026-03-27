@@ -18,10 +18,11 @@ export default function CardDetailsPage() {
   const [sameAddress, setSameAddress] = useState(true);
   const [saveCard, setSaveCard] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [isCardFormValid, setIsCardFormValid] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!termsAgreed) {
+    if (!termsAgreed || !isCardFormValid) {
       return;
     }
 
@@ -52,6 +53,7 @@ export default function CardDetailsPage() {
               setExpiry={setExpiry}
               cvv={cvv}
               setCvv={setCvv}
+              onValidationChange={setIsCardFormValid}
             />
 
             <BillingAddress
@@ -66,7 +68,7 @@ export default function CardDetailsPage() {
             <OrderSummary
               amount="Rs. 0 (Trial)"
               buttonText="Confirm & Start Trial"
-              disabled={!termsAgreed}
+              disabled={!termsAgreed || !isCardFormValid}
             />
           </form>
         </div>
