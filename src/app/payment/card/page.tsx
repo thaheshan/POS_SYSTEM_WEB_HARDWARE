@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CheckoutHeader from "@/components/payment/CheckoutHeader";
 import CardMockup from "@/components/payment/card/CardMockup";
@@ -19,12 +19,30 @@ export default function CardDetailsPage() {
   const [saveCard, setSaveCard] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [isCardFormValid, setIsCardFormValid] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [errorAttemptCount, setErrorAttemptCount] = useState(0);
+
+  useEffect(() => {
+    if (termsAgreed && isCardFormValid && submitError) {
+      setSubmitError("");
+    }
+  }, [termsAgreed, isCardFormValid, submitError]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!termsAgreed || !isCardFormValid) {
+    if (!isCardFormValid) {
+      setSubmitError("Please complete all required card fields correctly.");
+      setErrorAttemptCount((prev) => prev + 1);
       return;
     }
+
+    if (!termsAgreed) {
+      setSubmitError("");
+      setErrorAttemptCount((prev) => prev + 1);
+      return;
+    }
+
+    setSubmitError("");
 
     router.push("/payment/processing");
   };
@@ -65,10 +83,30 @@ export default function CardDetailsPage() {
               setTermsAgreed={setTermsAgreed}
             />
 
+            {errorAttemptCount > 0 && !termsAgreed && (
+              <p
+                key={`terms-error-${errorAttemptCount}`}
+                className="text-sm text-red-600 font-medium inline-error-animate"
+                role="alert"
+              >
+                Please agree to the Terms of Service and Privacy Policy to
+                continue.
+              </p>
+            )}
+
+            {submitError && (
+              <p
+                key={`submit-error-${errorAttemptCount}`}
+                className="text-sm text-red-600 font-medium inline-error-animate"
+                role="alert"
+              >
+                {submitError}
+              </p>
+            )}
+
             <OrderSummary
               amount="Rs. 0 (Trial)"
               buttonText="Confirm & Start Trial"
-              disabled={!termsAgreed || !isCardFormValid}
             />
           </form>
         </div>

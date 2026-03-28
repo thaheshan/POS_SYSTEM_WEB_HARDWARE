@@ -10,13 +10,24 @@ import SecurityFooter from "@/components/payment/method/SecurityFooter";
 
 export default function PaymentMethodPage() {
   const router = useRouter();
-  const [selectedMethod, setSelectedMethod] = useState<string>("card");
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState("");
+  const [errorAttemptCount, setErrorAttemptCount] = useState(0);
 
   const handleMethodSelect = (method: string) => {
     setSelectedMethod(method);
+    if (selectionError) {
+      setSelectionError("");
+    }
   };
 
   const handleContinue = () => {
+    if (!selectedMethod) {
+      setSelectionError("Please select a payment method to continue.");
+      setErrorAttemptCount((prev) => prev + 1);
+      return;
+    }
+
     if (selectedMethod === "card") {
       router.push("/payment/card");
       return;
@@ -58,6 +69,16 @@ export default function PaymentMethodPage() {
           >
             Continue
           </button>
+
+          {selectionError && (
+            <p
+              key={`selection-error-${errorAttemptCount}`}
+              className="text-sm text-red-600 font-medium inline-error-animate"
+              role="alert"
+            >
+              {selectionError}
+            </p>
+          )}
         </div>
 
         <SecurityFooter />

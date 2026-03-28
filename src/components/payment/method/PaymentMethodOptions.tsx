@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 interface PaymentMethodOptionsProps {
-  selectedMethod: string;
+  selectedMethod: string | null;
   onMethodSelect: (method: string) => void;
 }
 
