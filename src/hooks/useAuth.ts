@@ -12,13 +12,13 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Demo login - replace with actual API call
-      if (email === 'admin@example.com' && password === 'password123') {
+      // Demo login - allowing the default email and any password for the demo
+      if (email === 'admin@abchardware.lk' || email === 'admin@example.com') {
         const user = {
           id: '1',
           email: email,
-          name: 'Admin User',
-          role: 'admin',
+          name: 'John Silva',
+          role: 'Shop Owner',
         };
         const token = 'demo-token-123';
         
