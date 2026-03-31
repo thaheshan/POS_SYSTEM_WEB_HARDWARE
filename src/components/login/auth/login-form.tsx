@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import FormInput from './form-input';
 import AuthHeader from './auth-header';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -12,15 +13,18 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
+  const { login } = useAuth();
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate form submission
-    setTimeout(() => {
+    // Call the login function which handles the navigation
+    const success = await login(email, password);
+    if (!success) {
       setIsLoading(false);
-      console.log('Login attempted with:', { email, password, rememberMe });
-    }, 1500);
+      // In a real app, show error toast
+    }
   };
 
   return (
