@@ -7,6 +7,7 @@ import { useRegistration } from '@/lib/register/registration-context';
 import { ownerDataSchema, OwnerDataForm } from '@/lib/register/validation-schemas';
 import { Button } from '@/components/auth/register/ui/button';
 import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Step2OwnerInfoProps {
   onNext: () => void;
@@ -20,6 +21,7 @@ const PASSWORD_REQUIREMENTS = [
 ];
 
 export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
+  const router = useRouter(); 
   const { data, updateOwnerData } = useRegistration();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -63,6 +65,7 @@ export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
   const onSubmit = (formData: OwnerDataForm) => {
     updateOwnerData(formData);
     onNext();
+    router.push('/auth/register/subscription'); 
   };
 
   return (
@@ -247,12 +250,12 @@ export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
           </div>
 
           {/* Submit Button */}
-          <Button
-            type="submit"
-            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-lg transition-colors"
-          >
-            Continue to Subscription
-          </Button>
+         <button
+  type="submit"
+  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-lg transition-colors"
+>
+  Continue to Subscription
+</button>
         </form>
       </div>
     </div>
