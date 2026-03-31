@@ -18,17 +18,13 @@ export default function ProcessingPage() {
   ];
 
   useEffect(() => {
-    // Simulate progression of steps
     if (activeStep < steps.length) {
       const timer = setTimeout(
-        () => {
-          setActiveStep((prev) => prev + 1);
-        },
-        1500 + Math.random() * 1000,
-      ); // 1.5 - 2.5 seconds per step
+        () => setActiveStep((prev) => prev + 1),
+        1500 + Math.random() * 1000
+      );
       return () => clearTimeout(timer);
     } else {
-      // After all steps complete, redirect to success
       const redirectTimer = setTimeout(() => {
         router.push("/payment/success");
       }, 1000);

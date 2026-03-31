@@ -28,7 +28,7 @@ export default function CardDetailsPage() {
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col font-sans mb-10">
       <CheckoutHeader step={3} totalSteps={4} backLink="/payment/method" />
 
-      <main className="flex-grow flex flex-col items-center py-10 px-4 sm:px-6 w-full max-w-3xl mx-auto">
+      <main className="flex-grow flex flex-col items-center py-10 px-4 sm:px-6 w-full max-w-2xl mx-auto">
         {/* Card Mockup */}
         <CardMockup
           cardNumber={cardNumber}
@@ -37,7 +37,7 @@ export default function CardDetailsPage() {
         />
 
         {/* Card Form */}
-        <div className="w-full max-w-2xl">
+        <div className="w-full">
           <form onSubmit={handleSubmit} className="space-y-6">
             <CardForm
               cardNumber={cardNumber}
