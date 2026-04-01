@@ -41,8 +41,8 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-lg w-full">
+    // <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      // <div className="max-w-lg w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Render Current Step */}
           {resetState.step === 1 && (
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
             <Step4PasswordResetResult status={resetState.status} />
           )}
         </div>
-      </div>
-    </div>
+      // </div>
+    // </div>
   );
 }

@@ -28,9 +28,10 @@ export default function ProcessingPage() {
       ); // 1.5 - 2.5 seconds per step
       return () => clearTimeout(timer);
     } else {
-      // After all steps complete, redirect to success
+      // TODO: Replace with real payment API call
       const redirectTimer = setTimeout(() => {
-        router.push("/payment/success");
+        const mockSuccess = Math.random() > 0.3; // 70% success, 30% fail
+        router.push(mockSuccess ? "/payment/success" : "/payment/failed");
       }, 1000);
       return () => clearTimeout(redirectTimer);
     }
