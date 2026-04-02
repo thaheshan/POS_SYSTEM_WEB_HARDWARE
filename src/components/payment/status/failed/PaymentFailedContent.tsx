@@ -7,13 +7,28 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function PaymentFailedContent() {
+interface PaymentFailedContentProps {
+  onTryAgain?: () => void;
+  onDifferentMethod?: () => void;
+  onBack?: () => void;
+}
+
+export default function PaymentFailedContent({
+  onTryAgain,
+  onDifferentMethod,
+  onBack,
+}: PaymentFailedContentProps) {
   const router = useRouter();
   const error = MockPaymentErrors;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans">
-      <CheckoutHeader step={4} totalSteps={4} backLink="/payment/card" />
+      <CheckoutHeader
+        step={4}
+        totalSteps={4}
+        backLink="/payment"
+        onBack={onBack}
+      />
 
       <main className="mx-auto w-full max-w-[780px] px-4 sm:px-6 pt-7 pb-12">
         <section className="text-center">
@@ -63,7 +78,14 @@ export default function PaymentFailedContent() {
         <div className="mx-auto mt-10 w-full max-w-[510px] space-y-3">
           <button
             type="button"
-            onClick={() => router.push("/payment/card")}
+            onClick={() => {
+              if (onTryAgain) {
+                onTryAgain();
+                return;
+              }
+
+              router.push("/payment");
+            }}
             className="h-14 w-full rounded-xl bg-[#1E4DB7] text-white text-lg font-semibold shadow-[0_8px_18px_rgba(30,77,183,0.35)] transition-colors hover:bg-[#1A56DB]"
           >
             Try Again
@@ -71,7 +93,14 @@ export default function PaymentFailedContent() {
 
           <button
             type="button"
-            onClick={() => router.push("/payment/method")}
+            onClick={() => {
+              if (onDifferentMethod) {
+                onDifferentMethod();
+                return;
+              }
+
+              router.push("/payment");
+            }}
             className="h-14 w-full rounded-xl border border-slate-300 bg-white text-slate-700 text-base font-semibold transition-colors hover:bg-slate-50"
           >
             Use Different Payment Method

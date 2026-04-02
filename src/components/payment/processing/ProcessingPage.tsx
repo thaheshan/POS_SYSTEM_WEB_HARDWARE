@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import ProcessingBackground from "@/components/payment/processing/ProcessingBackground";
-import PulsatingLock from "@/components/payment/processing/PulsatingLock";
-import ProcessingSteps from "@/components/payment/processing/ProcessingSteps";
-import SecurityBadge from "@/components/payment/processing/SecurityBadge";
+import ProcessingBackground from "./ProcessingBackground";
+import PulsatingLock from "./PulsatingLock";
+import ProcessingSteps from "./ProcessingSteps";
+import SecurityBadge from "./SecurityBadge";
 
-export default function ProcessingPage() {
-  const router = useRouter();
+interface ProcessingPageProps {
+  onComplete: (success: boolean) => void;
+}
+
+export default function ProcessingPage({ onComplete }: ProcessingPageProps) {
   const [activeStep, setActiveStep] = useState(0);
 
   const steps = [
@@ -18,24 +20,24 @@ export default function ProcessingPage() {
   ];
 
   useEffect(() => {
-    // Simulate progression of steps
     if (activeStep < steps.length) {
       const timer = setTimeout(
         () => {
           setActiveStep((prev) => prev + 1);
         },
         1500 + Math.random() * 1000,
-      ); // 1.5 - 2.5 seconds per step
+      );
+
       return () => clearTimeout(timer);
-    } else {
-      // TODO: Replace with real payment API call
-      const redirectTimer = setTimeout(() => {
-        const mockSuccess = Math.random() > 0.3; // 70% success, 30% fail
-        router.push(mockSuccess ? "/payment/success" : "/payment/failed");
-      }, 1000);
-      return () => clearTimeout(redirectTimer);
     }
-  }, [activeStep, router, steps.length]);
+
+    const redirectTimer = setTimeout(() => {
+      const mockSuccess = Math.random() > 0.3;
+      onComplete(mockSuccess);
+    }, 1000);
+
+    return () => clearTimeout(redirectTimer);
+  }, [activeStep, onComplete, steps.length]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1E40AF] via-[#1D4ED8] to-[#1E3A8A] flex flex-col items-center justify-center p-4 sm:p-6 font-sans text-white overflow-hidden relative">

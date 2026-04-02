@@ -14,7 +14,13 @@ const NEXT_STEPS = [
   "Start managing sales and tracking inventory",
 ];
 
-export default function PaymentSuccessContent() {
+interface PaymentSuccessContentProps {
+  onBack?: () => void;
+}
+
+export default function PaymentSuccessContent({
+  onBack,
+}: PaymentSuccessContentProps) {
   const router = useRouter();
   const data = ShopPaymentDetails;
 
@@ -28,7 +34,12 @@ export default function PaymentSuccessContent() {
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC] font-sans">
-      <CheckoutHeader step={4} totalSteps={4} backLink="/payment/processing" />
+      <CheckoutHeader
+        step={4}
+        totalSteps={4}
+        backLink="/payment"
+        onBack={onBack}
+      />
 
       <main className="relative z-10 mx-auto w-full max-w-[780px] px-4 sm:px-6 pt-7 pb-12">
         <section className="relative text-center pb-2">

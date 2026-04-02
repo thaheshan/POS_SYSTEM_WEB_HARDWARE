@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CreditCard } from "lucide-react";
-import CheckoutHeader from "@/components/payment/CheckoutHeader";
-import SubscriptionSummary from "@/components/payment/method/SubscriptionSummary";
-import PaymentMethodOptions from "@/components/payment/method/PaymentMethodOptions";
-import SecurityFooter from "@/components/payment/method/SecurityFooter";
+import CheckoutHeader from "../CheckoutHeader";
+import SubscriptionSummary from "./SubscriptionSummary";
+import PaymentMethodOptions from "./PaymentMethodOptions";
+import SecurityFooter from "./SecurityFooter";
 
-export default function PaymentMethodPage() {
-  const router = useRouter();
+interface MethodPageProps {
+  onContinue: (method: string) => void;
+}
+
+export default function MethodPage({ onContinue }: MethodPageProps) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState("");
   const [errorAttemptCount, setErrorAttemptCount] = useState(0);
@@ -28,20 +30,14 @@ export default function PaymentMethodPage() {
       return;
     }
 
-    if (selectedMethod === "card") {
-      router.push("/payment/card");
-      return;
-    }
-
-    router.push("/payment/processing");
+    onContinue(selectedMethod);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <CheckoutHeader step={3} totalSteps={4} backLink="/dashboard" />
+      <CheckoutHeader step={1} totalSteps={4} backLink="/dashboard" />
 
       <main className="flex-grow flex flex-col items-center py-8 md:py-10 px-4 sm:px-6">
-        {/* Top Icon and Title */}
         <div className="flex flex-col items-center mb-8 md:mb-10 text-center">
           <div className="w-14 h-14 md:w-16 md:h-16 bg-[#128C7E] rounded-full flex items-center justify-center mb-4 shadow-md shadow-emerald-500/25">
             <CreditCard className="w-7 h-7 md:w-8 md:h-8 text-white" />
