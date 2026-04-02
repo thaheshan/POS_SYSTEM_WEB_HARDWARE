@@ -32,6 +32,7 @@ const PASSWORD_REQUIREMENTS = [
 ];
 
 export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
+  const router = useRouter(); 
   const { data, updateOwnerData } = useRegistration();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -77,6 +78,7 @@ export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
   const onSubmit = (formData: OwnerDataForm) => {
     updateOwnerData(formData);
     onNext();
+    router.push('/auth/register/subscription'); 
   };
 
   return (
