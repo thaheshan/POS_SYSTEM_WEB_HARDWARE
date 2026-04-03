@@ -42,12 +42,12 @@ export default function Step3ChangePassword({ onNext }: Step3Props) {
 
   const barColor =
     score <= 1
-      ? "bg-red-400"
+      ? "bg-red-500"
       : score === 2
-        ? "bg-amber-400"
+        ? "bg-amber-500"
         : score === 3
           ? "bg-blue-500"
-          : "bg-[#1855e3]";
+          : "bg-blue-600";
   const barWidth =
     score === 0
       ? "w-0"
@@ -78,146 +78,146 @@ export default function Step3ChangePassword({ onNext }: Step3Props) {
   };
 
   return (
-    <div className="w-full text-center px-4">
-      {/* Lock icon */}
-      <div className="flex justify-center mb-6">
-        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full bg-[#1855e3] flex items-center justify-center">
-            <Lock strokeWidth={2.5} className="w-5 h-5 text-white" />
-          </div>
-        </div>
-      </div>
-
-      <h2 className="text-xl font-bold text-gray-900 mb-2">
-        Create new password
-      </h2>
-      <p className="text-xs text-gray-500 mb-8 font-medium">
-        Please enter a strong password for your account
-      </p>
-
-      <form
-        onSubmit={handleSubmit}
-        className="text-left space-y-5 mx-auto max-w-sm"
-      >
-        {/* New Password */}
-        <div>
-          <label className="block text-[13px] font-medium text-gray-800 mb-2">
-            New Password
-          </label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-              <Lock strokeWidth={2} className="w-4 h-4" />
-            </span>
-            <input
-              type={showNew ? "text" : "password"}
-              value={newPw}
-              onChange={(e) => {
-                setNewPw(e.target.value);
-                setErrors([]);
-              }}
-              placeholder="Enter new password"
-              autoFocus
-              className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onClick={() => setShowNew(!showNew)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              tabIndex={-1}
-            >
-              {showNew ? (
-                <EyeOff strokeWidth={2} className="w-4 h-4" />
-              ) : (
-                <Eye strokeWidth={2} className="w-4 h-4" />
-              )}
-            </button>
-          </div>
+    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full text-center">
+        {/* Lock icon */}
+        <div className="flex justify-center mb-6">
+          <Lock strokeWidth={2.5} className="w-12 h-12 text-blue-600" />
         </div>
 
-        {/* Confirm Password */}
-        <div>
-          <label className="block text-[13px] font-medium text-gray-800 mb-2">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-              <Lock strokeWidth={2} className="w-4 h-4" />
-            </span>
-            <input
-              type={showConfirm ? "text" : "password"}
-              value={confirmPw}
-              onChange={(e) => {
-                setConfirmPw(e.target.value);
-                setErrors([]);
-              }}
-              placeholder="Re-enter new password"
-              className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              tabIndex={-1}
-            >
-              {showConfirm ? (
-                <EyeOff strokeWidth={2} className="w-4 h-4" />
-              ) : (
-                <Eye strokeWidth={2} className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-        </div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          Create new password
+        </h2>
+        <p className="text-base text-gray-600 mb-8 leading-relaxed max-w-md mx-auto">
+          Please enter a strong password for your account
+        </p>
 
-        {/* Password strength bar */}
-        <div className="pt-1">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-medium text-blue-600">
-              Password strength
-            </p>
-          </div>
-          <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${barColor} ${barWidth}`}
-            />
-          </div>
-        </div>
-
-        {/* Validation errors */}
-        {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-100 rounded-md px-3 py-2">
-            {errors.map((err) => (
-              <p key={err} className="text-red-500 text-xs">
-                {err}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Submit */}
-        <div className="pt-3">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#1855e3] text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#1447c2] active:bg-blue-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Resetting...
-              </>
-            ) : (
-              "Reset Password"
-            )}
-          </button>
-        </div>
-      </form>
-
-      <div className="mt-6">
-        <Link
-          href="/auth/login"
-          className="text-[13px] text-gray-500 font-medium hover:text-gray-800 transition"
+        <form
+          onSubmit={handleSubmit}
+          className="text-left space-y-6 w-full max-w-md mx-auto"
         >
-          Back to Login
-        </Link>
+          {/* New Password */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2.5">
+              New Password
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                <Lock strokeWidth={2} className="w-5 h-5" />
+              </span>
+              <input
+                type={showNew ? "text" : "password"}
+                value={newPw}
+                onChange={(e) => {
+                  setNewPw(e.target.value);
+                  setErrors([]);
+                }}
+                placeholder="Enter new password"
+                autoFocus
+                className="w-full pl-11 pr-11 py-3 text-base border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
+                tabIndex={-1}
+                aria-label={showNew ? "Hide password" : "Show password"}
+              >
+                {showNew ? (
+                  <EyeOff strokeWidth={2} className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <Eye strokeWidth={2} className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2.5">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                <Lock strokeWidth={2} className="w-5 h-5" />
+              </span>
+              <input
+                type={showConfirm ? "text" : "password"}
+                value={confirmPw}
+                onChange={(e) => {
+                  setConfirmPw(e.target.value);
+                  setErrors([]);
+                }}
+                placeholder="Re-enter new password"
+                className="w-full pl-11 pr-11 py-3 text-base border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
+                tabIndex={-1}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+              >
+                {showConfirm ? (
+                  <EyeOff strokeWidth={2} className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <Eye strokeWidth={2} className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Password strength bar */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-900">
+                Password strength
+              </p>
+            </div>
+            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${barColor} ${barWidth}`}
+              />
+            </div>
+          </div>
+
+          {/* Validation errors */}
+          {errors.length > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3">
+              {errors.map((err) => (
+                <p key={err} className="text-red-700 text-sm font-medium">
+                  • {err}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Submit */}
+          <div className="pt-3">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg text-base font-semibold hover:bg-blue-700 active:bg-blue-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Resetting...
+                </>
+              ) : (
+                "Reset Password"
+              )}
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-6">
+          <Link
+            href="/auth/login"
+            className="text-sm text-gray-600 font-medium hover:text-gray-900 transition"
+          >
+            Back to Login
+          </Link>
+        </div>
       </div>
     </div>
   );
