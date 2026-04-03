@@ -30,7 +30,7 @@ export default function PaymentPage() {
   }
 
   if (step === "success") {
-    return <PaymentSuccessContent onBack={() => setStep("processing")} />;
+    return <PaymentSuccessContent onBack={() => setStep("method")} />;
   }
 
   if (step === "failed") {

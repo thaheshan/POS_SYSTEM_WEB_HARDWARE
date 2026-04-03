@@ -41,10 +41,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    // <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      // <div className="max-w-lg w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Render Current Step */}
           {resetState.step === 1 && (
             <Step1EmailRequired
               email={resetState.email}
@@ -54,11 +51,13 @@ export default function ForgotPasswordPage() {
           )}
 
           {resetState.step === 2 && (
-            <Step2Verification email={resetState.email} onNext={goToNextStep} code={""} onCodeChange={function (code: string): void {
-              throw new Error("Function not implemented.");
-            } } onBack={function (): void {
-              throw new Error("Function not implemented.");
-            } } />
+            <Step2Verification
+              email={resetState.email}
+              code={resetState.code}
+              onCodeChange={setCode}
+              onNext={goToNextStep}
+              onBack={goToPreviousStep}
+            />
           )}
 
           {resetState.step === 3 && (
@@ -75,7 +74,5 @@ export default function ForgotPasswordPage() {
             <Step4PasswordResetResult status={resetState.status} />
           )}
         </div>
-      // </div>
-    // </div>
   );
 }
