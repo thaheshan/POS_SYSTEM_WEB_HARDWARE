@@ -1,14 +1,22 @@
 "use client";
 
 import ProgressBar from "@/components/staff-register/ProgressBar";
-import { ChartBar, Check, Package, ShoppingCart, TrendingUp } from "lucide-react";
+import {
+  ChartBar,
+  Check,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
 export default function ShopRegistraionComplete() {
   const router = useRouter();
+
+  // After registration completion, send the user to login to start a fresh session.
   const handleActionClick = () => {
-    router.push("/login");
+    router.push("/auth/login");
   };
 
   return (
@@ -66,6 +74,8 @@ export default function ShopRegistraionComplete() {
           </span>
         </div>
       </div>
+
+      {/* Primary next step after successful onboarding. */}
       <button
         onClick={handleActionClick}
         className="w-full max-w-md bg-gradient-to-br from-[#0E9F6E] to-[#046C4E] hover:bg-[#0a5c34] text-white font-bold py-4 rounded-xl transition-colors shadow-md mt-3"

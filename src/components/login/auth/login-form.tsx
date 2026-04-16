@@ -2,28 +2,71 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/store";
+import { loginThunk } from "../../../../lib/store/authSlice";
 import FormInput from "./form-input";
 import AuthHeader from "./auth-header";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginForm() {
+  // Local UI state for the form; auth/session state lives in Redux.
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("admin@abchardware.lk");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  const { login } = useAuth();
+  // Redux dispatch for login thunk (typed for thunk support).
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+
+  // Role-to-dashboard mapping for post-login redirect.
+  const dashboardMap: Record<string, string> = {
+    admin: "/admin",
+    manager: "/manager",
+    cashier: "/cashier",
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
-    // Call the login function which handles the navigation
-    const success = await login(email, password);
-    if (!success) {
+    console.log("[LoginForm] Submitting login with email:", email);
+
+    try {
+      // Dispatch login thunk with form credentials.
+      console.log("[LoginForm] Dispatching loginThunk...");
+      const result = await dispatch(loginThunk({ email, password })).unwrap();
+
+      console.log("[LoginForm] Login successful! User:", result.user);
+      if (!result.user) {
+        throw new Error("Login succeeded but user profile is missing.");
+      }
+
+      // Redirect each role to its dedicated dashboard/area.
+      const dashboardPath = dashboardMap[result.user.role] || "/dashboard";
+      console.log("[LoginForm] Redirecting to:", dashboardPath);
+
+      // Force a full navigation so middleware always sees the latest cookie.
+      if (typeof window !== "undefined") {
+        window.location.assign(dashboardPath);
+        return;
+      }
+
+      router.push(dashboardPath);
+    } catch (err: any) {
+      // Surface backend rejection message (including private-tab block reason).
+      console.error("[LoginForm] Login error:", err);
+      const errorMessage =
+        err?.message ||
+        (typeof err === "string" ? err : "Login failed. Please try again.");
+      setError(errorMessage);
+    } finally {
+      // Always release loading state so redirect bounces don't leave UI spinning.
       setIsLoading(false);
-      console.log("Login attempted with:", { email, password, rememberMe });
     }
   };
 
@@ -36,6 +79,13 @@ export default function LoginForm() {
 
       {/* Login Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Message Display */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-800">{error}</p>
+          </div>
+        )}
+
         <FormInput
           label="Email Address"
           type="email"
@@ -44,6 +94,7 @@ export default function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          disabled={isLoading}
         />
 
         <FormInput
@@ -57,6 +108,7 @@ export default function LoginForm() {
           isPasswordVisible={isPasswordVisible}
           onPasswordToggle={() => setIsPasswordVisible(!isPasswordVisible)}
           required
+          disabled={isLoading}
         />
 
         {/* Remember Me & Forgot Password */}
@@ -66,7 +118,8 @@ export default function LoginForm() {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+              disabled={isLoading}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all disabled:opacity-50"
             />
             <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
               Remember me

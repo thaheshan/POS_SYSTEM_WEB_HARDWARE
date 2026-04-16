@@ -1,4 +1,7 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+
+// Legacy/simple auth slice kept for reference.
+// Active store wiring currently points to ../../lib/store/authSlice.
 
 interface User {
   id: string;
@@ -22,17 +25,20 @@ const initialState: AuthState = {
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
+      // Setting user implies authenticated session in this simplified slice.
       state.user = action.payload;
       state.isAuthenticated = true;
     },
     setToken: (state, action: PayloadAction<string>) => {
+      // Token is stored separately so callers can set it independently.
       state.token = action.payload;
     },
     logout: (state) => {
+      // Reset to unauthenticated baseline.
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
