@@ -41,6 +41,12 @@ export default function InventoryTable({
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     setSelectedIds([]); // Clear selection on page change
