@@ -19,7 +19,16 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/components/ui/*": [
+        "./src/components/ui/*",
+        "./src/components/auth/register/ui/*",
+        "./src/components/auth/register/ui/subscription/*"
+      ],
+      "@/hooks/*": [
+        "./src/hooks/*",
+        "./src/components/auth/register/ui/*"
+      ]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
