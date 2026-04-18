@@ -75,21 +75,21 @@ export function RegistrationProvider({ children }: { children: React.ReactNode }
   const updateShopData = (shopData: Partial<ShopData>) => {
     setData((prev) => ({
       ...prev,
-      shop: { ...prev.shop, ...shopData },
+      shop: { ...prev.shop, ...shopData } as ShopData,
     }));
   };
 
   const updateOwnerData = (ownerData: Partial<OwnerData>) => {
     setData((prev) => ({
       ...prev,
-      owner: { ...prev.owner, ...ownerData },
+      owner: { ...prev.owner, ...ownerData } as OwnerData,
     }));
   };
 
   const updatePricingData = (pricingData: Partial<PricingData>) => {
     setData((prev) => ({
       ...prev,
-      pricing: { ...prev.pricing, ...pricingData },
+      pricing: { ...prev.pricing, ...pricingData } as PricingData,
     }));
   };
 
