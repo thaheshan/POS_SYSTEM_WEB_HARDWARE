@@ -65,7 +65,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 pb-6 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
         {menuItems.map((item) => {
-          const isActive = pathname === item.href || (item.href === '/dashboard' && pathname === '/');
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/') || (item.href === '/dashboard' && pathname === '/');
           return (
             <Link 
               key={item.href} 

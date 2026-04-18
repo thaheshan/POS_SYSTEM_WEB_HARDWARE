@@ -2,7 +2,8 @@
 
 import MainLayout from '@/components/layout/MainLayout';
 import { useState, useMemo } from 'react';
-import { Search, Trash2, Plus, Minus, X, Check, ChevronDown, CheckCircle2, Package, SearchIcon, ArrowLeft } from 'lucide-react';
+import { Search, Trash2, Plus, Minus, X, Check, ChevronDown, CheckCircle2, Package, SearchIcon, ArrowLeft, LayoutGrid } from 'lucide-react';
+import Link from 'next/link';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import PaymentConfirmation from '@/components/pos/PaymentConfirmation';
 import SuccessModal from '@/components/pos/SuccessModal';
@@ -110,15 +111,25 @@ export default function POSPage() {
             
             {/* Top Bar: Search & Categories */}
             <div className="p-6 pb-2">
-              <div className="relative mb-6 max-w-xl">
-                <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search product name, SKU..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-lg py-3.5 pl-12 pr-4 text-[14px] font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
-                />
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <div className="relative flex-1 max-w-xl">
+                  <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Search product name, SKU..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg py-3.5 pl-12 pr-4 text-[14px] font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+                  />
+                </div>
+                
+                <Link 
+                  href="/pos/select"
+                  className="bg-white border border-gray-200 text-gray-700 px-5 py-3.5 rounded-lg font-bold text-[14px] flex items-center gap-2 shadow-sm hover:bg-gray-50 transition-all active:scale-95 whitespace-nowrap"
+                >
+                  <LayoutGrid className="w-4 h-4 text-[#059669]" />
+                  <span>Switch Method</span>
+                </Link>
               </div>
               
               <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">

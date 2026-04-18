@@ -12,16 +12,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen bg-[#f1f5f9] overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 ml-[260px] flex flex-col h-screen overflow-hidden">
-          <Header />
+      <div className="flex min-h-screen bg-[#f1f5f9] overflow-hidden print:bg-white print:overflow-visible">
+        <div className="print:hidden">
+          <Sidebar />
+        </div>
+        <div className="flex-1 ml-[260px] print:ml-0 flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible">
+          <div className="print:hidden">
+            <Header />
+          </div>
           {/* Main Scrollable Area */}
-          <div className="flex-1 overflow-y-auto">
-            <main className={`${isPOS ? 'p-10 pb-0' : 'p-10'}`}>
+          <div className="flex-1 overflow-y-auto print:overflow-visible">
+            <main className={`${isPOS ? 'p-10 pb-0' : 'p-10'} print:p-0`}>
               {children}
             </main>
-            <Footer />
+            <div className="print:hidden">
+              <Footer />
+            </div>
           </div>
         </div>
       </div>
