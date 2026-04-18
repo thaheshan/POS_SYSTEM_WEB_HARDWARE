@@ -1,29 +1,72 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import FormInput from './form-input';
-import AuthHeader from './auth-header';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/store";
+import { loginThunk } from "../../../../lib/store/authSlice";
+import FormInput from "./form-input";
+import AuthHeader from "./auth-header";
 
 export default function LoginForm() {
+  // Local UI state for the form; auth/session state lives in Redux.
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState('admin@abchardware.lk');
-  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("admin@abchardware.lk");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  const { login } = useAuth();
-  
+  // Redux dispatch for login thunk (typed for thunk support).
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+
+  // Role-to-dashboard mapping for post-login redirect.
+  const dashboardMap: Record<string, string> = {
+    admin: "/admin",
+    manager: "/manager",
+    cashier: "/cashier",
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Call the login function which handles the navigation
-    const success = await login(email, password);
-    if (!success) {
+    setError(null);
+
+    console.log("[LoginForm] Submitting login with email:", email);
+
+    try {
+      // Dispatch login thunk with form credentials.
+      console.log("[LoginForm] Dispatching loginThunk...");
+      const result = await dispatch(loginThunk({ email, password })).unwrap();
+
+      console.log("[LoginForm] Login successful! User:", result.user);
+      if (!result.user) {
+        throw new Error("Login succeeded but user profile is missing.");
+      }
+
+      // Redirect each role to its dedicated dashboard/area.
+      const dashboardPath = dashboardMap[result.user.role] || "/dashboard";
+      console.log("[LoginForm] Redirecting to:", dashboardPath);
+
+      // Force a full navigation so middleware always sees the latest cookie.
+      if (typeof window !== "undefined") {
+        window.location.assign(dashboardPath);
+        return;
+      }
+
+      router.push(dashboardPath);
+    } catch (err: any) {
+      // Surface backend rejection message (including private-tab block reason).
+      console.error("[LoginForm] Login error:", err);
+      const errorMessage =
+        err?.message ||
+        (typeof err === "string" ? err : "Login failed. Please try again.");
+      setError(errorMessage);
+    } finally {
+      // Always release loading state so redirect bounces don't leave UI spinning.
       setIsLoading(false);
-      // In a real app, show error toast
     }
   };
 
@@ -35,7 +78,14 @@ export default function LoginForm() {
       />
 
       {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Message Display */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-800">{error}</p>
+          </div>
+        )}
+
         <FormInput
           label="Email Address"
           type="email"
@@ -44,6 +94,7 @@ export default function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          disabled={isLoading}
         />
 
         <FormInput
@@ -57,22 +108,26 @@ export default function LoginForm() {
           isPasswordVisible={isPasswordVisible}
           onPasswordToggle={() => setIsPasswordVisible(!isPasswordVisible)}
           required
+          disabled={isLoading}
         />
 
         {/* Remember Me & Forgot Password */}
-        <div className="flex items-center justify-between pt-2">
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer group">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              disabled={isLoading}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all disabled:opacity-50"
             />
-            <span className="text-sm text-gray-700">Remember me</span>
+            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
+              Remember me
+            </span>
           </label>
           <Link
             href="/auth/forgot-password"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200"
           >
             Forgot Password?
           </Link>
@@ -82,31 +137,58 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-6"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold text-base py-3 rounded-lg transition-all duration-200 mt-8 shadow-sm hover:shadow-md active:scale-98"
+          aria-busy={isLoading}
         >
-          {isLoading ? 'Signing In...' : 'Sign In'}
+          {isLoading ? (
+            <span className="flex items-center justify-center">
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Signing In...
+            </span>
+          ) : (
+            "Sign In"
+          )}
         </button>
       </form>
 
       {/* Divider */}
-      <div className="relative my-6">
+      <div className="relative my-8">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
+          <div className="w-full border-t border-gray-300"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500">OR</span>
+          <span className="px-3 bg-white text-gray-600 font-medium">OR</span>
         </div>
       </div>
 
       {/* Sign Up Link */}
       <div className="text-center">
-        <p className="text-gray-700">
-          Don't Have an Account?{' '}
+        <p className="text-gray-700 text-sm">
+          Don't have an account?{" "}
           <Link
             href="/auth/register/role"
-            className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200"
           >
-            Signup
+            Sign up
           </Link>
         </p>
       </div>

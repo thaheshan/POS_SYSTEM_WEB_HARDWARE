@@ -1,52 +1,44 @@
-'use client';
+"use client";
 
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/store';
-import { setUser, setToken, logout as logoutAction } from '@/store/slices/authSlice';
-import { useRouter } from 'next/navigation';
+import { useSelector, useDispatch } from "react-redux";
+import { AppDispatch, RootState } from "@/store";
+import { loginThunk, logout as logoutAction } from "../../lib/store/authSlice";
+import { useRouter } from "next/navigation";
 
 export const useAuth = () => {
-  const dispatch = useDispatch();
+  // Typed dispatch is required for thunk `.unwrap()` support.
+  const dispatch = useDispatch<AppDispatch>();
   const auth = useSelector((state: RootState) => state.auth);
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
     try {
-      // Demo login - allowing the default email and any password for the demo
-      if (email === 'admin@abchardware.lk' || email === 'admin@example.com') {
-        const user = {
-          id: '1',
-          email: email,
-          name: 'John Silva',
-          role: 'Shop Owner',
-        };
-        const token = 'demo-token-123';
-        
-        dispatch(setUser(user));
-        dispatch(setToken(token));
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        router.push('/dashboard');
-        return true;
-      }
-      return false;
+      // loginThunk updates Redux token/user and handles persistence.
+      const data = await dispatch(loginThunk({ email, password })).unwrap();
+      // Keep a local copy of user profile for non-Redux consumers.
+      localStorage.setItem("user", JSON.stringify(data.user));
+      // Legacy consumers expect a dashboard push from this hook.
+      router.push("/dashboard");
+      return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
       return false;
     }
   };
 
   const logout = () => {
+    // Slice logout clears token + auth state.
     dispatch(logoutAction());
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/auth/login');
+    // Clear extra user cache used by existing UI code.
+    localStorage.removeItem("user");
+    router.push("/auth/login");
   };
 
   return {
+    // Expose raw auth slice fields plus convenience methods/derived loading state.
     ...auth,
     login,
     logout,
-    isLoading: false,
+    isLoading: auth.status === "loading",
   };
 };

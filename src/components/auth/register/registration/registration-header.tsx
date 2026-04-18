@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRegistration} from '@/lib/register/registration-context';
-import { ChevronLeft, HelpCircle } from 'lucide-react';
+import React from "react";
+import { useRegistration } from "@/lib/register/registration-context";
+import { ChevronLeft, HelpCircle } from "lucide-react";
 
 interface RegistrationHeaderProps {
   onBack: () => void;
@@ -27,7 +27,7 @@ export function RegistrationHeader({ onBack }: RegistrationHeaderProps) {
           </button>
 
           <div className="text-center flex-1">
-            <h2 className="text-sm font-medium text-blue-600">
+            <h2 className="text-sm font-semibold text-blue-600">
               Step {currentStep} of 4
             </h2>
           </div>
@@ -41,9 +41,9 @@ export function RegistrationHeader({ onBack }: RegistrationHeaderProps) {
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-teal-500 to-blue-600 transition-all duration-300"
+            className="h-full bg-blue-600 transition-all duration-300"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>

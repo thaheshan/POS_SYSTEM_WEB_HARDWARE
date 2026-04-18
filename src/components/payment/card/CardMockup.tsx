@@ -12,7 +12,7 @@ export default function CardMockup({
   expiry,
 }: CardMockupProps) {
   return (
-    <div className="w-full max-w-sm mb-10 rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden bg-gradient-to-tr from-[#1E3A8A] via-[#2563EB] to-[#3B82F6]">
+    <div className="w-full max-w-sm mb-8 md:mb-10 rounded-2xl p-5 sm:p-6 text-white shadow-2xl relative overflow-hidden bg-gradient-to-tr from-[#1E3A8A] via-[#2563EB] to-[#3B82F6]">
       {/* Chip */}
       <div className="w-12 h-9 bg-yellow-400 rounded-md mb-8 flex -space-x-1 opacity-90 overflow-hidden">
         <div className="w-1/3 h-full border-r border-yellow-500"></div>
@@ -20,7 +20,7 @@ export default function CardMockup({
         <div className="w-1/3 h-full"></div>
       </div>
 
-      <div className="font-mono text-xl tracking-widest mb-6 opacity-90">
+      <div className="font-mono text-lg sm:text-xl tracking-widest mb-6 opacity-90">
         {cardNumber || "•••• •••• •••• ••••"}
       </div>
 
@@ -29,7 +29,7 @@ export default function CardMockup({
           <div className="text-[10px] uppercase tracking-wider opacity-70 mb-1">
             Card Holder
           </div>
-          <div className="font-bold text-sm tracking-wide bg-transparent uppercase">
+          <div className="font-bold text-xs sm:text-sm tracking-wide bg-transparent uppercase">
             {cardName || "YOUR NAME"}
           </div>
         </div>
@@ -37,7 +37,7 @@ export default function CardMockup({
           <div className="text-[10px] uppercase tracking-wider opacity-70 mb-1">
             Valid Thru
           </div>
-          <div className="font-bold text-sm tracking-wide">
+          <div className="font-bold text-xs sm:text-sm tracking-wide">
             {expiry || "MM/YY"}
           </div>
         </div>
