@@ -146,7 +146,7 @@ export default function CardForm({
       cardName.trim() &&
       expiry.trim() &&
       cvv.trim();
-    onValidationChange?.(isValid);
+    onValidationChange?.(!!isValid);
   }, [errors, cardNumber, cardName, expiry, cvv, onValidationChange]);
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
