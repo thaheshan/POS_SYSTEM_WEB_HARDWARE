@@ -157,19 +157,14 @@ export default function AddSupplierModal({ isOpen, onClose }: Props) {
             
             {activeTab !== 'basic' && (
               <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-                 <Icon className="w-12 h-12 text-gray-300 mb-4" />
+                 {(() => {
+                   const ActiveIcon = TABS.find(t=>t.id===activeTab)?.icon;
+                   return ActiveIcon ? <ActiveIcon className="w-12 h-12 text-gray-300 mb-4" /> : null;
+                 })()}
                  <p className="text-[14px] font-bold text-gray-500">Configure {TABS.find(t=>t.id===activeTab)?.label}</p>
                  <p className="text-[12px] text-gray-400 mt-1">This section is available for configuration.</p>
               </div>
             )}
-            {/* The variable Icon refers to active tab, defined as let Icon = TABS.find(t=>t.id===activeTab)?.icon! */}
-            {(() => {
-               const ActiveIcon = TABS.find(t=>t.id===activeTab)?.icon;
-               if(activeTab !== 'basic' && ActiveIcon) {
-                   // This suppresses unused var warnings and injects the icon gracefully safely out of block scoped loop.
-               }
-               return null;
-            })()}
           </div>
 
           {/* FOOTER */}
