@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import {
   DollarSign,
   Package,
   Users,
   TrendingUp,
-  Bell,
   PlusCircle,
 } from "lucide-react";
 import StatsCard from "@/components/dashboard/StatsCard";
@@ -39,10 +39,13 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="bg-[#1e40af] hover:bg-blue-800 text-white px-6 py-3.5 rounded-xl font-bold tracking-wide flex items-center gap-2 transition-all active:scale-[0.98] shadow-sm">
+              <Link
+                href="/pos"
+                className="bg-[#1e40af] hover:bg-blue-800 text-white px-6 py-3.5 rounded-xl font-bold tracking-wide flex items-center gap-2 transition-all active:scale-[0.98] shadow-sm"
+              >
                 <PlusCircle className="w-5 h-5" />
                 <span>New Sale</span>
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -56,6 +59,7 @@ export default function DashboardPage() {
               iconColor="text-blue-600"
               trend={{ value: "12.5%", isUp: true }}
               subtext="38 transactions"
+              viewAllHref="/sales"
             />
             <StatsCard
               title="Low Stock Items"
@@ -65,6 +69,7 @@ export default function DashboardPage() {
               iconColor="text-green-600"
               badge={15}
               subtext="Need reordering"
+              viewAllHref="/inventory"
             />
             <StatsCard
               title="Active Customers"
@@ -74,6 +79,7 @@ export default function DashboardPage() {
               iconColor="text-orange-600"
               trend={{ value: "8.2%", isUp: true }}
               subtext="23 new this week"
+              viewAllHref="/customers"
             />
             <StatsCard
               title="Monthly Revenue"
@@ -83,6 +89,7 @@ export default function DashboardPage() {
               iconColor="text-purple-600"
               trend={{ value: "15.3%", isUp: true }}
               subtext="Target: LKR 6M"
+              viewAllHref="/reports"
             />
           </div>
 
