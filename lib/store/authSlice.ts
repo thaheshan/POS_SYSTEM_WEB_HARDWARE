@@ -29,34 +29,7 @@ export interface LoginResponse {
   user: AuthUser | null;
 }
 
-interface MockCredential {
-  email: string;
-  password: string;
-  user: AuthUser;
-}
-
-const persistToken = (token: string): void => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const normalizedToken = token.trim();
-  // Cookie values can include special chars, so encode before writing.
-  const encodedToken = encodeURIComponent(normalizedToken);
-
-  // Keep token in localStorage for client API calls and in cookie for middleware.
-  localStorage.setItem(TOKEN_KEY, normalizedToken);
-  document.cookie = `${TOKEN_KEY}=${encodedToken}; Path=/; SameSite=Lax`;
-};
-
-const clearPersistedToken = (): void => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  localStorage.removeItem(TOKEN_KEY);
-  document.cookie = `${TOKEN_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
-};
+// --- HELPER FUNCTIONS (Hoisted to top to avoid ReferenceErrors) ---
 
 const decodeCookieToken = (rawValue: string): string => {
   try {
@@ -67,239 +40,137 @@ const decodeCookieToken = (rawValue: string): string => {
 };
 
 const normalizeAuthUser = (value: unknown): AuthUser | null => {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
+  if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<AuthUser>;
-
-  if (
-    typeof candidate.id !== "string" ||
-    typeof candidate.email !== "string" ||
-    typeof candidate.name !== "string" ||
-    typeof candidate.role !== "string" ||
-    typeof candidate.createdAt !== "string"
-  ) {
+  
+  if (!candidate.id || !candidate.email || !candidate.name || !candidate.role) {
     return null;
   }
 
-  if (
-    candidate.role !== "admin" &&
-    candidate.role !== "manager" &&
-    candidate.role !== "cashier"
-  ) {
+  const role = candidate.role.toLowerCase();
+  if (!["admin", "manager", "cashier", "staff"].includes(role)) {
     return null;
   }
 
   return {
-    id: candidate.id,
-    email: candidate.email,
-    name: candidate.name,
-    role: candidate.role,
-    createdAt: candidate.createdAt,
+    id: candidate.id as string,
+    email: candidate.email as string,
+    name: candidate.name as string,
+    role: role as AuthUser["role"],
+    createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : new Date().toISOString(),
   };
 };
-
-const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const data = payload as {
-    token?: unknown;
-    accessToken?: unknown;
-    jwt?: unknown;
-    user?: unknown;
-  };
-
-  const rawToken =
-    typeof data.token === "string"
-      ? data.token
-      : typeof data.accessToken === "string"
-        ? data.accessToken
-        : typeof data.jwt === "string"
-          ? data.jwt
-          : null;
-
-  if (!rawToken) {
-    return null;
-  }
-
-  // Accept either plain token or "Bearer <token>" format from backend responses.
-  const token = rawToken.replace(/^Bearer\s+/i, "").trim();
-
-  if (!token) {
-    return null;
-  }
-
-  return {
-    token,
-    user: normalizeAuthUser(data.user),
-  };
-};
-
-const toBase64Url = (value: string): string => {
-  if (typeof btoa !== "function") {
-    return "";
-  }
-
-  return btoa(value)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-};
-
-const createMockJwt = (role: AuthUser["role"]): string => {
-  const header = toBase64Url(JSON.stringify({ alg: "none", typ: "JWT" }));
-  const payload = toBase64Url(JSON.stringify({ role }));
-
-  if (!header || !payload) {
-    return `mock-token-${role}`;
-  }
-
-  // Signature is intentionally empty for dev fallback tokens.
-  return `${header}.${payload}.mock-signature`;
-};
-
-// Development-only fallback users so login can be tested without a backend.
-const MOCK_CREDENTIALS: MockCredential[] = [
-  {
-    email: "admin@test.com",
-    password: "Admin@123",
-    user: {
-      id: "mock-admin-1",
-      email: "admin@test.com",
-      name: "Test Admin",
-      role: "admin",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    email: "admin@abchardware.lk",
-    password: "Admin@123",
-    user: {
-      id: "mock-admin-1",
-      email: "admin@test.com",
-      name: "Test Admin",
-      role: "admin",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    email: "manager@test.com",
-    password: "Manager@123",
-    user: {
-      id: "mock-manager-1",
-      email: "manager@test.com",
-      name: "Test Manager",
-      role: "manager",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    email: "cashier@test.com",
-    password: "Cashier@123",
-    user: {
-      id: "mock-cashier-1",
-      email: "cashier@test.com",
-      name: "Test Cashier",
-      role: "cashier",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-];
-
-const getMockLoginResponse = (
-  email: string,
-  password: string,
-): LoginResponse | null => {
-  console.log("[getMockLoginResponse] Checking credentials for:", email);
-
-  const entry = MOCK_CREDENTIALS.find((candidate) => {
-    const emailMatch = candidate.email.toLowerCase() === email.toLowerCase();
-    const passwordMatch = candidate.password === password;
-
-    if (emailMatch) {
-      console.log(
-        "[getMockLoginResponse] Email matched. Password check:",
-        passwordMatch ? "PASS" : "FAIL",
-      );
-    }
-
-    return emailMatch && passwordMatch;
-  });
-
-  if (!entry) {
-    console.warn("[getMockLoginResponse] No credentials found for:", email);
-    return null;
-  }
-
-  console.log(
-    "[getMockLoginResponse] Credentials verified! User role:",
-    entry.user.role,
-  );
-  return {
-    token: createMockJwt(entry.user.role),
-    user: entry.user,
-  };
-};
-
-const isPrivateTab = (): boolean => {
-  try {
-    // Storage write test is the most reliable cross-browser private mode check.
-    const test = "__private_test__";
-    localStorage.setItem(test, test);
-    localStorage.removeItem(test);
-    return false;
-  } catch {
-    return true; // Private/incognito tab
-  }
-};
-
-// Private mode should always start clean to avoid stale auth state reuse.
-if (typeof window !== "undefined" && isPrivateTab()) {
-  clearPersistedToken();
-}
 
 const getStoredToken = (): string | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  // Prefer localStorage first because axios reads token from there on the client.
+  if (typeof window === "undefined") return null;
   const token = localStorage.getItem(TOKEN_KEY)?.trim() ?? null;
-
-  if (token) {
-    return token;
-  }
+  if (token) return token;
 
   const cookieMatch = document.cookie
     .split("; ")
     .find((entry) => entry.startsWith(`${TOKEN_KEY}=`));
 
-  if (!cookieMatch) {
-    return null;
-  }
-
-  const cookieToken = decodeCookieToken(
-    cookieMatch.split("=").slice(1).join("="),
-  ).trim();
-
-  if (cookieToken) {
-    // Re-sync localStorage from cookie so client requests stay authenticated.
-    localStorage.setItem(TOKEN_KEY, cookieToken);
-  }
-
-  // Middleware validates cookie on each request.
+  if (!cookieMatch) return null;
+  const cookieToken = decodeCookieToken(cookieMatch.split("=").slice(1).join("=")).trim();
+  
+  if (cookieToken) localStorage.setItem(TOKEN_KEY, cookieToken);
   return cookieToken || null;
 };
 
+const getStoredUser = (): AuthUser | null => {
+  if (typeof window === "undefined") return null;
+  const rawUser = localStorage.getItem("user");
+  if (!rawUser) return null;
+  try {
+    return normalizeAuthUser(JSON.parse(rawUser));
+  } catch {
+    localStorage.removeItem("user");
+    return null;
+  }
+};
+
+const persistToken = (token: string): void => {
+  if (typeof window === "undefined") return;
+  const normalizedToken = token.trim();
+  const encodedToken = encodeURIComponent(normalizedToken);
+  localStorage.setItem(TOKEN_KEY, normalizedToken);
+  document.cookie = `${TOKEN_KEY}=${encodedToken}; Path=/; SameSite=Lax`;
+};
+
+const persistUser = (user: AuthUser | null): void => {
+  if (typeof window === "undefined") return;
+  if (user) {
+    localStorage.setItem("user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("user");
+  }
+};
+
+const clearPersistedToken = (): void => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
+  document.cookie = `${TOKEN_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
+};
+
+const clearPersistedAuth = (): void => {
+  clearPersistedToken();
+  persistUser(null);
+};
+
+// --- INITIAL STATE ---
+
 const initialToken = getStoredToken();
+const initialUser = getStoredUser();
+
+const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
+  if (!payload || typeof payload !== "object") return null;
+  const data = payload as { token?: unknown; accessToken?: unknown; jwt?: unknown; user?: unknown };
+  const rawToken = typeof data.token === "string" ? data.token : typeof data.accessToken === "string" ? data.accessToken : typeof data.jwt === "string" ? data.jwt : null;
+  if (!rawToken) return null;
+  const token = rawToken.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  return { token, user: normalizeAuthUser(data.user) };
+};
+
+const toBase64Url = (value: string): string => {
+  if (typeof btoa !== "function") return "";
+  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
+
+const createMockJwt = (role: AuthUser["role"]): string => {
+  const header = toBase64Url(JSON.stringify({ alg: "none", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify({ role }));
+  return header && payload ? `${header}.${payload}.mock-signature` : `mock-token-${role}`;
+};
+
+const MOCK_CREDENTIALS = [
+  { email: "admin@abchardware.lk", password: "Admin@123", user: { id: "mock-admin-1", email: "admin@abchardware.lk", name: "Shop Owner", role: "admin", createdAt: "2026-01-01T00:00:00.000Z" } },
+  { email: "manager@test.com", password: "Manager@123", user: { id: "mock-manager-1", email: "manager@test.com", name: "Test Manager", role: "manager", createdAt: "2026-01-01T00:00:00.000Z" } },
+  { email: "staff@test.com", password: "Staff@123", user: { id: "mock-staff-1", email: "staff@test.com", name: "Test Staff", role: "staff", createdAt: "2026-01-01T00:00:00.000Z" } },
+];
+
+const getMockLoginResponse = (email: string, password: string): LoginResponse | null => {
+  const entry = MOCK_CREDENTIALS.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+  if (!entry) return null;
+  return { token: createMockJwt(entry.user.role), user: entry.user };
+};
+
+const isPrivateTab = (): boolean => {
+  try {
+    const test = "__private_test__";
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return false;
+  } catch { return true; }
+};
+
+if (typeof window !== "undefined" && isPrivateTab()) {
+  clearPersistedAuth();
+}
 
 const initialState: AuthState = {
-  // Rehydrate auth state from browser persistence on first load.
   token: initialToken,
-  user: null,
+  user: initialUser,
   isAuthenticated: Boolean(initialToken),
   status: "idle",
   error: null,
@@ -344,6 +215,7 @@ export const loginThunk = createAsyncThunk<
         mockLogin.token.length,
       );
       persistToken(mockLogin.token);
+      persistUser(mockLogin.user);
 
       return mockLogin;
     }
@@ -368,6 +240,7 @@ export const loginThunk = createAsyncThunk<
       if (mockLogin) {
         console.log("[loginThunk] Falling back to mock login");
         persistToken(mockLogin.token);
+        persistUser(mockLogin.user);
 
         return mockLogin;
       }
@@ -400,6 +273,7 @@ export const loginThunk = createAsyncThunk<
       data.token.length,
     );
     persistToken(data.token);
+    persistUser(data.user);
 
     return data;
   } catch (error) {
@@ -408,6 +282,7 @@ export const loginThunk = createAsyncThunk<
     if (mockLogin) {
       console.log("[loginThunk] Network error but mock available, using mock");
       persistToken(mockLogin.token);
+      persistUser(mockLogin.user);
 
       return mockLogin;
     }
@@ -431,6 +306,7 @@ const authSlice = createSlice({
       state.error = null;
 
       persistToken(action.payload.token);
+      persistUser(action.payload.user);
     },
     setUser: (state, action: PayloadAction<AuthUser | null>) => {
       state.user = action.payload;
@@ -438,7 +314,7 @@ const authSlice = createSlice({
     },
     // Complete sign-out and clear persisted token.
     logout: (state) => {
-      clearPersistedToken();
+      clearPersistedAuth();
 
       state.token = null;
       state.user = null;

@@ -8,6 +8,7 @@ interface CategoryPrintViewProps {
   dateRange: DateRange | undefined;
   timeFilter: string;
   data: any;
+  isAdmin?: boolean;
 }
 
 const MOCK_ORDERS = [
@@ -28,8 +29,9 @@ const MOCK_ENTRIES = [
   { labour: 'C', id: 'LAB-1100', expenseType: 'Travel', total: 1200  },
 ];
 
-export default function CategoryPrintView({ category, dateRange, timeFilter, data }: CategoryPrintViewProps) {
+export default function CategoryPrintView({ category, dateRange, timeFilter, data, isAdmin = true }: CategoryPrintViewProps) {
   if (!category) return null;
+  if (!isAdmin && (category === 'A' || category === 'B')) return null;
 
   // Calculate explicit date range from timeFilter
   const { subDays } = require('date-fns');

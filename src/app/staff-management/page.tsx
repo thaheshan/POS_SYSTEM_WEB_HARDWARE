@@ -21,9 +21,12 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { MOCK_STAFF, MOCK_PENDING_REGISTRATIONS } from '@/lib/staff-mock-data';
 
 export default function StaffManagementPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Staff');
 
@@ -37,17 +40,19 @@ export default function StaffManagementPage() {
               <h1 className="text-[28px] md:text-[32px] font-black text-gray-900 tracking-tighter leading-tight">Staff Management</h1>
               <p className="text-[14px] font-medium text-gray-500 tracking-wide mt-1">Manage roles, permissions, attendance, and staff accounts</p>
            </div>
-           <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm">
-                 <Shield className="w-4 h-4 text-gray-400" /> Manage Roles
-              </button>
-              <button className="flex items-center gap-2 border border-[#059669] text-[#059669] px-5 py-2.5 rounded-[12px] text-[13px] font-black hover:bg-[#ecfdf5] transition-colors bg-white shadow-sm">
-                 <Mail className="w-4 h-4" /> Invite Staff
-              </button>
-              <button className="flex items-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200">
-                 <Plus className="w-4 h-4" /> Add Staff
-              </button>
-           </div>
+            {isAdmin && (
+              <div className="flex items-center gap-3">
+                 <button className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm">
+                    <Shield className="w-4 h-4 text-gray-400" /> Manage Roles
+                 </button>
+                 <button className="flex items-center gap-2 border border-[#059669] text-[#059669] px-5 py-2.5 rounded-[12px] text-[13px] font-black hover:bg-[#ecfdf5] transition-colors bg-white shadow-sm">
+                    <Mail className="w-4 h-4" /> Invite Staff
+                 </button>
+                 <button className="flex items-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200">
+                    <Plus className="w-4 h-4" /> Add Staff
+                 </button>
+              </div>
+            )}
         </div>
 
         {/* 5 KPIs */}
@@ -262,9 +267,11 @@ export default function StaffManagementPage() {
                        <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 hover:text-gray-600 transition-colors border border-gray-200">
                           <Settings className="w-3.5 h-3.5" />
                        </button>
-                       <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors">
-                          <ShieldCheck className="w-4 h-4" />
-                       </button>
+                       {isAdmin && (
+                          <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors">
+                             <ShieldCheck className="w-4 h-4" />
+                          </button>
+                       )}
                     </div>
                  </div>
               </div>
@@ -316,12 +323,16 @@ export default function StaffManagementPage() {
                              <button className="flex items-center gap-1.5 border border-gray-200 px-3 py-1.5 rounded-lg text-[11px] font-black text-gray-600 hover:bg-gray-50 transition-colors">
                                 <IdCard className="w-3.5 h-3.5" /> View ID
                              </button>
-                             <button className="flex items-center gap-1 bg-[#059669] hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-[11px] font-black transition-colors shadow-sm">
-                                <Check className="w-3.5 h-3.5" /> Approve
-                             </button>
-                             <button className="flex items-center gap-1 bg-[#ef4444] hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-[11px] font-black transition-colors shadow-sm">
-                                <X className="w-3.5 h-3.5" /> Reject
-                             </button>
+                             {isAdmin && (
+                               <>
+                                 <button className="flex items-center gap-1 bg-[#059669] hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-[11px] font-black transition-colors shadow-sm">
+                                    <Check className="w-3.5 h-3.5" /> Approve
+                                 </button>
+                                 <button className="flex items-center gap-1 bg-[#ef4444] hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-[11px] font-black transition-colors shadow-sm">
+                                    <X className="w-3.5 h-3.5" /> Reject
+                                 </button>
+                               </>
+                             )}
                           </div>
                        </td>
                     </tr>

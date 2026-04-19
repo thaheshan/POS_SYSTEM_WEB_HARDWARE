@@ -18,7 +18,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('pos_token');
     if (token) {
       router.push('/dashboard');
       return;
