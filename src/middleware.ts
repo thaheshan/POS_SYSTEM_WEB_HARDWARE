@@ -1,82 +1,120 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-type JwtPayload = {
-  role?: string;
-};
-
 const LOGIN_PATH = "/auth/login";
 
-// Each role can access only these route groups.
+// Definitive Role Access Map
+// Staff can only access the POS and Customer portal.
+// Managers can access management tools but NOT core settings or staff management.
+// Admins have full access.
 const ROLE_ACCESS_MAP: Record<string, string[]> = {
-  admin: ["/admin", "/manager", "/reports"],
-  manager: ["/manager", "/reports", "/orders", "/suppliers"],
-  cashier: ["/cashier", "/sales"],
+  admin: [
+    "/dashboard", 
+    "/pos", 
+    "/inventory", 
+    "/customers", 
+    "/suppliers", 
+    "/sales", 
+    "/reports", 
+    "/staff-management", 
+    "/settings"
+  ],
+  manager: [
+    "/dashboard", 
+    "/pos", 
+    "/inventory", 
+    "/customers", 
+    "/suppliers", 
+    "/sales",
+    "/staff-management"
+  ],
+  cashier: ["/dashboard", "/pos", "/customers", "/labour-services"],
+  staff: ["/dashboard", "/pos", "/customers", "/labour-services"],
 };
 
-// Reserved for future "redirect to role home" behavior.
+// Default entry point for each role after login
 const ROLE_HOME_MAP: Record<string, string> = {
-  admin: "/admin",
-  manager: "/manager",
-  cashier: "/cashier",
+  admin: "/dashboard",
+  manager: "/dashboard",
+  cashier: "/dashboard",
+  staff: "/dashboard",
 };
 
-const decodeJwtPayload = (token: string): JwtPayload | null => {
-  const parts = token.split(".");
-
-  if (parts.length < 2) {
-    return null;
-  }
-
+const decodeJwtPayload = (token: string): any => {
   try {
-    // JWT uses base64url, so normalize before decoding.
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const decoded = atob(paddedBase64);
-    return JSON.parse(decoded) as JwtPayload;
-  } catch {
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
     return null;
-  }
-};
-
-const decodeCookieToken = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
   }
 };
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isLoginRoute = pathname === LOGIN_PATH;
+  const isLoginRoute = pathname.startsWith(LOGIN_PATH);
+  const isPublicAsset = pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname.includes(".");
 
-  // Token is written URL-encoded in the auth slice, so decode before reading JWT.
+  if (isPublicAsset) return NextResponse.next();
+
   const rawToken = request.cookies.get("pos_token")?.value;
-  const token = rawToken ? decodeCookieToken(rawToken) : null;
+  const token = rawToken ? decodeURIComponent(rawToken) : null;
 
-  // Allow login page regardless of auth state
-  if (isLoginRoute) {
-    return NextResponse.next();
-  }
-
+  // 1. Unauthenticated users
   if (!token) {
+    // Allow root (/), login, register, and forgot-password without authentication
+    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password");
+    if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
+  // 2. Authenticated users
   const payload = decodeJwtPayload(token);
   const role = payload?.role;
 
   if (!role) {
-    return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
+    const response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));
+    response.cookies.delete("pos_token");
+    return response;
   }
 
-  // Enforce role-based route access with simple prefix matching.
+  // 3. Prevent logged-in users from seeing login page
+  if (isLoginRoute) {
+    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    return NextResponse.redirect(new URL(home, request.url));
+  }
+
+  // 4. Role Isolation
+  // Root path handling
+  if (pathname === "/") {
+    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    return NextResponse.redirect(new URL(home, request.url));
+  }
+
   const allowedPaths = ROLE_ACCESS_MAP[role] ?? [];
   const isAllowed = allowedPaths.some((path) => pathname.startsWith(path));
 
+  // 4a. Specific Isolation for Sales Categories
+  // Only Admins can see Category A and B. Others (Managers, etc.) are blocked.
+  const isSensitiveSalesRoute = 
+    pathname.startsWith("/sales/category-a") || 
+    pathname.startsWith("/sales/category-b") ||
+    pathname.startsWith("/sales/dashboard") ||
+    pathname.startsWith("/reports/sales"); // Hide full reports too
+
+  if (isSensitiveSalesRoute && role !== "admin") {
+    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    return NextResponse.redirect(new URL(home, request.url));
+  }
+
   if (!isAllowed) {
-    return NextResponse.redirect(new URL("/unauthorized", request.url));
+    // If not allowed, redirect to their home page or unauthorized
+    const home = ROLE_HOME_MAP[role] || "/unauthorized";
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
   return NextResponse.next();
@@ -84,20 +122,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/auth/login",
-    "/admin",
-    "/admin/:path*",
-    "/manager",
-    "/manager/:path*",
-    "/cashier",
-    "/cashier/:path*",
-    "/reports",
-    "/reports/:path*",
-    "/orders",
-    "/orders/:path*",
-    "/suppliers",
-    "/suppliers/:path*",
-    "/sales",
-    "/sales/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

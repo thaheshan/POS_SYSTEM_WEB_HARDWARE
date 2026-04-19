@@ -7,7 +7,11 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Defs,
+  LinearGradient
 } from 'recharts';
 import { ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
@@ -22,10 +26,20 @@ const data = [
   { name: 'Jan 16', cost: 280, sales: 320, revenue: 380 },
 ];
 
-export default function SalesChart() {
+interface SalesChartProps {
+  title?: string;
+}
+
+export default function SalesChart({ title = "Sales Overview" }: SalesChartProps) {
   const [timeframe, setTimeframe] = useState('Last 7 Days');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Recharts needs to be mounted on client to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -40,11 +54,22 @@ export default function SalesChart() {
 
   const options = ['Last 7 Days', 'Last 28 Days', 'Last 90 Days'];
 
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex-1 min-h-[450px] flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+          <div className="h-64 w-full bg-gray-50 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex-1 min-h-[450px] flex flex-col">
       <div className="flex justify-between items-start mb-10">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 tracking-tight mb-1">Sales Overview</h3>
+          <h3 className="text-xl font-bold text-gray-900 tracking-tight mb-1">{title}</h3>
           <p className="text-[14px] text-gray-400 font-medium">{timeframe} performance</p>
         </div>
         
@@ -76,76 +101,80 @@ export default function SalesChart() {
         </div>
       </div>
 
-      <div className="flex-1 w-full -ml-6 -mr-2">
+      <div className="w-full h-[320px] -ml-3">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
-            <CartesianGrid strokeDasharray="0" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+          <LineChart data={data} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis 
               dataKey="name" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
               dy={15}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
-              dx={-10}
+              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
+              dx={-5}
             />
             <Tooltip 
+              cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
               contentStyle={{ 
-                borderRadius: '16px', 
-                border: '1px solid #e2e8f0', 
-                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                padding: '16px',
-                fontWeight: '600',
-                fontSize: '13px'
+                borderRadius: '12px', 
+                border: 'none', 
+                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                padding: '12px',
+                fontWeight: '700',
+                fontSize: '12px'
               }}
             />
             <Line 
-              type="linear" 
+              type="monotone" 
               dataKey="cost" 
               name="Cost"
-              stroke="#ea580c" 
-              strokeWidth={2.5} 
-              dot={false}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#ea580c' }} 
+              stroke="#f97316" 
+              strokeWidth={4} 
+              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
+              animationDuration={1500}
             />
             <Line 
-              type="linear" 
+              type="monotone" 
               dataKey="sales" 
               name="Sales"
-              stroke="#2563eb" 
-              strokeWidth={2.5} 
-              dot={false}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#2563eb' }}
+              stroke="#3b82f6" 
+              strokeWidth={4} 
+              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
+              animationDuration={1500}
             />
             <Line 
-              type="linear" 
+              type="monotone" 
               dataKey="revenue" 
               name="Revenue"
-              stroke="#db2777" 
-              strokeWidth={2.5} 
-              dot={false}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#db2777' }}
+              stroke="#ec4899" 
+              strokeWidth={4} 
+              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#ec4899' }}
+              animationDuration={1500}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center gap-8 mt-8 justify-center">
+      <div className="flex items-center gap-8 mt-8 justify-center border-t border-gray-50 pt-6">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#ea580c]" />
-          <span className="text-[13px] font-medium text-gray-700">Cost</span>
+          <div className="w-3 h-3 rounded-full bg-[#f97316]" />
+          <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">Cost</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
-          <span className="text-[13px] font-medium text-gray-700">Sales</span>
+          <div className="w-3 h-3 rounded-full bg-[#3b82f6]" />
+          <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">Sales</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#db2777]" />
-          <span className="text-[13px] font-medium text-gray-700">Revenue</span>
+          <div className="w-3 h-3 rounded-full bg-[#ec4899]" />
+          <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">Revenue</span>
         </div>
       </div>
     </div>

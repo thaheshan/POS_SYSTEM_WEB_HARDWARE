@@ -5,7 +5,7 @@ import { Bell, Settings, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
@@ -43,32 +43,32 @@ export default function Header() {
         
         {/* Right: User Info & Actions */}
         <div className="w-[300px] flex items-center justify-end gap-5">
-          {/* User Info Stack */}
-          <div className="flex flex-col items-end">
-            <span className="text-[14px] font-medium text-white leading-tight">
-              {user?.name || 'Nimal Fernando'}
+          <div className="flex flex-col min-w-0 items-end">
+            <span className="text-[14px] font-bold truncate text-white leading-tight">
+              {user?.name || (isAuthenticated ? 'Connecting...' : 'Guest User')}
             </span>
-            <span className="text-[11.5px] text-white/80 leading-tight mt-0.5 font-medium">
-              Shift: 9:00 AM - 5:00 PM
-            </span>
-            <span className="text-[10px] text-white/60 leading-tight mt-0.5 font-medium">
-              Till #1
+            <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize">
+              {user?.role ? `${user.role} Member Profile` : 'Restricted Mode'}
             </span>
           </div>
           
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button className="relative w-[38px] h-[38px] bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all shadow-sm">
-              <Bell className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
-              <div className="absolute top-1.5 right-1.5 text-[10px] font-bold text-white bg-transparent leading-none">
+          <div className="flex items-center gap-3">
+            <button className="relative w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10 group">
+              <Bell className="w-[19px] h-[19px] text-white group-hover:rotate-12 transition-transform" strokeWidth={2.5} />
+              <div className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-[10px] font-black text-white bg-red-500 rounded-full border-2 border-[#2563eb] shadow-sm">
                 3
               </div>
             </button>
-            <button className="w-[38px] h-[38px] bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all shadow-sm">
-              <Settings className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
+            <button className="w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10">
+              <Settings className="w-[19px] h-[19px] text-white" strokeWidth={2.5} />
             </button>
-            <button className="w-[38px] h-[38px] bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all shadow-sm">
-              <LogOut className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
+            <button 
+              onClick={logout}
+              className="w-[40px] h-[40px] bg-red-500/80 hover:bg-red-600 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/20 group"
+              title="Logout"
+            >
+              <LogOut className="w-[19px] h-[19px] text-white group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
           </div>
         </div>

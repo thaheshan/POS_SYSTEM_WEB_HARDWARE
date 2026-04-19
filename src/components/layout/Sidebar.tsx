@@ -14,26 +14,32 @@ import {
   Settings, 
   Store,
   ChevronDown,
-  MoreVertical
+  MoreVertical,
+  Wrench
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 const menuItems = [
-  { icon: LineChart, label: 'Dashboard', href: '/dashboard' },
-  { icon: Printer, label: 'Point of Sale', href: '/pos' },
-  { icon: Boxes, label: 'Inventory', href: '/inventory', badge: 15 },
-  { icon: Users, label: 'Customers', href: '/customers' },
-  { icon: Truck, label: 'Suppliers', href: '/suppliers' },
-  { icon: FileText, label: 'Sales', href: '/sales' },
-  { icon: LayoutList, label: 'Reports', href: '/reports' },
-  { icon: User, label: 'Staff Management', href: '/staff-management' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
+  { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'manager'] },
+  { icon: Printer, label: 'Point of Sale', href: '/pos', roles: ['admin', 'manager', 'cashier', 'staff'] },
+  { icon: Boxes, label: 'Inventory', href: '/inventory', badge: 15, roles: ['admin', 'manager'] },
+  { icon: Users, label: 'Customers', href: '/customers', roles: ['admin', 'manager', 'cashier', 'staff'] },
+  { icon: Truck, label: 'Suppliers', href: '/suppliers', roles: ['admin', 'manager'] },
+  { icon: FileText, label: 'Sales', href: '/sales', roles: ['admin', 'manager'] },
+  { icon: Wrench, label: 'Labour & Services', href: '/labour-services', roles: ['staff', 'cashier'] },
+  { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin'] },
+  { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'manager'] },
+  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin'] },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  
+  const visibleMenuItems = menuItems.filter(item => 
+    user?.role && item.roles.includes(user.role as any)
+  );
 
   return (
     <aside className="w-[260px] bg-gradient-to-b from-[#1E429F] to-[#1A56DB] text-white h-screen fixed left-0 top-0 flex flex-col z-50 overflow-hidden shadow-2xl">
@@ -64,7 +70,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 pb-6 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/') || (item.href === '/dashboard' && pathname === '/');
           return (
             <Link 
@@ -101,16 +107,16 @@ export default function Sidebar() {
       <div className="mt-auto px-5 py-5 border-t border-white/10">
         <div className="flex items-center justify-between group cursor-pointer">
           <div className="flex items-center gap-3 cursor-pointer">
-            <div className="w-[38px] h-[38px] rounded-full overflow-hidden shrink-0 border border-white/20 bg-blue-800 flex items-center justify-center">
-              <img 
-                src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150" 
-                alt="User Profile"
-                className="w-full h-full object-cover"
-              />
+            <div className="w-[38px] h-[38px] rounded-full overflow-hidden shrink-0 border border-white/20 bg-blue-800 flex items-center justify-center text-[12px] font-black">
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'JS'}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[14px] font-bold truncate text-white leading-tight">John Silva</span>
-              <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5">Shop Owner</span>
+              <span className="text-[14px] font-bold truncate text-white leading-tight">
+                {user?.name || (isAuthenticated ? 'Connecting...' : 'Guest User')}
+              </span>
+              <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize">
+                {user?.role ? `${user.role} Member Profile` : 'Restricted Mode'}
+              </span>
             </div>
           </div>
           <button className="text-white hover:text-white/80 transition-colors shrink-0">

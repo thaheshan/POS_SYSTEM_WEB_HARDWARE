@@ -5,12 +5,32 @@ import { CheckCircle2, ArrowLeft, Printer, X } from 'lucide-react';
 type PaymentConfirmationProps = {
   onBack: () => void;
   onProcess: () => void;
+  items: { id: string, name: string, price: number, qty: number, img: string }[];
+  customerType: string;
+  paymentMethod: string;
+  amountTendered: number;
+  change: number;
   subtotal: number;
+  discount: number;
   tax: number;
   total: number;
+  notes?: string;
 };
 
-export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, total }: PaymentConfirmationProps) {
+export default function PaymentConfirmation({ 
+  onBack, 
+  onProcess, 
+  items,
+  customerType,
+  paymentMethod,
+  amountTendered,
+  change,
+  subtotal, 
+  discount,
+  tax, 
+  total,
+  notes
+}: PaymentConfirmationProps) {
   return (
     <div className="flex-1 bg-white flex h-full">
       {/* LEFT COLUMN: Details */}
@@ -53,21 +73,17 @@ export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, 
             </button>
             <div className="grid grid-cols-2 gap-y-6">
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Name</p>
-                <p className="text-[14px] font-bold text-gray-900">John Silva</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Name / ID</p>
+                <p className="text-[14px] font-bold text-gray-900">Walk-in Customer / {customerType}</p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Phone</p>
-                <p className="text-[14px] font-bold text-gray-900">+94 77 123 4567</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Customer ID</p>
-                <p className="text-[14px] font-bold text-gray-900">CUST_001</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                <p className="text-[14px] font-bold text-gray-900">Verified</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Type</p>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
-                  Regular
+                  {customerType}
                 </span>
               </div>
             </div>
@@ -79,23 +95,27 @@ export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, 
               <span className="w-6 h-6 rounded-md bg-emerald-50 text-[#059669] flex items-center justify-center border border-emerald-100 text-[11px]">📦</span>
               Items Summary
             </h3>
-            <div className="bg-gray-50/50 rounded-xl p-4 flex items-center justify-between border border-gray-100">
-               <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">
-                     📦
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+              {items.map((item) => (
+                <div key={item.id} className="bg-gray-50/50 rounded-xl p-4 flex items-center justify-between border border-gray-100">
+                  <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden shrink-0">
+                        <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">{item.name}</h4>
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase">Unit Price: Rs. {item.price.toLocaleString()}</p>
+                      </div>
                   </div>
-                  <div>
-                    <h4 className="text-[13px] font-bold text-gray-900">Holcim Cement 50kg</h4>
-                    <p className="text-[11px] font-semibold text-gray-500 uppercase">SKU: HCM-50-001</p>
+                  <div className="text-right">
+                      <p className="text-[12px] font-bold text-gray-500">Qty: {item.qty}</p>
+                      <p className="text-[14px] font-black text-gray-900">Rs. {(item.price * item.qty).toLocaleString()}</p>
                   </div>
-               </div>
-               <div className="text-right">
-                  <p className="text-[12px] font-bold text-gray-500">Qty: 1</p>
-                  <p className="text-[14px] font-black text-gray-900">Rs. 1,650.00</p>
-               </div>
+                </div>
+              ))}
             </div>
             <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4 text-[13px] font-semibold text-gray-500">
-               Total Items: <span className="font-bold text-gray-900">1</span>
+               Total Items: <span className="font-bold text-gray-900">{items.length}</span>
             </div>
           </div>
 
@@ -114,9 +134,9 @@ export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, 
                 <span>Tax (15%)</span>
                 <span>Rs. {tax.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-[13px] font-bold text-gray-600">
+              <div className="flex justify-between text-[13px] font-bold text-red-500">
                 <span>Discount</span>
-                <span>Rs. 0.00</span>
+                <span>-Rs. {discount.toLocaleString()}</span>
               </div>
             </div>
             <div className="flex justify-between items-center pt-4">
@@ -134,18 +154,18 @@ export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, 
             <div className="space-y-3 pb-4 border-b border-gray-100">
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Payment Method</span>
-                <span className="flex items-center gap-1.5 text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                   💵 Cash
+                <span className="flex items-center gap-1.5 text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 capitalize">
+                   {paymentMethod === 'cash' ? '💵' : paymentMethod === 'card' ? '💳' : '📱'} {paymentMethod}
                 </span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Amount Tendered</span>
-                <span>Rs. 2,000.00</span>
+                <span>Rs. {amountTendered.toLocaleString()}</span>
               </div>
             </div>
             <div className="flex justify-between items-center pt-4">
                <span className="text-[15px] font-black text-gray-900">Change</span>
-               <span className="text-[16px] font-black text-[#059669]">Rs. 102.50</span>
+               <span className="text-[16px] font-black text-[#059669]">Rs. {change.toLocaleString()}</span>
             </div>
           </div>
 
@@ -167,7 +187,7 @@ export default function PaymentConfirmation({ onBack, onProcess, subtotal, tax, 
              </h3>
              <textarea 
                rows={2} 
-               defaultValue="Any special notes or instructions for this transaction..." 
+               value={notes || "No special instructions provided."} 
                className="w-full text-[13px] text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-4 outline-none resize-none bg-transparent"
                readOnly
             />

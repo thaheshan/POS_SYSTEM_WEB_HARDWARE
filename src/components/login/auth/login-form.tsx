@@ -22,11 +22,11 @@ export default function LoginForm() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
-  // Role-to-dashboard mapping for post-login redirect.
   const dashboardMap: Record<string, string> = {
     admin: "/dashboard",
     manager: "/dashboard",
-    cashier: "/pos",
+    cashier: "/dashboard",
+    staff: "/dashboard",
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

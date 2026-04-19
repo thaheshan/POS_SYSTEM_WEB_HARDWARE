@@ -16,6 +16,7 @@ interface StatsCardProps {
   subtext?: string;
   badge?: number;
   viewAllHref?: string;
+  onClick?: () => void;
 }
 
 export default function StatsCard({ 
@@ -27,8 +28,16 @@ export default function StatsCard({
   trend, 
   subtext,
   badge,
-  viewAllHref = '#'
+  viewAllHref = '#',
+  onClick
 }: StatsCardProps) {
+  const handleViewAllClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-between min-h-[220px] transition-all duration-300 hover:shadow-md hover:-translate-y-1">
       <div className="flex justify-between items-start">
@@ -67,7 +76,11 @@ export default function StatsCard({
       </div>
 
       <div className="pt-4 mt-4 border-t border-gray-50 flex justify-center">
-         <a href={viewAllHref} className="text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase">
+         <a 
+           href={viewAllHref} 
+           onClick={handleViewAllClick}
+           className="text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
+         >
             View All →
          </a>
       </div>

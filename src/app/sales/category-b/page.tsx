@@ -10,11 +10,21 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import CategoryPrintView from '@/components/sales/CategoryPrintView';
-import { getMockSalesData } from '@/lib/sales-mock-data';
+import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 
 export default function CategoryBDetailsPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   
+  // Protect page at component level
+  useEffect(() => {
+    if (user && !isAdmin) {
+      router.push('/sales');
+    }
+  }, [user, isAdmin, router]);
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
      from: subDays(new Date(), 7),
      to: new Date()

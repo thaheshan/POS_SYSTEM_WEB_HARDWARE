@@ -10,22 +10,30 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 const actions = [
-  { id: 1, label: 'New Sale', icon: ShoppingCart, color: 'text-white', bg: 'bg-[#1e3a8a]', href: '/pos' },
-  { id: 2, label: 'Add Product', icon: PlusCircle, color: 'text-green-500', bg: 'bg-green-50' },
-  { id: 3, label: 'Add Customer', icon: UserPlus, color: 'text-orange-500', bg: 'bg-orange-50' },
-  { id: 4, label: 'Create Quotation', icon: FileText, color: 'text-purple-500', bg: 'bg-purple-50' },
-  { id: 5, label: 'View Reports', icon: BarChart, color: 'text-blue-500', bg: 'bg-blue-50' },
+  { id: 1, label: 'New Sale', icon: ShoppingCart, color: 'text-white', bg: 'bg-[#1e3a8a]', href: '/pos', roles: ['admin', 'manager', 'staff', 'cashier'] },
+  { id: 2, label: 'Add Product', icon: PlusCircle, color: 'text-green-500', bg: 'bg-green-50', roles: ['admin', 'manager'] },
+  { id: 3, label: 'Add Customer', icon: UserPlus, color: 'text-orange-500', bg: 'bg-orange-50', roles: ['admin', 'manager', 'staff', 'cashier'] },
+  { id: 4, label: 'Create Quotation', icon: FileText, color: 'text-purple-500', bg: 'bg-purple-50', roles: ['admin', 'manager'] },
+  { id: 5, label: 'Sales Dashboard', icon: BarChart, color: 'text-blue-500', bg: 'bg-blue-50', href: '/sales', roles: ['admin'] },
+  { id: 6, label: 'View Reports', icon: BarChart, color: 'text-blue-500', bg: 'bg-blue-50', roles: ['admin'] },
 ];
 
 export default function QuickActions() {
+  const { user } = useAuth();
+  
+  const visibleActions = actions.filter(action => 
+    user?.role && action.roles.includes(user.role as any)
+  );
+
   return (
     <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 w-full lg:w-[320px]">
       <h3 className="text-xl font-bold text-gray-900 tracking-tight mb-6">Quick Actions</h3>
 
       <div className="space-y-3">
-        {actions.map((action) => {
+        {visibleActions.map((action) => {
           const content = (
             <>
               <div className="flex items-center gap-3">

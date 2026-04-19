@@ -7,9 +7,10 @@ interface SalesReportViewProps {
   dateRange: DateRange | undefined;
   data: any;
   suppressPrint?: boolean;
+  isAdmin?: boolean;
 }
 
-export default function SalesReportView({ dateRange, data, suppressPrint = false }: SalesReportViewProps) {
+export default function SalesReportView({ dateRange, data, suppressPrint = false, isAdmin = true }: SalesReportViewProps) {
   const fromDate = dateRange?.from ? format(dateRange.from, 'PPP') : 'N/A';
   const toDate = dateRange?.to ? format(dateRange.to, 'PPP') : 'N/A';
   const generatedAt = format(new Date(), 'PPP p');
@@ -41,8 +42,10 @@ export default function SalesReportView({ dateRange, data, suppressPrint = false
             <p>123 Hardware Lane, Colombo 10, Sri Lanka</p>
             <p>TIN: 12345678-0000 | VAT REG: 22334455</p>
             <div className="pt-4 flex items-center gap-4">
-               <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100 uppercase tracking-widest text-[10px] font-black">Official Audit Report</div>
-               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ID: SHR-{format(new Date(), 'yyyyMMdd')}-X</span>
+               <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100 uppercase tracking-widest text-[10px] font-black">
+                  {isAdmin ? 'Official Audit Report' : 'Operations Audit Report'}
+               </div>
+               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ID: {isAdmin ? 'SHR' : 'OPS'}-{format(new Date(), 'yyyyMMdd')}-X</span>
             </div>
           </div>
         </div>
@@ -56,90 +59,116 @@ export default function SalesReportView({ dateRange, data, suppressPrint = false
       {/* BLUE THEMED FINANCIAL SUMMARY */}
       <div className="grid grid-cols-3 gap-6 mb-16">
         <div className="bg-blue-900 p-8 rounded-[24px] text-white shadow-xl flex flex-col justify-between h-[180px]">
-           <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Total Gross Revenue</span>
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
+             {isAdmin ? 'Total Gross Revenue' : 'Category C Total'}
+           </span>
            <div>
-              <p className="text-[36px] font-black tracking-tighter leading-none mb-1">Rs. {totalSales.toLocaleString()}</p>
-              <p className="text-[11px] font-bold opacity-60 uppercase tracking-widest">Audited Combined Total</p>
+              <p className="text-[36px] font-black tracking-tighter leading-none mb-1">
+                Rs. {(isAdmin ? totalSales : data.catC.core).toLocaleString()}
+              </p>
+              <p className="text-[11px] font-bold opacity-60 uppercase tracking-widest">
+                {isAdmin ? 'Audited Combined Total' : 'Labour & Miscellaneous'}
+              </p>
            </div>
         </div>
-        <div className="bg-white border-2 border-blue-100 p-8 rounded-[24px] flex flex-col justify-between h-[180px]">
-           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-900/40">VAT Liability</span>
-           <div>
-              <p className="text-[36px] font-black tracking-tighter text-blue-900 leading-none mb-1">Rs. {totalVAT.toLocaleString()}</p>
-              <p className="text-[11px] font-bold text-blue-600/60 uppercase tracking-widest">Category A (18%)</p>
-           </div>
-        </div>
+        {isAdmin ? (
+          <div className="bg-white border-2 border-blue-100 p-8 rounded-[24px] flex flex-col justify-between h-[180px]">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-900/40">VAT Liability</span>
+             <div>
+                <p className="text-[36px] font-black tracking-tighter text-blue-900 leading-none mb-1">Rs. {totalVAT.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-blue-600/60 uppercase tracking-widest">Category A (18%)</p>
+             </div>
+          </div>
+        ) : (
+          <div className="bg-white border-2 border-blue-100 p-8 rounded-[24px] flex flex-col justify-between h-[180px]">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-900/40">Labour Charges</span>
+             <div>
+                <p className="text-[36px] font-black tracking-tighter text-blue-900 leading-none mb-1">Rs. {data.catC.labour.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-blue-600/60 uppercase tracking-widest">Service Revenue</p>
+             </div>
+          </div>
+        )}
         <div className="bg-blue-50 p-8 rounded-[24px] flex flex-col justify-between h-[180px]">
-           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-900/40">Capture Count</span>
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-900/40">
+             {isAdmin ? 'Capture Count' : 'Entry Volume'}
+           </span>
            <div>
-              <p className="text-[36px] font-black tracking-tighter text-blue-900 leading-none mb-1">{totalEntries}</p>
-              <p className="text-[11px] font-bold text-blue-600/60 uppercase tracking-widest">Total Active Entries</p>
+              <p className="text-[36px] font-black tracking-tighter text-blue-900 leading-none mb-1">
+                {isAdmin ? totalEntries : data.catC.entries}
+              </p>
+              <p className="text-[11px] font-bold text-blue-600/60 uppercase tracking-widest">
+                {isAdmin ? 'Total Active Entries' : 'Category C Entries'}
+              </p>
            </div>
         </div>
       </div>
 
-      {/* WELL STRUCTURED TABLES: CATEGORY A */}
-      <section className="mb-14">
-         <div className="flex items-center gap-4 mb-6">
-            <h3 className="text-[18px] font-black text-blue-900 uppercase tracking-tight">01. Taxable Sales Overview</h3>
-            <div className="flex-1 h-[2px] bg-blue-50"></div>
-         </div>
-         <table className="w-full text-left border-collapse">
-            <thead>
-               <tr className="border-b-2 border-blue-900">
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50">Classification</th>
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Transactions</th>
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Amount (LKR)</th>
-               </tr>
-            </thead>
-            <tbody className="text-[13px]">
-               <tr className="border-b border-blue-50">
-                  <td className="py-5 px-2 font-bold text-slate-700">Core Taxable Sales (Daily Limit Applied)</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">{data.catA.txns}</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catA.core.toLocaleString()}</td>
-               </tr>
-               <tr className="bg-blue-50/20">
-                  <td className="py-5 px-2 font-bold text-blue-700">Value Added Tax (VAT 18%)</td>
-                  <td className="py-5 px-2 text-right font-black text-blue-700">—</td>
-                  <td className="py-5 px-2 text-right font-black text-blue-700 font-mono tracking-tighter">Rs. {data.catA.vat.toLocaleString()}</td>
-               </tr>
-            </tbody>
-         </table>
-      </section>
+      {/* WELL STRUCTURED TABLES: CATEGORY A - Admin Only */}
+      {isAdmin && (
+        <section className="mb-14">
+           <div className="flex items-center gap-4 mb-6">
+              <h3 className="text-[18px] font-black text-blue-900 uppercase tracking-tight">01. Taxable Sales Overview</h3>
+              <div className="flex-1 h-[2px] bg-blue-50"></div>
+           </div>
+           <table className="w-full text-left border-collapse">
+              <thead>
+                 <tr className="border-b-2 border-blue-900">
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50">Classification</th>
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Transactions</th>
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Amount (LKR)</th>
+                 </tr>
+              </thead>
+              <tbody className="text-[13px]">
+                 <tr className="border-b border-blue-50">
+                    <td className="py-5 px-2 font-bold text-slate-700">Core Taxable Sales (Daily Limit Applied)</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">{data.catA.txns}</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catA.core.toLocaleString()}</td>
+                 </tr>
+                 <tr className="bg-blue-50/20">
+                    <td className="py-5 px-2 font-bold text-blue-700">Value Added Tax (VAT 18%)</td>
+                    <td className="py-5 px-2 text-right font-black text-blue-700">—</td>
+                    <td className="py-5 px-2 text-right font-black text-blue-700 font-mono tracking-tighter">Rs. {data.catA.vat.toLocaleString()}</td>
+                 </tr>
+              </tbody>
+           </table>
+        </section>
+      )}
 
-      {/* CATEGORY B: NON-TAX & OVERFLOW */}
-      <section className="mb-14">
-         <div className="flex items-center gap-4 mb-6">
-            <h3 className="text-[18px] font-black text-blue-900 uppercase tracking-tight">02. Non-Tax & Overflow Activity</h3>
-            <div className="flex-1 h-[2px] bg-blue-50"></div>
-         </div>
-         <table className="w-full text-left border-collapse">
-            <thead>
-               <tr className="border-b-2 border-blue-900">
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50">Classification</th>
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Volume</th>
-                  <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Amount (LKR)</th>
-               </tr>
-            </thead>
-            <tbody className="text-[13px]">
-               <tr className="border-b border-blue-50">
-                  <td className="py-5 px-2 font-bold text-slate-700">Daily Threshold Overflow (Sales &gt; Rs. 2L)</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">{data.catB.txns} txns</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catB.overflow.toLocaleString()}</td>
-               </tr>
-               <tr className="border-b border-blue-50">
-                  <td className="py-5 px-2 font-bold text-slate-700">Legal Duty Exemption Products</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">{data.catB.items} units</td>
-                  <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catB.baseNonTax.toLocaleString()}</td>
-               </tr>
-               <tr className="bg-blue-50/20 border-t-2 border-blue-900/10">
-                  <td className="py-5 px-2 font-black text-blue-900 uppercase tracking-widest text-[11px]">Subtotal Category B</td>
-                  <td className="py-5 px-2 text-right">—</td>
-                  <td className="py-5 px-2 text-right font-black text-[16px] text-blue-900 font-mono tracking-tighter">Rs. {data.catB.core.toLocaleString()}</td>
-               </tr>
-            </tbody>
-         </table>
-      </section>
+      {/* CATEGORY B: NON-TAX & OVERFLOW - Admin Only */}
+      {isAdmin && (
+        <section className="mb-14">
+           <div className="flex items-center gap-4 mb-6">
+              <h3 className="text-[18px] font-black text-blue-900 uppercase tracking-tight">02. Non-Tax & Overflow Activity</h3>
+              <div className="flex-1 h-[2px] bg-blue-50"></div>
+           </div>
+           <table className="w-full text-left border-collapse">
+              <thead>
+                 <tr className="border-b-2 border-blue-900">
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50">Classification</th>
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Volume</th>
+                    <th className="py-4 px-2 text-[11px] font-black uppercase tracking-widest text-blue-900/50 text-right">Amount (LKR)</th>
+                 </tr>
+              </thead>
+              <tbody className="text-[13px]">
+                 <tr className="border-b border-blue-50">
+                    <td className="py-5 px-2 font-bold text-slate-700">Daily Threshold Overflow (Sales &gt; Rs. 2L)</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">{data.catB.txns} txns</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catB.overflow.toLocaleString()}</td>
+                 </tr>
+                 <tr className="border-b border-blue-50">
+                    <td className="py-5 px-2 font-bold text-slate-700">Legal Duty Exemption Products</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">{data.catB.items} units</td>
+                    <td className="py-5 px-2 text-right font-black text-slate-900">Rs. {data.catB.baseNonTax.toLocaleString()}</td>
+                 </tr>
+                 <tr className="bg-blue-50/20 border-t-2 border-blue-900/10">
+                    <td className="py-5 px-2 font-black text-blue-900 uppercase tracking-widest text-[11px]">Subtotal Category B</td>
+                    <td className="py-5 px-2 text-right">—</td>
+                    <td className="py-5 px-2 text-right font-black text-[16px] text-blue-900 font-mono tracking-tighter">Rs. {data.catB.core.toLocaleString()}</td>
+                 </tr>
+              </tbody>
+           </table>
+        </section>
+      )}
 
       {/* CATEGORY C: SERVICES */}
       <section className="mb-20">
