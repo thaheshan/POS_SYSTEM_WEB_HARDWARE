@@ -6,6 +6,13 @@ import authReducer, {
   selectUserRole,
 } from "../../lib/store/authSlice";
 import cartReducer from "./slices/cartSlice";
+import productsReducer from "./slices/productsSlice";
+import customersReducer from "./slices/customersSlice";
+import suppliersReducer from "./slices/suppliersSlice";
+import inventoryReducer from "./slices/inventorySlice";
+import ordersReducer from "./slices/ordersSlice";
+import staffReducer from "./slices/staffSlice";
+import salesReducer from "./slices/salesSlice";
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +20,13 @@ export const store = configureStore({
     auth: authReducer,
     // Cart state is still managed by local slice under src/store/slices.
     cart: cartReducer,
+    products: productsReducer,
+    customers: customersReducer,
+    suppliers: suppliersReducer,
+    inventory: inventoryReducer,
+    orders: ordersReducer,
+    staff: staffReducer,
+    sales: salesReducer,
   },
   // Keep Redux DevTools enabled for easier state debugging.
   devTools: true,
