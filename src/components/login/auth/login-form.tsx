@@ -78,11 +78,13 @@ export default function LoginForm() {
       />
 
       {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
         {/* Error Message Display */}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-800">{error}</p>
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4">
+            <p className="text-sm font-medium text-red-800 leading-relaxed">
+              {error}
+            </p>
           </div>
         )}
 
@@ -112,14 +114,14 @@ export default function LoginForm() {
         />
 
         {/* Remember Me & Forgot Password */}
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer group">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <label className="flex items-center gap-2 cursor-pointer group min-w-0">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
               disabled={isLoading}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all disabled:opacity-50"
+              className="w-4 h-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all disabled:opacity-50"
             />
             <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
               Remember me
@@ -127,7 +129,7 @@ export default function LoginForm() {
           </label>
           <Link
             href="/auth/forgot-password"
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200"
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200 self-start sm:self-auto"
           >
             Forgot Password?
           </Link>
@@ -137,7 +139,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold text-base py-3 rounded-lg transition-all duration-200 mt-8 shadow-sm hover:shadow-md active:scale-98"
+          className="mt-6 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-md disabled:cursor-not-allowed disabled:bg-gray-400 active:scale-98 sm:mt-8 sm:py-3"
           aria-busy={isLoading}
         >
           {isLoading ? (
@@ -171,7 +173,7 @@ export default function LoginForm() {
       </form>
 
       {/* Divider */}
-      <div className="relative my-8">
+      <div className="relative my-6 sm:my-8">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300"></div>
         </div>
