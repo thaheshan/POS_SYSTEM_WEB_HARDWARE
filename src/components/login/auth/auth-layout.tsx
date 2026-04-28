@@ -14,20 +14,20 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
       {/* Header with Language Switcher */}
-      <header className="flex justify-end items-center px-6 py-4 sm:px-8">
+      <header className="flex justify-end items-center px-4 py-3 sm:px-6 sm:py-4 md:px-8">
         {showLanguageSwitcher && (
           <button
             className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-gray-700 hover:text-gray-900"
             aria-label="Language Settings"
             title="Language settings"
           >
-            <Globe className="w-6 h-6" />
+            <Globe className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6">
+      <main className="flex-1 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-8 md:px-8">
         <div className="w-full max-w-lg">{children}</div>
       </main>
 
