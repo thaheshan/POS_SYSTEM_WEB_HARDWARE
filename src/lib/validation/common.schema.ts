@@ -10,4 +10,15 @@ export const passwordSchema = z
 
 
 export const mobileSchema = z.string()
-    .regex(/^\d{10}$/, "Mobile number must be exactly 10 digits");
+  .regex(
+    /^(\+\d{1,3}[\s\-]?)?[\d\s\-()]{7,}$/,
+    "Mobile number must be valid (e.g., +94 77 123 4567 or 0771234567)"
+  )
+  .refine(
+    (value) => /\d/.test(value.replace(/\D/g, '')),
+    "Mobile number must contain at least 7 digits"
+  )
+  .refine(
+    (value) => value.replace(/\D/g, '').length >= 10,
+    "Mobile number must have at least 10 digits"
+  );

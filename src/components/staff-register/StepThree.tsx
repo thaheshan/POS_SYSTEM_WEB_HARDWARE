@@ -5,35 +5,34 @@ import {
   Check,
   CheckCircle,
   CircleAlert,
-  Clock,
   HelpCircle,
-  Info,
   Loader,
   Monitor,
   Store,
 } from "lucide-react";
 import React from "react";
-import { StaffRegisterData } from "@/types/staff";
 import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
 
 interface StepThreeProps {
-  data: StaffRegisterData;
+  formValues: StaffRegistrationFormValues;
 }
-
-const StepThree = ({ data }: StepThreeProps) => {
+const StepThree = ({ formValues }: StepThreeProps) => {
   const router = useRouter();
 
-  if (!data.fullName || !data.email) {
+  if (!formValues || !formValues.full_name || !formValues.email) {
     router.replace("/auth/register/staff");
     return null;
   }
 
-  const selectedShop = SHOP_OPTIONS.find((shop) => shop.shopPrivateId === data.shopPrivateId);
+  const selectedShop = SHOP_OPTIONS.find(
+    (shop) => shop.id === formValues.shop_id
+  );
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center animate-in fade-in slide-in-from-right-4 duration-300">
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-10 mt-10">
         <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#0E9F6E] to-[#046C4E] rounded-full shadow-md shadow-green-500/20 mb-6">
@@ -64,15 +63,12 @@ const StepThree = ({ data }: StepThreeProps) => {
 
         <div className="divide-y divide-slate-100">
           {[
-            { label: "Full Name", value: data.fullName },
-            { label: "Email", value: data.email },
-            { label: "Mobile", value: data.phoneNumber },
-            { label: "Shop", value: selectedShop?.name || data.shopId },
+            { label: "Full Name", value: formValues.full_name },
+            { label: "Email", value: formValues.email },
+            { label: "Mobile", value: formValues.phone },
+            { label: "Shop", value: selectedShop?.name || formValues.shop_id },
           ].map((item) => (
-            <div
-              key={item.label}
-              className="flex justify-between py-3 text-sm"
-            >
+            <div key={item.label} className="flex justify-between py-3 text-sm">
               <span className="text-slate-500">{item.label}</span>
               <span className="font-medium text-slate-900">{item.value}</span>
             </div>
@@ -166,7 +162,10 @@ const StepThree = ({ data }: StepThreeProps) => {
             "Your shop owner can contact you for verification",
             "Approval typically takes 24-48 hours",
           ].map((item) => (
-            <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
+            <li
+              key={item}
+              className="flex items-center gap-2 text-sm text-slate-600"
+            >
               <CheckCircle className="text-blue-500 size-4 flex-shrink-0" />
               {item}
             </li>
@@ -193,17 +192,21 @@ const StepThree = ({ data }: StepThreeProps) => {
         <div className="divide-y divide-slate-100">
           <div className="flex justify-between py-3 text-sm">
             <span className="text-slate-500">Shop Owner</span>
-            <span className="font-medium text-slate-900">{selectedShop?.shopOwner || "Unknown Owner"}</span>
+            <span className="font-medium text-slate-900">
+              {selectedShop?.shopOwner || "Unknown Owner"}
+            </span>
           </div>
           <div className="flex justify-between py-3 text-sm">
             <span className="text-slate-500">Shop ID</span>
             <span className="font-medium text-slate-900">
-              {data.shopPrivateId || "N/A"}
+              {(formValues as any).shop_verification_id || "N/A"}
             </span>
           </div>
           <div className="flex justify-between py-3 text-sm">
             <span className="text-slate-500">Contact</span>
-            <span className="font-medium text-slate-900">{selectedShop?.contact || "No contact information available"}</span>
+            <span className="font-medium text-slate-900">
+              {selectedShop?.contact || "No contact information available"}
+            </span>
           </div>
         </div>
       </div>
@@ -232,7 +235,10 @@ const StepThree = ({ data }: StepThreeProps) => {
         <p className="text-xs text-slate-400">
           Your account is pending approval from the shop owner
         </p>
-        <Link href="/auth/login" className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 active:scale-[0.98]">
+        <Link
+          href="/auth/login"
+          className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 active:scale-[0.98]"
+        >
           Go to Login
           <ArrowRight className="size-5" />
         </Link>

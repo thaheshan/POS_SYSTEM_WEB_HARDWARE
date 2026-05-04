@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { StaffRegisterData } from "@/types/staff";
 import {
   BriefcaseBusiness,
   Check,
@@ -14,14 +13,32 @@ import {
   UserPlus,
 } from "lucide-react";
 import { SHOP_OPTIONS, STAFF_ROLES } from "@/utils/StaffRegisterData";
+import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
+import {
+  FieldErrors,
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormTrigger,
+  UseFormWatch,
+} from "react-hook-form";
 
 interface StepOneProps {
-  data: StaffRegisterData;
-  updateFields: (fields: Partial<StaffRegisterData>) => void;
+  register: UseFormRegister<StaffRegistrationFormValues>;
+  errors: FieldErrors<StaffRegistrationFormValues>;
+  watch: UseFormWatch<StaffRegistrationFormValues>;
+  setValue: UseFormSetValue<StaffRegistrationFormValues>;
+  trigger: UseFormTrigger<StaffRegistrationFormValues>;
   onNext: () => void;
 }
 
-const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
+const StepOne = ({
+  register,
+  errors,
+  watch,
+  setValue,
+  trigger,
+  onNext,
+}: StepOneProps) => {
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const [shopSearch, setShopSearch] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
@@ -29,8 +46,11 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   const shopDropdownRef = useRef<HTMLDivElement>(null);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedShop = SHOP_OPTIONS.find((s) => s.id === data.shopId);
-  const selectedRole = STAFF_ROLES.find((r) => r.id === data.role);
+  const currentShopId = watch("shop_id");
+  const currentRole = watch("role");
+
+  const selectedShop = SHOP_OPTIONS.find((s) => s.id === currentShopId);
+  const selectedRole = STAFF_ROLES.find((r) => r.id === currentRole);
   const filteredShops = SHOP_OPTIONS.filter((shop) =>
     shop.name.toLowerCase().includes(shopSearch.toLowerCase())
   );
@@ -56,16 +76,31 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
-  const isPhoneValid = data.phoneNumber.length >= 10;
+  const handleNextStep = async () => {
+    const isValidStep = await trigger([
+      "shop_id",
+      "full_name",
+      "email",
+      "phone",
+      "role",
+    ]);
 
-  const canGoNext =
-    data.shopId.length > 0 &&
-    data.fullName.trim().length > 2 &&
-    isEmailValid &&
-    isPhoneValid &&
-    data.role.length > 0;
+    if (isValidStep) {
+      onNext();
+    }
+  };
 
+  const currentFullName = watch("full_name");
+  const currentEmail = watch("email");
+  const currentPhone = watch("phone");
+
+  const canGoNext = Boolean(
+    currentShopId &&
+      currentRole &&
+      currentFullName &&
+      currentEmail &&
+      currentPhone
+  );
   return (
     <div className="w-full flex flex-col items-center">
       {/* Header */}
@@ -81,13 +116,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
         </p>
       </div>
 
-      <form
-        className="w-full space-y-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onNext();
-        }}
-      >
+      <div className="w-full space-y-6">
         {/* Shop Name */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -101,7 +130,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                 setShopSearch("");
               }}
               className={`w-full pl-12 pr-10 py-3.5 bg-white border rounded-xl text-left focus:outline-none focus:ring-4 transition-all cursor-pointer font-medium ${
-                data.shopId.length === 0
+                (currentShopId ?? "").length === 0
                   ? "border-red-300 focus:ring-red-100 text-slate-400"
                   : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10 text-slate-700"
               }`}
@@ -141,18 +170,20 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                         <button
                           type="button"
                           onClick={() => {
-                            updateFields({ shopId: shop.id });
+                            setValue("shop_id", shop.id, {
+                              shouldValidate: true,
+                            });
                             setShopDropdownOpen(false);
                             setShopSearch("");
                           }}
                           className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                            data.shopId === shop.id
+                            currentShopId === shop.id
                               ? "bg-blue-50 text-blue-700 font-semibold"
                               : "text-slate-700 hover:bg-slate-50"
                           }`}
                         >
                           <span>{shop.name}</span>
-                          {data.shopId === shop.id && (
+                          {currentShopId === shop.id && (
                             <Check className="size-4 text-blue-600" />
                           )}
                         </button>
@@ -177,8 +208,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <div className="relative">
             <input
               type="text"
-              value={data.fullName}
-              onChange={(e) => updateFields({ fullName: e.target.value })}
+              {...register("full_name")}
               className="w-full pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-700 font-medium"
               placeholder="Enter full name"
             />
@@ -196,10 +226,9 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <div className="relative">
             <input
               type="text"
-              value={data.email}
-              onChange={(e) => updateFields({ email: e.target.value })}
+              {...register("email")}
               className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all outline-none ${
-                !isEmailValid && data.email.length > 0
+                errors.email
                   ? "border-red-500 focus:ring-red-100"
                   : "border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
               }`}
@@ -219,10 +248,9 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
           <div className="relative">
             <input
               type="text"
-              value={data.phoneNumber}
-              onChange={(e) => updateFields({ phoneNumber: e.target.value })}
+              {...register("phone")}
               className={`w-full pl-12 pr-10 py-3.5 bg-white border rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all text-slate-700 font-medium ${
-                !isPhoneValid && data.phoneNumber.length > 0
+                errors.phone
                   ? "border-red-500 focus:ring-red-100"
                   : "border-slate-200 focus:border-blue-500"
               }`}
@@ -244,7 +272,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               type="button"
               onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
               className={`w-full pl-12 pr-10 py-3.5 bg-white border rounded-xl text-left focus:outline-none focus:ring-4 transition-all cursor-pointer font-medium ${
-                data.role.length === 0
+                errors.role
                   ? "border-red-300 focus:ring-red-100 text-slate-400"
                   : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10 text-slate-700"
               }`}
@@ -270,17 +298,19 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                       <button
                         type="button"
                         onClick={() => {
-                          updateFields({ role: role.id });
+                          setValue("role", role.id as any, {
+                            shouldValidate: true,
+                          });
                           setRoleDropdownOpen(false);
                         }}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                          data.role === role.id
+                          currentRole === role.id
                             ? "bg-blue-50 text-blue-700 font-semibold"
                             : "text-slate-700 hover:bg-slate-50"
                         }`}
                       >
                         <span>{role.label}</span>
-                        {data.role === role.id && (
+                        {currentRole === role.id && (
                           <Check className="size-4 text-blue-600" />
                         )}
                       </button>
@@ -294,7 +324,8 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
 
         {/* Submit */}
         <button
-          type="submit"
+          type="button"
+          onClick={handleNextStep}
           disabled={!canGoNext}
           className={`w-full mt-8 py-4 rounded-xl font-bold transition-all duration-200 ${
             canGoNext
@@ -302,10 +333,9 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
         >
-          
           Next
         </button>
-      </form>
+      </div>
 
       {/* Sign In Link */}
       <div className="flex flex-col items-center mt-10 gap-1">

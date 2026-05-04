@@ -11,37 +11,47 @@ import {
   User,
 } from "lucide-react";
 import React, { useState } from "react";
-import { StaffRegisterData } from "@/types/staff";
 import Link from "next/link";
+import { FieldErrors, UseFormRegister, UseFormWatch } from "react-hook-form";
+import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
+import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
+import { useAppSelector } from "@/store/hooks";
 
 interface StepTwoProps {
-  data: StaffRegisterData;
-  updateFields: (fields: Partial<StaffRegisterData>) => void;
-  onNext: () => void;
+  register: UseFormRegister<StaffRegistrationFormValues>;
+  errors: FieldErrors<StaffRegistrationFormValues>;
+  watch: UseFormWatch<StaffRegistrationFormValues>;
   onBack: () => void;
 }
 
-const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
+const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const hasMinLength = (data.password ?? "").length >= 8;
-  const hasUppercase = /[A-Z]/.test(data.password ?? "");
-  const hasLowercase = /[a-z]/.test(data.password ?? "");
-  const hasNumber = /[0-9]/.test(data.password ?? "");
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(data.password ?? "");
+  const currentPassword = watch("password") || "";
+  const currentConfirm = watch("confirmPassword") || "";
+  const currentTerms = watch("acceptTerms");
+  const currentShopId = watch("shop_id");
+  const selectedShop = SHOP_OPTIONS.find((s) => s.id === currentShopId);
+
+  const fullName = watch("full_name");
+  const email = watch("email");
+  const phone = watch("phone");
+  const currentVerificationId = watch("shop_verification_id") || "";
+ 
+  const hasMinLength = currentPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(currentPassword);
+  const hasLowercase = /[a-z]/.test(currentPassword);
+  const hasNumber = /[0-9]/.test(currentPassword);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(currentPassword);
   const isPasswordStrong =
     hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
   const passwordsMatch =
-    (data.confirmPassword ?? "").length > 0 &&
-    data.password === data.confirmPassword;
+    (currentConfirm ?? "").length > 0 && currentPassword === currentConfirm;
 
-  const canGoNext =
-    (data.shopPrivateId ?? "").length > 0 &&
-    isPasswordStrong &&
-    passwordsMatch &&
-    agreedToTerms;
+  const canSubmit = Boolean(
+    currentVerificationId && isPasswordStrong && passwordsMatch && currentTerms
+  );
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -73,7 +83,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.fullName}
+                  value={fullName || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -86,7 +96,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.email}
+                  value={email || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -99,7 +109,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.phoneNumber}
+                  value={phone || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -118,6 +128,19 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
               Ask your shop owner for the Shop Private ID
             </p>
           </div>
+          <div className="opacity-60">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Selected Shop
+            </label>
+            <div className="relative">
+              <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+              <input
+                readOnly
+                value={selectedShop?.name || "Unknown Shop"}
+                className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed text-slate-600 font-medium"
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Shop Private ID <span className="text-red-500">*</span>
@@ -126,15 +149,24 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
               <input
                 type="text"
-                value={data.shopPrivateId}
-                onChange={(e) => updateFields({ shopPrivateId: e.target.value })}
-                placeholder="Enter Shop Private ID"
-                className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("shop_verification_id")}
+                placeholder="Ask owner for the 36-character Shop ID"
+                className={`w-full pl-12 py-3 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-700 ${
+                  errors.shop_verification_id
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-slate-200 focus:ring-blue-500 focus:border-blue-500"
+                }`}
               />
             </div>
-            <p className="text-slate-500 text-xs mt-1">
-              Unique identifier provided by your shop owner
-            </p>
+            {errors.shop_verification_id ? (
+              <p className="text-red-500 text-xs mt-1 font-medium">
+                {errors.shop_verification_id.message}
+              </p>
+            ) : (
+              <p className="text-slate-500 text-xs mt-1">
+                Unique identifier provided by your shop owner
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -154,8 +186,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors size-5" />
             <input
               type={showPass ? "text" : "password"}
-              value={data.password}
-              onChange={(e) => updateFields({ password: e.target.value })}
+              {...register("password", { required: true })}
               className="w-full pl-12 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-700 font-medium"
               placeholder="Create a strong password"
             />
@@ -179,9 +210,13 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             ].map((rule) => (
               <li key={rule.label} className="flex items-center gap-2 text-sm">
                 <CheckCircle
-                  className={`size-4 ${rule.met ? "text-green-500" : "text-slate-300"}`}
+                  className={`size-4 ${
+                    rule.met ? "text-green-500" : "text-slate-300"
+                  }`}
                 />
-                <span className={rule.met ? "text-slate-700" : "text-slate-400"}>
+                <span
+                  className={rule.met ? "text-slate-700" : "text-slate-400"}
+                >
                   {rule.label}
                 </span>
               </li>
@@ -197,18 +232,17 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           <div className="relative group">
             <Lock
               className={`absolute left-4 top-1/2 -translate-y-1/2 size-5 transition-colors ${
-                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
+                errors.confirmPassword
                   ? "text-red-500"
                   : "text-slate-400 group-focus-within:text-blue-600"
               }`}
             />
             <input
               type={showConfirm ? "text" : "password"}
-              value={data.confirmPassword}
-              onChange={(e) => updateFields({ confirmPassword: e.target.value })}
+              {...register("confirmPassword", { required: true })}
               placeholder="Re-enter your password"
               className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl outline-none transition-all ${
-                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
+                errors.confirmPassword
                   ? "border-red-500 focus:ring-2 focus:ring-red-500/10"
                   : "border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
               }`}
@@ -221,9 +255,9 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
               {showConfirm ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
-          {(data.confirmPassword ?? "").length > 0 && !passwordsMatch && (
+          {errors.confirmPassword && (
             <p className="text-xs text-red-500 mt-1 font-medium">
-              Passwords do not match
+              {errors.confirmPassword.message}
             </p>
           )}
         </div>
@@ -235,8 +269,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           <input
             type="checkbox"
             id="terms"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            {...register("acceptTerms", { required: true })}
             className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
           />
           <label
@@ -265,11 +298,10 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
 
       {/* Next Button */}
       <button
-        type="button"
-        onClick={onNext}
-        disabled={!canGoNext}
+        type="submit"
+        disabled={!canSubmit}
         className={`w-full mt-5 py-4 rounded-xl font-bold transition-all duration-200 ${
-          canGoNext
+          canSubmit
             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 active:scale-[0.98]"
             : "bg-slate-100 text-slate-400 cursor-not-allowed"
         }`}
