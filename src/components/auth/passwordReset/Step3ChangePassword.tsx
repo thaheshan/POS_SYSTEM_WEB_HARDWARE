@@ -5,8 +5,8 @@ import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 
 interface Step3Props {
-  onNext: () => void;
-  onBack: () => void;
+  onNext: (newPassword: string) => void;
+  loading: boolean;
 }
 
 interface Rule {
@@ -30,13 +30,12 @@ function strengthScore(pw: string) {
   return n;
 }
 
-export default function Step3ChangePassword({ onNext }: Step3Props) {
+export default function Step3ChangePassword({ onNext, loading }: Step3Props) {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   const score = strengthScore(newPw);
 
@@ -71,10 +70,7 @@ export default function Step3ChangePassword({ onNext }: Step3Props) {
       return;
     }
     setErrors([]);
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setIsLoading(false);
-    onNext();
+    onNext(newPw);
   };
 
   return (
@@ -196,10 +192,10 @@ export default function Step3ChangePassword({ onNext }: Step3Props) {
           <div className="pt-3">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="w-full bg-blue-600 text-white py-3 rounded-lg text-base font-semibold hover:bg-blue-700 active:bg-blue-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" /> Resetting...
                 </>

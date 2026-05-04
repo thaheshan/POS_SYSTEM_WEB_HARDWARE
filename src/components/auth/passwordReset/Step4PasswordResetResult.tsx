@@ -9,19 +9,15 @@ interface Step4Props {
 }
 
 export default function Step4PasswordResetResult({ status }: Step4Props) {
-  const isSuccess = status === "success";
-
   return (
     <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
-        {/* Result icon */}
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200/80">
             <Check strokeWidth={3.5} className="w-9 h-9 text-white" />
           </div>
         </div>
 
-        {/* Result message */}
         <h2 className="text-3xl font-bold text-gray-900 mb-3">
           Password Reset Successful!
         </h2>
@@ -30,14 +26,12 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
           password.
         </p>
 
-        {/* What's Next List */}
         <div className="mb-10 text-left max-w-md mx-auto">
           <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
             What's Next?
           </h3>
 
           <div className="space-y-5">
-            {/* Step 1 */}
             <div className="flex items-start gap-4">
               <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-blue-100 text-blue-600 font-bold text-sm flex items-center justify-center">
                 1
@@ -52,7 +46,6 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
               </div>
             </div>
 
-            {/* Step 2 */}
             <div className="flex items-start gap-4">
               <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-green-100 text-green-600 font-bold text-sm flex items-center justify-center">
                 2
@@ -67,7 +60,6 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
               </div>
             </div>
 
-            {/* Step 3 */}
             <div className="flex items-start gap-4">
               <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-orange-100 text-orange-600 font-bold text-sm flex items-center justify-center">
                 3
@@ -84,7 +76,6 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
           </div>
         </div>
 
-        {/* Action Button */}
         <div className="mx-auto max-w-md mb-8">
           <Link
             href="/auth/login"
@@ -94,7 +85,6 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
           </Link>
         </div>
 
-        {/* Help text */}
         <div className="text-xs text-gray-600 mt-8">
           Need help? Check our{" "}
           <Link

@@ -1,47 +1,31 @@
 "use client";
 
-import { useState } from "react";
 import { Mail, KeyRound, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Step1Props {
   email: string;
   onEmailChange: (email: string) => void;
-  onNext: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+  error: string;
 }
 
 export default function Step1EmailRequired({
   email,
   onEmailChange,
-  onNext,
+  onSubmit,
+  loading,
+  error,
 }: Step1Props) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Simulate API call to send verification code
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setIsLoading(false);
-    onNext();
+    onSubmit();
   };
 
   return (
     <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
-        {/* Key icon */}
         <div className="flex justify-center mb-6">
           <KeyRound
             strokeWidth={2.5}
@@ -80,7 +64,7 @@ export default function Step1EmailRequired({
                 className="block w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg text-base text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all outline-none"
                 placeholder="you@example.com"
                 required
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
             {error && (
@@ -91,10 +75,10 @@ export default function Step1EmailRequired({
           <div className="mx-auto max-w-sm pt-2">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Sending link...</span>

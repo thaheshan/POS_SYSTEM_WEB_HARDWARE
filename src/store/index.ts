@@ -13,6 +13,7 @@ import inventoryReducer from "./slices/inventorySlice";
 import ordersReducer from "./slices/ordersSlice";
 import staffReducer from "./slices/staffSlice";
 import salesReducer from "./slices/salesSlice";
+import forgotPasswordReducer from "./slices/forgotPasswordSlice";
 
 export const store = configureStore({
   reducer: {
@@ -27,6 +28,7 @@ export const store = configureStore({
     orders: ordersReducer,
     staff: staffReducer,
     sales: salesReducer,
+    forgotPassword: forgotPasswordReducer,
   },
   // Keep Redux DevTools enabled for easier state debugging.
   devTools: true,
