@@ -42,7 +42,7 @@ const decodeCookieToken = (rawValue: string): string => {
 const normalizeAuthUser = (value: unknown): AuthUser | null => {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<AuthUser>;
-  
+
   if (!candidate.id || !candidate.email || !candidate.name || !candidate.role) {
     return null;
   }
@@ -57,7 +57,10 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
     email: candidate.email as string,
     name: candidate.name as string,
     role: role as AuthUser["role"],
-    createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : new Date().toISOString(),
+    createdAt:
+      typeof candidate.createdAt === "string"
+        ? candidate.createdAt
+        : new Date().toISOString(),
   };
 };
 
@@ -71,8 +74,10 @@ const getStoredToken = (): string | null => {
     .find((entry) => entry.startsWith(`${TOKEN_KEY}=`));
 
   if (!cookieMatch) return null;
-  const cookieToken = decodeCookieToken(cookieMatch.split("=").slice(1).join("=")).trim();
-  
+  const cookieToken = decodeCookieToken(
+    cookieMatch.split("=").slice(1).join("="),
+  ).trim();
+
   if (cookieToken) localStorage.setItem(TOKEN_KEY, cookieToken);
   return cookieToken || null;
 };
@@ -124,8 +129,20 @@ const initialUser = getStoredUser();
 
 const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
   if (!payload || typeof payload !== "object") return null;
-  const data = payload as { token?: unknown; accessToken?: unknown; jwt?: unknown; user?: unknown };
-  const rawToken = typeof data.token === "string" ? data.token : typeof data.accessToken === "string" ? data.accessToken : typeof data.jwt === "string" ? data.jwt : null;
+  const data = payload as {
+    token?: unknown;
+    accessToken?: unknown;
+    jwt?: unknown;
+    user?: unknown;
+  };
+  const rawToken =
+    typeof data.token === "string"
+      ? data.token
+      : typeof data.accessToken === "string"
+        ? data.accessToken
+        : typeof data.jwt === "string"
+          ? data.jwt
+          : null;
   if (!rawToken) return null;
   const token = rawToken.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
@@ -134,25 +151,69 @@ const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
 
 const toBase64Url = (value: string): string => {
   if (typeof btoa !== "function") return "";
-  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 };
 
 const createMockJwt = (role: AuthUser["role"]): string => {
   const header = toBase64Url(JSON.stringify({ alg: "none", typ: "JWT" }));
   const payload = toBase64Url(JSON.stringify({ role }));
-  return header && payload ? `${header}.${payload}.mock-signature` : `mock-token-${role}`;
+  return header && payload
+    ? `${header}.${payload}.mock-signature`
+    : `mock-token-${role}`;
 };
 
 const MOCK_CREDENTIALS = [
-  { email: "admin@abchardware.lk", password: "Admin@123", user: { id: "mock-admin-1", email: "admin@abchardware.lk", name: "Shop Owner", role: "admin", createdAt: "2026-01-01T00:00:00.000Z" } },
-  { email: "manager@test.com", password: "Manager@123", user: { id: "mock-manager-1", email: "manager@test.com", name: "Test Manager", role: "manager", createdAt: "2026-01-01T00:00:00.000Z" } },
-  { email: "staff@test.com", password: "Staff@123", user: { id: "mock-staff-1", email: "staff@test.com", name: "Test Staff", role: "staff", createdAt: "2026-01-01T00:00:00.000Z" } },
-];
+  {
+    email: "admin@abchardware.lk",
+    password: "Admin@123",
+    user: {
+      id: "mock-admin-1",
+      email: "admin@abchardware.lk",
+      name: "Shop Owner",
+      role: "admin",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  },
+  {
+    email: "manager@test.com",
+    password: "Manager@123",
+    user: {
+      id: "mock-manager-1",
+      email: "manager@test.com",
+      name: "Test Manager",
+      role: "manager",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  },
+  {
+    email: "staff@test.com",
+    password: "Staff@123",
+    user: {
+      id: "mock-staff-1",
+      email: "staff@test.com",
+      name: "Test Staff",
+      role: "staff",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  },
+] as const;
 
-const getMockLoginResponse = (email: string, password: string): LoginResponse | null => {
-  const entry = MOCK_CREDENTIALS.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+const getMockLoginResponse = (
+  email: string,
+  password: string,
+): LoginResponse | null => {
+  const entry = MOCK_CREDENTIALS.find(
+    (c) =>
+      c.email.toLowerCase() === email.toLowerCase() && c.password === password,
+  );
   if (!entry) return null;
-  return { token: createMockJwt(entry.user.role), user: entry.user };
+  return {
+    token: createMockJwt(entry.user.role as AuthUser["role"]),
+    user: entry.user,
+  };
 };
 
 const isPrivateTab = (): boolean => {
@@ -161,7 +222,9 @@ const isPrivateTab = (): boolean => {
     localStorage.setItem(test, test);
     localStorage.removeItem(test);
     return false;
-  } catch { return true; }
+  } catch {
+    return true;
+  }
 };
 
 if (typeof window !== "undefined" && isPrivateTab()) {
