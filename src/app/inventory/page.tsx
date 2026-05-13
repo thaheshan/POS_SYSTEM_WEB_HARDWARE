@@ -1,25 +1,40 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
-import { Clock, RefreshCcw, PlusCircle } from 'lucide-react';
-import InventoryKPICards from '@/components/inventory/InventoryKPICards';
-import InventoryActionRow from '@/components/inventory/InventoryActionRow';
-import InventoryFilters from '@/components/inventory/InventoryFilters';
-import InventoryTable from '@/components/inventory/InventoryTable';
-import InventoryCharts from '@/components/inventory/InventoryCharts';
-import InventoryAlertsAction from '@/components/inventory/InventoryAlertsAction';
-import EditInventoryModal from '@/components/inventory/EditInventoryModal';
-import DeleteInventoryModal from '@/components/inventory/DeleteInventoryModal';
-import { INVENTORY_MOCK_DATA } from '@/components/inventory/inventoryData';
-import { DateRange } from 'react-day-picker';
-import { format, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-import SalesDatePicker from '@/components/sales/SalesDatePicker';
-import * as Popover from '@radix-ui/react-popover';
-import { Calendar as CalendarIcon, FileDown } from 'lucide-react';
-import InventoryReportView from '@/components/inventory/InventoryReportView';
+import React, { useState, useMemo } from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import { Clock, RefreshCcw, PlusCircle } from "lucide-react";
+import InventoryKPICards from "@/components/inventory/InventoryKPICards";
+import InventoryActionRow from "@/components/inventory/InventoryActionRow";
+import InventoryFilters from "@/components/inventory/InventoryFilters";
+import InventoryTable from "@/components/inventory/InventoryTable";
+import InventoryCharts from "@/components/inventory/InventoryCharts";
+import InventoryAlertsAction from "@/components/inventory/InventoryAlertsAction";
+import EditInventoryModal from "@/components/inventory/EditInventoryModal";
+import DeleteInventoryModal from "@/components/inventory/DeleteInventoryModal";
+import { INVENTORY_MOCK_DATA } from "@/components/inventory/inventoryData";
+import {
+  useGetLowStockProductsQuery,
+  useGetProductsQuery,
+} from "../../../lib/services/productApi";
+import { DateRange } from "react-day-picker";
+import {
+  format,
+  parse,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+} from "date-fns";
+import SalesDatePicker from "@/components/sales/SalesDatePicker";
+import * as Popover from "@radix-ui/react-popover";
+import { Calendar as CalendarIcon, FileDown } from "lucide-react";
+import InventoryReportView from "@/components/inventory/InventoryReportView";
 
 export default function InventoryPage() {
+  // These RTK Query hooks are loaded on the inventory page so Redux DevTools
+  // and the Network tab can confirm live product syncing on the correct screen.
+  const { data: liveProducts = [] } = useGetProductsQuery();
+  const { data: lowStockProducts = [] } = useGetLowStockProductsQuery();
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -27,46 +42,74 @@ export default function InventoryPage() {
   const [inventoryData, setInventoryData] = useState(INVENTORY_MOCK_DATA);
 
   // Filter States
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(
+    null,
+  );
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(2025, 11, 1), // Dec 1, 2025
-    to: new Date(2026, 0, 31)   // Jan 31, 2026
+    to: new Date(2026, 0, 31), // Jan 31, 2026
   });
 
   // Filter Stats
-  const hasActiveFilters = !!(selectedCategory || selectedWarehouse || selectedStatus);
-  const activeFilterCount = [selectedCategory, selectedWarehouse, selectedStatus].filter(Boolean).length;
+  const hasActiveFilters = !!(
+    selectedCategory ||
+    selectedWarehouse ||
+    selectedStatus
+  );
+  const activeFilterCount = [
+    selectedCategory,
+    selectedWarehouse,
+    selectedStatus,
+  ].filter(Boolean).length;
 
   // Dynamic Filtering Logic
   const filteredData = useMemo(() => {
     return inventoryData.filter((item) => {
       // 1. Text Search
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-      
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+
       // 2. Select Filters
-      const matchesCategory = !selectedCategory || item.category === selectedCategory;
-      const matchesWarehouse = !selectedWarehouse || item.warehouse === selectedWarehouse;
+      const matchesCategory =
+        !selectedCategory || item.category === selectedCategory;
+      const matchesWarehouse =
+        !selectedWarehouse || item.warehouse === selectedWarehouse;
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
 
       // 3. Date Range Filter
       let matchesDate = true;
       if (dateRange?.from) {
-        const itemDate = parse(item.lastMovement, 'dd/MM/yyyy', new Date());
+        const itemDate = parse(item.lastMovement, "dd/MM/yyyy", new Date());
         const start = startOfDay(dateRange.from);
-        const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+        const end = dateRange.to
+          ? endOfDay(dateRange.to)
+          : endOfDay(dateRange.from);
         matchesDate = isWithinInterval(itemDate, { start, end });
       }
 
-      return matchesSearch && matchesCategory && matchesWarehouse && matchesStatus && matchesDate;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesWarehouse &&
+        matchesStatus &&
+        matchesDate
+      );
     });
-  }, [searchTerm, selectedCategory, selectedWarehouse, selectedStatus, dateRange, inventoryData]);
+  }, [
+    searchTerm,
+    selectedCategory,
+    selectedWarehouse,
+    selectedStatus,
+    dateRange,
+    inventoryData,
+  ]);
 
   const handleClearAllFilters = () => {
-    setSearchTerm('');
+    setSearchTerm("");
     setSelectedCategory(null);
     setSelectedWarehouse(null);
     setSelectedStatus(null);
@@ -88,7 +131,9 @@ export default function InventoryPage() {
   };
 
   const handleConfirmDelete = () => {
-    setInventoryData(prev => prev.filter(item => item.id !== selectedItem.id));
+    setInventoryData((prev) =>
+      prev.filter((item) => item.id !== selectedItem.id),
+    );
     setIsDeleteModalOpen(false);
     setSelectedItem(null);
   };
@@ -96,12 +141,20 @@ export default function InventoryPage() {
   return (
     <MainLayout>
       <div className="max-w-[1400px] mx-auto py-8 px-6 space-y-10">
-        
         {/* TOP HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-[28px] font-black text-gray-900 tracking-tight leading-none mb-2">Inventory Management</h1>
-            <p className="text-[14px] font-bold text-gray-400">Track stock levels, manage products, and monitor inventory in real-time</p>
+            <h1 className="text-[28px] font-black text-gray-900 tracking-tight leading-none mb-2">
+              Inventory Management
+            </h1>
+            <p className="text-[14px] font-bold text-gray-400">
+              Track stock levels, manage products, and monitor inventory in
+              real-time
+            </p>
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-700">
+              Live sync: {liveProducts.length} items, {lowStockProducts.length}{" "}
+              low stock
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Date Range Picker - Sales Style */}
@@ -112,10 +165,11 @@ export default function InventoryPage() {
                   {dateRange?.from ? (
                     dateRange.to ? (
                       <>
-                        {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
+                        {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                        {format(dateRange.to, "MMM d, yyyy")}
                       </>
                     ) : (
-                      format(dateRange.from, 'MMM d, yyyy')
+                      format(dateRange.from, "MMM d, yyyy")
                     )
                   ) : (
                     "Select Date Range"
@@ -123,12 +177,26 @@ export default function InventoryPage() {
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
-                <Popover.Content className="bg-white p-6 rounded-[24px] shadow-2xl border border-gray-100 z-50 w-[360px] animate-in fade-in zoom-in-95 duration-200" sideOffset={8} align="end">
+                <Popover.Content
+                  className="bg-white p-6 rounded-[24px] shadow-2xl border border-gray-100 z-50 w-[360px] animate-in fade-in zoom-in-95 duration-200"
+                  sideOffset={8}
+                  align="end"
+                >
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-[15px] font-black text-gray-900">Reporting Period</h3>
-                    <button onClick={() => setDateRange(undefined)} className="text-[11px] font-bold text-emerald-600 hover:underline">Reset</button>
+                    <h3 className="text-[15px] font-black text-gray-900">
+                      Reporting Period
+                    </h3>
+                    <button
+                      onClick={() => setDateRange(undefined)}
+                      className="text-[11px] font-bold text-emerald-600 hover:underline"
+                    >
+                      Reset
+                    </button>
                   </div>
-                  <SalesDatePicker dateRange={dateRange} onSelect={setDateRange} />
+                  <SalesDatePicker
+                    dateRange={dateRange}
+                    onSelect={setDateRange}
+                  />
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
@@ -144,12 +212,12 @@ export default function InventoryPage() {
 
         {/* 1. KPI CARDS - Now Dynamic */}
         <InventoryKPICards data={filteredData} />
-        
+
         {/* 2. ACTION ROW - Re-implemented */}
         <InventoryActionRow />
 
         {/* 3. INVENTORY TABLE */}
-        <InventoryTable 
+        <InventoryTable
           data={filteredData}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -169,13 +237,13 @@ export default function InventoryPage() {
       </div>
 
       {/* Modals & Overlays */}
-      <InventoryFilters 
+      <InventoryFilters
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         activeFilters={{
           selectedCategory,
           selectedWarehouse,
-          selectedStatus
+          selectedStatus,
         }}
         onStatusChange={setSelectedStatus}
         onCategoryChange={setSelectedCategory}
@@ -183,26 +251,22 @@ export default function InventoryPage() {
         onClearAll={handleClearAllFilters}
       />
 
-      <EditInventoryModal 
-        isOpen={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)} 
-        onSave={handleSaveEdit} 
+      <EditInventoryModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
         item={selectedItem}
       />
-      
-      <DeleteInventoryModal 
-        isOpen={isDeleteModalOpen} 
-        onClose={() => setIsDeleteModalOpen(false)} 
-        onConfirm={handleConfirmDelete} 
+
+      <DeleteInventoryModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
         item={selectedItem}
       />
 
       {/* HIDDEN PRINT VIEW */}
-      <InventoryReportView 
-        data={filteredData} 
-        dateRange={dateRange} 
-      />
+      <InventoryReportView data={filteredData} dateRange={dateRange} />
     </MainLayout>
   );
 }
-
