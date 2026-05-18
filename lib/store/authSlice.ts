@@ -165,46 +165,56 @@ const createMockJwt = (role: AuthUser["role"]): string => {
     : `mock-token-${role}`;
 };
 
-const MOCK_CREDENTIALS = [
-  {
-    email: "admin@abchardware.lk",
-    password: "Admin@123",
-    user: {
-      id: "mock-admin-1",
-      email: "admin@abchardware.lk",
-      name: "Shop Owner",
-      role: "admin",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    email: "manager@test.com",
-    password: "Manager@123",
-    user: {
-      id: "mock-manager-1",
-      email: "manager@test.com",
-      name: "Test Manager",
-      role: "manager",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    email: "staff@test.com",
-    password: "Staff@123",
-    user: {
-      id: "mock-staff-1",
-      email: "staff@test.com",
-      name: "Test Staff",
-      role: "staff",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-] as const;
+const MOCK_CREDENTIALS =
+  process.env.NODE_ENV === "development"
+    ? ([
+        {
+          email: "admin@abchardware.lk",
+          password: "Admin@123",
+          user: {
+            id: "mock-admin-1",
+            email: "admin@abchardware.lk",
+            name: "Shop Owner",
+            role: "admin",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+        {
+          email: "manager@test.com",
+          password: "Manager@123",
+          user: {
+            id: "mock-manager-1",
+            email: "manager@test.com",
+            name: "Test Manager",
+            role: "manager",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+        {
+          email: "staff@test.com",
+          password: "Staff@123",
+          user: {
+            id: "mock-staff-1",
+            email: "staff@test.com",
+            name: "Test Staff",
+            role: "staff",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+      ] as const)
+    : ([] as const);
 
 const getMockLoginResponse = (
   email: string,
   password: string,
 ): LoginResponse | null => {
+  if (process.env.NODE_ENV !== "development") {
+    return null;
+  }
+
+  // NOTE: mock credentials are deliberately only available in development
+  // to avoid accidental use of factory accounts in production builds.
+
   const entry = MOCK_CREDENTIALS.find(
     (c) =>
       c.email.toLowerCase() === email.toLowerCase() && c.password === password,

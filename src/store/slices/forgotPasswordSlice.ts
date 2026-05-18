@@ -16,8 +16,8 @@ interface ForgotPasswordRequestPayload {
 }
 
 interface ForgotPasswordResetPayload {
-  email?: string;
-  resetToken?: string;
+  email: string;
+  resetToken: string;
   newPassword: string;
 }
 
@@ -95,8 +95,18 @@ export const resetPassword = createAsyncThunk<
   ForgotPasswordResetPayload,
   { rejectValue: string }
 >("forgotPassword/reset", async (payload, { rejectWithValue }) => {
-  const normalizedEmail = payload.email ? normalizeEmail(payload.email) : "";
-  const trimmedToken = payload.resetToken?.trim() ?? "";
+  // We now require `email` and `resetToken` to be present so the server
+  // can validate token ownership deterministically.
+  const normalizedEmail = normalizeEmail(payload.email);
+  const trimmedToken = payload.resetToken.trim();
+
+  if (!normalizedEmail) {
+    return rejectWithValue("Enter a valid email address.");
+  }
+
+  if (!trimmedToken) {
+    return rejectWithValue("Reset token is required.");
+  }
 
   if (!payload.newPassword.trim()) {
     return rejectWithValue("Enter a new password.");
@@ -105,8 +115,8 @@ export const resetPassword = createAsyncThunk<
   try {
     // Token comes from the reset-link query param captured by the page.
     await authAPI.resetPassword({
-      email: normalizedEmail || undefined,
-      token: trimmedToken || undefined,
+      email: normalizedEmail,
+      token: trimmedToken,
       newPassword: payload.newPassword,
     });
 

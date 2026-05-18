@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import nodemailer, { type Transporter } from "nodemailer";
+import { Redis } from "@upstash/redis";
 
 type MailContext = {
   transporter: Transporter;
@@ -12,9 +13,28 @@ type ResetTokenPayload = {
   nonce: string;
 };
 
+type StoredResetTokenRecord = {
+  email: string;
+  exp: number;
+  nonce: string;
+};
+
 // Reset links stay valid for a short window to reduce replay risk.
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+const FORGOT_PASSWORD_COOLDOWN_MS = 60 * 1000;
 let cachedMailContext: MailContext | null = null;
+let cachedRedisClient: Redis | null = null;
+const devResetTokenStore = new Map<string, StoredResetTokenRecord>();
+const devForgotPasswordCooldowns = new Map<string, number>();
+
+// Explanation of design choices:
+// - Tokens and cooldowns are stored in Redis when configured (Upstash supported),
+//   which makes the flow compatible with serverless platforms (Vercel).
+// - In local development (NODE_ENV === 'development'), an in-memory Map is used
+//   as a convenience fallback so the feature works without Redis setup.
+// - The token stored is a signed payload (encodedPayload.signature) but we
+//   also persist a record server-side so we can enforce one-time use and tie
+//   the token to the email and expiry stored at issuance time.
 
 const getBaseUrl = (overrideBaseUrl?: string) => {
   return (
@@ -54,6 +74,36 @@ const signPayload = (encodedPayload: string) => {
       .update(encodedPayload)
       .digest(),
   );
+};
+
+const getResetTokenKey = (token: string) => {
+  return `password-reset:token:${crypto.createHash("sha256").update(token).digest("hex")}`;
+};
+
+const getForgotPasswordCooldownKey = (email: string) => {
+  return `password-reset:cooldown:${email.toLowerCase()}`;
+};
+
+const getRedisClient = () => {
+  if (cachedRedisClient) {
+    return cachedRedisClient;
+  }
+
+  const url =
+    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
+    process.env.REDIS_REST_URL?.trim() ||
+    "";
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
+    process.env.REDIS_REST_TOKEN?.trim() ||
+    "";
+
+  if (!url || !token) {
+    return null;
+  }
+
+  cachedRedisClient = new Redis({ url, token });
+  return cachedRedisClient;
 };
 
 const createEtherealTransport = async (): Promise<Transporter> => {
@@ -99,7 +149,133 @@ const getMailContext = async (): Promise<MailContext> => {
   return cachedMailContext;
 };
 
-export const createResetToken = (email: string): string => {
+const persistResetTokenRecord = async (
+  token: string,
+  record: StoredResetTokenRecord,
+) => {
+  const redis = getRedisClient();
+  const key = getResetTokenKey(token);
+  const ttlSeconds = Math.max(1, Math.ceil((record.exp - Date.now()) / 1000));
+
+  if (redis) {
+    await redis.set(key, JSON.stringify(record), { ex: ttlSeconds });
+    return;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    devResetTokenStore.set(key, record);
+    return;
+  }
+
+  throw new Error("Reset token storage requires Redis or a database.");
+};
+
+// readResetTokenRecord / removeResetTokenRecord are the single-source
+// operations used by `validateResetToken` and `consumeResetToken` so that
+// token validation and consumption are durable across server instances.
+
+const readResetTokenRecord = async (
+  token: string,
+): Promise<StoredResetTokenRecord | null> => {
+  const redis = getRedisClient();
+  const key = getResetTokenKey(token);
+
+  if (redis) {
+    const value = await redis.get<string>(key);
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value) as StoredResetTokenRecord;
+    } catch {
+      return null;
+    }
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return devResetTokenStore.get(key) ?? null;
+  }
+
+  throw new Error("Reset token storage requires Redis or a database.");
+};
+
+const removeResetTokenRecord = async (token: string) => {
+  const redis = getRedisClient();
+  const key = getResetTokenKey(token);
+
+  if (redis) {
+    await redis.del(key);
+    return;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    devResetTokenStore.delete(key);
+    return;
+  }
+
+  throw new Error("Reset token storage requires Redis or a database.");
+};
+
+const setForgotPasswordCooldown = async (email: string) => {
+  const redis = getRedisClient();
+  const key = getForgotPasswordCooldownKey(email);
+
+  if (redis) {
+    await redis.set(key, Date.now().toString(), {
+      ex: FORGOT_PASSWORD_COOLDOWN_MS / 1000,
+    });
+    return;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    devForgotPasswordCooldowns.set(
+      key,
+      Date.now() + FORGOT_PASSWORD_COOLDOWN_MS,
+    );
+    return;
+  }
+
+  throw new Error(
+    "Forgot-password cooldown storage requires Redis or a database.",
+  );
+};
+
+export const isForgotPasswordCoolingDown = async (
+  email: string,
+): Promise<boolean> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const redis = getRedisClient();
+  const key = getForgotPasswordCooldownKey(normalizedEmail);
+
+  if (redis) {
+    return Boolean(await redis.get(key));
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    const expiresAt = devForgotPasswordCooldowns.get(key);
+    if (!expiresAt) {
+      return false;
+    }
+
+    if (expiresAt <= Date.now()) {
+      devForgotPasswordCooldowns.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  throw new Error(
+    "Forgot-password cooldown storage requires Redis or a database.",
+  );
+};
+
+export const markForgotPasswordCooldown = async (email: string) => {
+  await setForgotPasswordCooldown(email);
+};
+
+export const createResetToken = async (email: string): Promise<string> => {
   const payload: ResetTokenPayload = {
     email: email.toLowerCase(),
     exp: Date.now() + RESET_TOKEN_TTL_MS,
@@ -108,8 +284,15 @@ export const createResetToken = (email: string): string => {
 
   const encodedPayload = toBase64Url(JSON.stringify(payload));
   const signature = signPayload(encodedPayload);
+  const token = `${encodedPayload}.${signature}`;
 
-  return `${encodedPayload}.${signature}`;
+  await persistResetTokenRecord(token, {
+    email: payload.email,
+    exp: payload.exp,
+    nonce: payload.nonce,
+  });
+
+  return token;
 };
 
 const safeCompare = (a: string, b: string) => {
@@ -121,7 +304,15 @@ const safeCompare = (a: string, b: string) => {
   return crypto.timingSafeEqual(aBuf, bBuf);
 };
 
-export const validateResetToken = (token: string, email?: string): boolean => {
+export const validateResetToken = async (
+  token: string,
+  email: string,
+): Promise<boolean> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) {
     return false;
@@ -145,7 +336,23 @@ export const validateResetToken = (token: string, email?: string): boolean => {
       return false;
     }
 
-    if (email && payload.email !== email.toLowerCase()) {
+    if (payload.email !== normalizedEmail) {
+      return false;
+    }
+
+    const storedRecord = await readResetTokenRecord(token);
+    // Ensure the token exists server-side and matches the expected payload.
+    // This prevents stateless replay of a token that was not recorded,
+    // and allows us to check one-time-use semantics.
+    if (!storedRecord) {
+      return false;
+    }
+
+    if (storedRecord.email !== normalizedEmail) {
+      return false;
+    }
+
+    if (storedRecord.exp !== payload.exp) {
       return false;
     }
 
@@ -155,8 +362,8 @@ export const validateResetToken = (token: string, email?: string): boolean => {
   }
 };
 
-export const consumeResetToken = (_token: string) => {
-  // Stateless token mode: no server-side token registry to delete.
+export const consumeResetToken = async (token: string) => {
+  await removeResetTokenRecord(token);
 };
 
 export const sendResetEmail = async (

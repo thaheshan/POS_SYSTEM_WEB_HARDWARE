@@ -9,7 +9,80 @@ const MIN_PASSWORD_LENGTH = 8;
 // Token validation runs server-side in Node.js runtime.
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+const getUpstreamAuthBaseUrl = () => {
+  return (
+    process.env.AUTH_BACKEND_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+    ""
+  );
+};
+
+// NOTE: This route does extra work compared to a simple token validator:
+// - It requires `email` to avoid passing `undefined` into token validation.
+// - It will forward the actual password update to an upstream auth service
+//   (when `AUTH_BACKEND_URL` or `NEXT_PUBLIC_API_BASE_URL` is set) so that
+//   the user's password is actually changed in the canonical backend.
+// - Only after a successful upstream update do we consume the reset token
+//   from the durable token store to enforce one-time use.
+
+const forwardPasswordReset = async ({
+  email,
+  token,
+  newPassword,
+  requestUrl,
+}: {
+  email: string;
+  token: string;
+  newPassword: string;
+  requestUrl: string;
+}) => {
+  const upstreamBaseUrl = getUpstreamAuthBaseUrl();
+  if (!upstreamBaseUrl) {
+    return { proxied: false };
+  }
+
+  const normalizedUpstreamBaseUrl = upstreamBaseUrl.replace(/\/$/, "");
+  const upstreamOrigin = new URL(normalizedUpstreamBaseUrl, requestUrl).origin;
+  const currentOrigin = new URL(requestUrl).origin;
+
+  if (upstreamOrigin === currentOrigin) {
+    return { proxied: false };
+  }
+
+  const response = await fetch(
+    `${normalizedUpstreamBaseUrl}/auth/reset-password`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, token, newPassword }),
+    },
+  );
+
+  if (!response.ok) {
+    let message = "The reset token is invalid or expired.";
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (typeof payload.message === "string" && payload.message.trim()) {
+        message = payload.message;
+      }
+    } catch {
+      // Keep fallback message.
+    }
+
+    return {
+      proxied: true,
+      ok: false,
+      status: response.status,
+      message,
+    };
+  }
+
+  return { proxied: true, ok: true };
+};
+
+async function handlePasswordReset(req: Request) {
   try {
     const body = (await req.json()) as {
       email?: string;
@@ -17,9 +90,16 @@ export async function POST(req: Request) {
       newPassword?: string;
     };
 
-    const email = body.email?.trim().toLowerCase();
+    const email = body.email?.trim().toLowerCase() ?? "";
     const token = body.token?.trim() ?? "";
     const newPassword = body.newPassword?.trim() ?? "";
+
+    if (!email) {
+      return NextResponse.json(
+        { message: "Email is required." },
+        { status: 400 },
+      );
+    }
 
     if (!token) {
       return NextResponse.json(
@@ -36,7 +116,7 @@ export async function POST(req: Request) {
     }
 
     // Validate token ownership/expiry before consuming it.
-    const valid = validateResetToken(token, email);
+    const valid = await validateResetToken(token, email);
     if (!valid) {
       return NextResponse.json(
         { message: "The reset token is invalid or expired." },
@@ -44,8 +124,22 @@ export async function POST(req: Request) {
       );
     }
 
-    // Enforce one-time use once reset is accepted.
-    consumeResetToken(token);
+    const upstreamResult = await forwardPasswordReset({
+      email,
+      token,
+      newPassword,
+      requestUrl: req.url,
+    });
+
+    if (upstreamResult.proxied && upstreamResult.ok === false) {
+      return NextResponse.json(
+        { message: upstreamResult.message },
+        { status: upstreamResult.status },
+      );
+    }
+
+    // Enforce one-time use once the password update has been accepted.
+    await consumeResetToken(token);
 
     return NextResponse.json({
       message: "Password updated successfully.",
@@ -57,4 +151,12 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+export async function POST(req: Request) {
+  return handlePasswordReset(req);
+}
+
+export async function PATCH(req: Request) {
+  return handlePasswordReset(req);
 }

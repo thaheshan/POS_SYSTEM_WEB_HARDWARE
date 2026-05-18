@@ -15,6 +15,31 @@ import {
   selectForgotPassword,
 } from "@/store/slices/forgotPasswordSlice";
 
+const decodeResetTokenEmail = (token: string): string => {
+  const encodedPayload = token.split(".")[0];
+  if (!encodedPayload) {
+    return "";
+  }
+
+  try {
+    const normalizedPayload = encodedPayload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+    const parsed = JSON.parse(atob(paddedPayload)) as { email?: unknown };
+    // The token encodes the original email at issuance time; decode it here
+    // so the UI can pre-fill the email field when the reset link is used.
+    return typeof parsed.email === "string"
+      ? parsed.email.trim().toLowerCase()
+      : "";
+  } catch {
+    return "";
+  }
+};
+
 export default function ForgotPasswordPage() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
@@ -22,9 +47,12 @@ export default function ForgotPasswordPage() {
   const forgotPassword = useSelector(selectForgotPassword);
 
   const tokenFromQuery = searchParams.get("token")?.trim() ?? "";
+  const tokenEmailFromQuery = tokenFromQuery
+    ? decodeResetTokenEmail(tokenFromQuery)
+    : "";
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(tokenFromQuery ? 3 : 1);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(tokenEmailFromQuery);
   const [resetToken, setResetToken] = useState<string | null>(
     tokenFromQuery || null,
   );
@@ -58,8 +86,8 @@ export default function ForgotPasswordPage() {
   const handleResetPassword = async (newPassword: string) => {
     await dispatch(
       resetPassword({
-        email: email || undefined,
-        resetToken: tokenFromQuery || resetToken || undefined,
+        email: email || tokenEmailFromQuery,
+        resetToken: tokenFromQuery || resetToken || "",
         newPassword,
       }),
     ).unwrap();

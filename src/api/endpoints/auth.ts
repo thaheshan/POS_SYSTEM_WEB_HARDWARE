@@ -8,8 +8,11 @@ export const authAPI = {
   forgotPassword: (email: string) =>
     api.post("/auth/forgot-password", { email }),
   resetPassword: (payload: {
-    email?: string;
-    token?: string;
+    email: string;
+    token: string;
     newPassword: string;
-  }) => api.post("/auth/reset-password", payload),
+  }) =>
+    // NOTE: use PATCH for idempotent update semantics on the backend reset
+    // endpoint. The backend should actually update the user's password.
+    api.patch("/auth/reset-password", payload),
 };
