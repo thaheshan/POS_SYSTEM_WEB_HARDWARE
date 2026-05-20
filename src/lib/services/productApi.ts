@@ -10,15 +10,12 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["Product"],
     }),
 
-    // FIX: Use entity-level tags [{ type: "Product", id }] to avoid over-invalidating entire cache
-    // Only the specific product gets invalidated when mutations occur, not all products
     getProductById: build.query<Product, string>({
       query: (id) => `/inventory/${id}`,
       providesTags: (result) =>
         result ? [{ type: "Product" as const, id: result.id }] : ["Product"],
     }),
 
-    // FIX: Fixed type from Product to Product[] since barcode query returns an array
     getProductByBarcode: build.query<Product[], string>({
       query: (barcode) => `/inventory?barcode=${encodeURIComponent(barcode)}`,
       providesTags: ["Product"],
@@ -35,8 +32,6 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["Product"],
     }),
 
-    // FIX: Improved cache invalidation strategy
-    // Only invalidates the list ("LIST" id), not all individual product caches
     createProduct: build.mutation<Product, Omit<Product, "id">>({
       query: (body) => ({
         url: "/inventory",
@@ -46,8 +41,6 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: "Product", id: "LIST" }],
     }),
 
-    // FIX: Invalidates both the specific product AND the list for consistency
-    // Ensures UI updates for both single-product queries and list queries
     updateProduct: build.mutation<Product, { id: string } & Partial<Product>>({
       query: ({ id, ...body }) => ({
         url: `/inventory/${id}`,
@@ -60,8 +53,6 @@ export const productApi = baseApi.injectEndpoints({
       ],
     }),
 
-    // FIX: Improved cache invalidation strategy
-    // Only invalidates the list ("LIST" id), not trying to invalidate non-existent specific product
     deleteProduct: build.mutation<void, string>({
       query: (id) => ({
         url: `/inventory/${id}`,

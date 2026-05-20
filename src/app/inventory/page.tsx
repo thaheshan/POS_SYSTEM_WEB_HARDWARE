@@ -12,10 +12,11 @@ import InventoryAlertsAction from "@/components/inventory/InventoryAlertsAction"
 import EditInventoryModal from "@/components/inventory/EditInventoryModal";
 import DeleteInventoryModal from "@/components/inventory/DeleteInventoryModal";
 import { INVENTORY_MOCK_DATA } from "@/components/inventory/inventoryData";
+// FIX: Changed from relative path (../../../lib/services/productApi) to @/ alias for consistency
 import {
   useGetLowStockProductsQuery,
   useGetProductsQuery,
-} from "../../../lib/services/productApi";
+} from "@/lib/services/productApi";
 import { DateRange } from "react-day-picker";
 import {
   format,
@@ -32,14 +33,29 @@ import InventoryReportView from "@/components/inventory/InventoryReportView";
 export default function InventoryPage() {
   // These RTK Query hooks are loaded on the inventory page so Redux DevTools
   // and the Network tab can confirm live product syncing on the correct screen.
-  const { data: liveProducts = [] } = useGetProductsQuery();
+  // FIX: Now destructures isLoading, isError, and error for proper error/loading state handling
+  const {
+    data: liveProducts = [],
+    isLoading,
+    isError,
+    error,
+  } = useGetProductsQuery();
   const { data: lowStockProducts = [] } = useGetLowStockProductsQuery();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  // Use live products if available, fallback to mock data
   const [inventoryData, setInventoryData] = useState(INVENTORY_MOCK_DATA);
+
+  // FIX: Update inventory data when live products load from API
+  // This completes the half-done integration by replacing mock data with live API data
+  React.useEffect(() => {
+    if (liveProducts.length > 0) {
+      setInventoryData(liveProducts as any);
+    }
+  }, [liveProducts]);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -209,6 +225,34 @@ export default function InventoryPage() {
             </button>
           </div>
         </div>
+
+        {/* FIX: Added error/loading state handling for API calls */}
+        {/* Shows error banner if API call fails */}
+        {isError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <div className="flex-1">
+              <h3 className="text-[14px] font-black text-red-900 mb-1">
+                Failed to load inventory
+              </h3>
+              <p className="text-[13px] text-red-700">
+                {error?.message ||
+                  "An error occurred while fetching product data. Please try again."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Shows loading indicator while fetching product data from API */}
+        {isLoading && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+            <div className="animate-spin">
+              <RefreshCcw className="w-4 h-4 text-blue-600" />
+            </div>
+            <p className="text-[13px] font-bold text-blue-700">
+              Loading inventory data...
+            </p>
+          </div>
+        )}
 
         {/* 1. KPI CARDS - Now Dynamic */}
         <InventoryKPICards data={filteredData} />
