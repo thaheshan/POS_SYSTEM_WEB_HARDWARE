@@ -7,8 +7,12 @@ export const authAPI = {
   getMe: () => api.get("/auth/me"),
   forgotPassword: (email: string) =>
     api.post("/auth/forgot-password", { email }),
-  verifyResetCode: (email: string, code: string) =>
-    api.post("/auth/verify-reset-code", { email, code }),
-  resetPassword: (email: string, code: string, newPassword: string) =>
-    api.post("/auth/reset-password", { email, code, newPassword }),
+  resetPassword: (payload: {
+    email: string;
+    token: string;
+    newPassword: string;
+  }) =>
+    // NOTE: use PATCH for idempotent update semantics on the backend reset
+    // endpoint. The backend should actually update the user's password.
+    api.patch("/auth/reset-password", payload),
 };

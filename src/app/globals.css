@@ -156,3 +156,107 @@
     animation: none;
   }
 }
+
+@keyframes suppliersFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes suppliersCardFloat {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3px);
+  }
+}
+
+.suppliers-page-shell {
+  background: radial-gradient(
+    circle at 8% 0%,
+    #eef5ff 0%,
+    #f8fbff 34%,
+    #f3f8ff 100%
+  );
+  border-radius: 26px;
+  padding: 18px;
+}
+
+.suppliers-kpi-card {
+  background: linear-gradient(154deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  animation: suppliersFadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.suppliers-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.suppliers-btn-gradient {
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.2);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease;
+}
+
+.suppliers-btn-gradient:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow: 0 14px 28px rgba(30, 64, 175, 0.25);
+}
+
+.suppliers-btn-gradient:active {
+  transform: translateY(0);
+}
+
+.suppliers-hover-card {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.suppliers-hover-card:hover {
+  animation: suppliersCardFloat 220ms ease forwards;
+  box-shadow: 0 16px 26px rgba(15, 23, 42, 0.08);
+}
+
+.suppliers-delay-1 {
+  animation-delay: 70ms;
+}
+
+.suppliers-delay-2 {
+  animation-delay: 120ms;
+}
+
+.suppliers-delay-3 {
+  animation-delay: 170ms;
+}
+
+.suppliers-delay-4 {
+  animation-delay: 220ms;
+}
+
+.suppliers-delay-5 {
+  animation-delay: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .suppliers-kpi-card,
+  .suppliers-hover-card {
+    animation: none;
+    transition: none;
+  }
+
+  .suppliers-btn-gradient {
+    transition: none;
+  }
+}
