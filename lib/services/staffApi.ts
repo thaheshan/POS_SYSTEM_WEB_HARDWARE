@@ -1,25 +1,33 @@
 import { baseApi } from "@/store/baseApi";
-import type { Staff } from "@/types";
+import { Staff } from "@/types";
 
 export const staffApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getStaff: build.query<Staff[], void>({
-      query: () => ({ url: "/staff", method: "GET" }),
-      providesTags: ["Staff"],
-    }),
-
-    getStaffByRole: build.query<Staff[], string>({
-      query: (role) => ({ url: `/staff?role=${role}`, method: "GET" }),
+      // The staff collection is exposed through the staff-management route.
+      query: () => ({
+        url: "/staff-management",
+        method: "GET",
+      }),
       providesTags: ["Staff"],
     }),
 
     getStaffById: build.query<Staff, string>({
-      query: (id) => ({ url: `/staff/${id}`, method: "GET" }),
+      // Keep staff lookups aligned with the canonical backend resource path.
+      query: (id) => ({
+        url: `/staff-management/${id}`,
+        method: "GET",
+      }),
       providesTags: ["Staff"],
     }),
 
-    getCashiers: build.query<Staff[], void>({
-      query: () => ({ url: "/staff?role=cashier", method: "GET" }),
+    getStaffByRole: build.query<Staff[], string>({
+      // Role filtering is passed via params instead of string interpolation.
+      query: (role) => ({
+        url: "/staff-management",
+        method: "GET",
+        params: { role },
+      }),
       providesTags: ["Staff"],
     }),
 
@@ -27,40 +35,48 @@ export const staffApi = baseApi.injectEndpoints({
       Staff,
       Omit<Staff, "id"> & { password: string }
     >({
-      query: (body) => ({ url: "/staff", method: "POST", body }),
+      // Creation uses the same collection endpoint as the list query.
+      query: (body) => ({
+        url: "/staff-management",
+        method: "POST",
+        body,
+      }),
       invalidatesTags: ["Staff"],
     }),
 
     updateStaff: build.mutation<Staff, { id: string } & Partial<Staff>>({
+      // PATCH matches the partial-update contract for staff edits.
       query: ({ id, ...body }) => ({
-        url: `/staff/${id}`,
-        method: "PUT",
+        url: `/staff-management/${id}`,
+        method: "PATCH",
         body,
       }),
       invalidatesTags: ["Staff"],
     }),
 
     deleteStaff: build.mutation<void, string>({
-      query: (id) => ({ url: `/staff/${id}`, method: "DELETE" }),
+      // Deletions stay on the canonical staff-management resource path.
+      query: (id) => ({
+        url: `/staff-management/${id}`,
+        method: "DELETE",
+      }),
       invalidatesTags: ["Staff"],
     }),
 
     resetPassword: build.mutation<void, { id: string; newPassword: string }>({
       query: ({ id, newPassword }) => ({
-        url: `/staff/${id}/password`,
+        url: `/staff-management/${id}/password`,
         method: "PATCH",
         body: { newPassword },
       }),
-      invalidatesTags: ["Staff"],
     }),
   }),
 });
 
 export const {
   useGetStaffQuery,
-  useGetStaffByRoleQuery,
   useGetStaffByIdQuery,
-  useGetCashiersQuery,
+  useGetStaffByRoleQuery,
   useCreateStaffMutation,
   useUpdateStaffMutation,
   useDeleteStaffMutation,

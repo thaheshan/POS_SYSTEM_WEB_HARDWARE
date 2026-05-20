@@ -47,9 +47,10 @@ export const ENDPOINTS = {
     BY_ID: (id: string) => `/orders/${id}`,
   },
 
+  // Backend staff endpoints are mounted under staff-management.
   STAFF: {
-    BASE: "/staff",
-    BY_ID: (id: string) => `/staff/${id}`,
+    BASE: "/staff-management",
+    BY_ID: (id: string) => `/staff-management/${id}`,
   },
 
   REPORTS: {
