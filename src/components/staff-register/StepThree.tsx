@@ -11,6 +11,9 @@ import {
   Store,
 } from "lucide-react";
 import React from "react";
+
+// TODO: Replace SHOP_OPTIONS import with Redux shops state (useAppSelector)
+// See: src/utils/StaffRegisterData.ts for details
 import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

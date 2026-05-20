@@ -14,6 +14,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { FieldErrors, UseFormRegister, UseFormWatch } from "react-hook-form";
 import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
+
+// TODO: Replace SHOP_OPTIONS import with Redux shops state (useAppSelector)
+// See: src/utils/StaffRegisterData.ts for details
 import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
 import { useAppSelector } from "@/store/hooks";
 

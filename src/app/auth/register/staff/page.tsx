@@ -35,21 +35,14 @@ export default function SignupPage() {
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
   const onSubmitFinal = async (data: StaffRegistrationFormValues) => {
-    const nameParts = data.full_name.trim().split(" ");
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
-
     const payload = {
-      first_name: firstName,
-      last_name: lastName,
+      full_name: data.full_name,
       email: data.email,
-      phone: data.phone,
-      tenant_id: data.shop_id,
+      mobile_number: data.phone,
       shop_id: data.shop_id,
       role: data.role,
       password: data.password,
     };
-
     try {
       await dispatch(registerStaff(payload)).unwrap();
       setCurrentStep(3);
@@ -81,11 +74,7 @@ export default function SignupPage() {
           />
         )}
 
-        {currentStep === 3 && (
-          <StepThree
-            formValues={getValues()}
-          />
-        )}
+        {currentStep === 3 && <StepThree formValues={getValues()} />}
       </form>
     </AuthLayout>
   );

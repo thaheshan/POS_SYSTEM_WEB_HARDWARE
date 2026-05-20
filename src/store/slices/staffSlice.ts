@@ -18,26 +18,9 @@ export const registerStaff = createAsyncThunk<
   "staff/register",
   async (payload, { rejectWithValue }) => {
     try {
-      // 1. COMMENT OUT THE REAL BACKEND CALL
-      // const response = await axios.post('/v1/api/staff/register', payload);
-      // return response.data;
+      const response = await staffAPI.register(payload);
+      return response.data;
 
-      // 2. ADD THE FAKE BACKEND SIMULATOR
-      return await new Promise<StaffMemberResponse>((resolve) => {
-        setTimeout(() => {
-          
-          // We return a fake successful database record!
-          resolve({
-            id: "staff_" + Math.random().toString(36).substring(7),
-            first_name: payload.first_name,
-            last_name: payload.last_name,
-            email: payload.email,
-            status: "PENDING_APPROVAL",
-            created_at: new Date().toISOString(),
-          });
-          
-        }, 1500); // 1.5 second simulated network delay
-      });
 
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to register');

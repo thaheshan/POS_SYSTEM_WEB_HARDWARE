@@ -6,7 +6,9 @@ export const staffAPI = {
   
   getById: (id: string) =>
     api.get(`/staff/${id}`),
-  
+
+  register: (data: any) => api.post("/staff/register", data),
+
   create: (data: any) =>
     api.post('/staff', data),
   

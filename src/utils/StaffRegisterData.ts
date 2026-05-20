@@ -1,19 +1,25 @@
+// TODO: Replace SHOP_OPTIONS with dynamic fetch from backend API via Redux shops slice.
+// This is a temporary static list. Backend developer will implement:
+// - src/api/endpoints/shops.ts (GET /shops)
+// - src/store/slices/shopsSlice.ts (fetchShops thunk)
+// Then update StepOne, StepTwo, StepThree components to use Redux shops state.
+
 export const SHOP_OPTIONS = [
   {
-    id: "SHOP_001",
-    name: "Abc Hardware - Colombo",
-    shopOwner: "John Doe",
-    contact: "+94 77 123 4567",
-    shopPrivateId: "SHOP_001_PRIVATE",
-    shopNameVerification: "Abc Hardware Verification",
-    location: "Colombo, Western Province",
+    id: "30186ad8-ad05-4fe9-b83c-d7f93dc33a21",
+    name: "Test Supermart",
+    shopOwner: "Test Owner",
+    contact: "+94 77 000 0000",
+    shopPrivateId: "30186ad8-ad05-4fe9-b83c-d7f93dc33a21",
+    shopNameVerification: "REG-12345",
+    location: "Test Location",
   },
   {
-    id: "SHOP_002",
+    id: "30186ad8-ad05-4fe9-b83c-d7f93dc33a22",
     name: "Main Street Tools",
     shopOwner: "Jane Smith",
     contact: "+94 77 987 6543",
-    shopPrivateId: "SHOP_002_PRIVATE",
+    shopPrivateId: "30186ad8-ad05-4fe9-b83c-d7f93dc33a22",
     shopNameVerification: "Main Street Tools Verification",
     location: "Main Street, Colombo",
   },
@@ -92,8 +98,10 @@ export const SHOP_OPTIONS = [
 ];
 
 export const STAFF_ROLES = [
-  { id: "manager", label: "Manager" },
-  { id: "cashier", label: "Cashier" },
-  { id: "store_keeper", label: "Store Keeper" },
-  { id: "accountant", label: "Accountant" },
+  { id: "OWNER", label: "Owner" },
+  { id: "MANAGER", label: "Manager" },
+  { id: "CASHIER", label: "Cashier" },
+  { id: "STORE_KEEPER", label: "Store Keeper" },
+  { id: "ACCOUNTANT", label: "Accountant" },
+  { id: "TECHNICIAN", label: "Technician" },
 ];

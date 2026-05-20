@@ -1,16 +1,16 @@
 export const staffRole = [
-  { id: "manager", label: "Manager" },
-  { id: "cashier", label: "Cashier" },
-  { id: "store_keeper", label: "Store Keeper" },
-  { id: "accountant", label: "Accountant" },
+  { id: "OWNER", label: "Owner" },
+  { id: "MANAGER", label: "Manager" },
+  { id: "CASHIER", label: "Cashier" },
+  { id: "STORE_KEEPER", label: "Store Keeper" },
+  { id: "ACCOUNTANT", label: "Accountant" },
+  { id: "TECHNICIAN", label: "Technician" },
 ] as const;
 
 export interface StaffRegistrationPayload {
-  first_name: string;
-  last_name: string;
+  full_name: string;
   email: string;
-  phone: string;
-  tenant_id: string;
+  mobile_number: string;
   shop_id: string;
   role: typeof staffRole[number]['id'];
   password: string;
@@ -18,9 +18,9 @@ export interface StaffRegistrationPayload {
 
 export interface StaffMemberResponse {
   id: string;
-  first_name: string;
-  last_name: string;
+  full_name: string;
   email: string;
+  mobile_number: string;
   status: string;
   created_at: string;
 }

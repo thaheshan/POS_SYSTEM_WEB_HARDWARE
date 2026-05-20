@@ -12,6 +12,9 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
+
+// TODO: Replace SHOP_OPTIONS import with Redux shops state (useAppSelector)
+// See: src/utils/StaffRegisterData.ts for details
 import { SHOP_OPTIONS, STAFF_ROLES } from "@/utils/StaffRegisterData";
 import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
 import {
