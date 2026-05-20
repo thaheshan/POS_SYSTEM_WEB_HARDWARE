@@ -1,78 +1,139 @@
 "use client";
 
-import { useState } from "react";
-import { PasswordResetState } from "@/types/user";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useRouter, useSearchParams } from "next/navigation";
 import Step1EmailRequired from "@/components/auth/passwordReset/Step1EmailRequired";
 import Step2Verification from "@/components/auth/passwordReset/Step2Verification";
 import Step3ChangePassword from "@/components/auth/passwordReset/Step3ChangePassword";
 import Step4PasswordResetResult from "@/components/auth/passwordReset/Step4PasswordResetResult";
-import Link from "next/link";
+import type { AppDispatch } from "@/store";
+import {
+  clearForgotPasswordFlow,
+  requestPasswordReset,
+  resetPassword,
+  selectForgotPassword,
+} from "@/store/slices/forgotPasswordSlice";
+
+const decodeResetTokenEmail = (token: string): string => {
+  const encodedPayload = token.split(".")[0];
+  if (!encodedPayload) {
+    return "";
+  }
+
+  try {
+    const normalizedPayload = encodedPayload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+    const parsed = JSON.parse(atob(paddedPayload)) as { email?: unknown };
+    // The token encodes the original email at issuance time; decode it here
+    // so the UI can pre-fill the email field when the reset link is used.
+    return typeof parsed.email === "string"
+      ? parsed.email.trim().toLowerCase()
+      : "";
+  } catch {
+    return "";
+  }
+};
 
 export default function ForgotPasswordPage() {
-  const [resetState, setResetState] = useState<PasswordResetState>({
-    step: 1,
-    email: "",
-    code: "",
-    status: null,
-  });
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const forgotPassword = useSelector(selectForgotPassword);
 
-  const updateState = (partial: Partial<PasswordResetState>) => {
-    setResetState((prev) => ({ ...prev, ...partial }));
+  const tokenFromQuery = searchParams.get("token")?.trim() ?? "";
+  const tokenEmailFromQuery = tokenFromQuery
+    ? decodeResetTokenEmail(tokenFromQuery)
+    : "";
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(tokenFromQuery ? 3 : 1);
+  const [email, setEmail] = useState(tokenEmailFromQuery);
+  const [resetToken, setResetToken] = useState<string | null>(
+    tokenFromQuery || null,
+  );
+
+  useEffect(() => {
+    dispatch(clearForgotPasswordFlow());
+
+    return () => {
+      dispatch(clearForgotPasswordFlow());
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (step !== 4) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      router.replace("/auth/login?reset=success");
+    }, 2500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [router, step]);
+
+  const handleRequestReset = async () => {
+    const result = await dispatch(requestPasswordReset({ email })).unwrap();
+    setResetToken(result.resetToken);
+    setStep(2);
   };
 
-  const goToNextStep = () => {
-    updateState({ step: (resetState.step + 1) as any });
+  const handleResetPassword = async (newPassword: string) => {
+    await dispatch(
+      resetPassword({
+        email: email || tokenEmailFromQuery,
+        resetToken: tokenFromQuery || resetToken || "",
+        newPassword,
+      }),
+    ).unwrap();
+
+    setStep(4);
   };
 
-  const goToPreviousStep = () => {
-    updateState({ step: (resetState.step - 1) as any });
+  const handleResend = async () => {
+    await dispatch(requestPasswordReset({ email })).unwrap();
   };
 
-  const setEmail = (email: string) => {
-    updateState({ email });
-  };
-
-  const setCode = (code: string) => {
-    updateState({ code });
-  };
-
-  const setStatus = (status: "success" | "failure") => {
-    updateState({ status });
+  const handleOpenEmailApp = () => {
+    if (typeof window !== "undefined") {
+      window.location.href = "mailto:";
+    }
   };
 
   return (
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {resetState.step === 1 && (
-            <Step1EmailRequired
-              email={resetState.email}
-              onEmailChange={setEmail}
-              onNext={goToNextStep}
-            />
-          )}
+    <>
+      {step === 1 && (
+        <Step1EmailRequired
+          email={email}
+          onEmailChange={setEmail}
+          onSubmit={handleRequestReset}
+          loading={forgotPassword.loading}
+          error={forgotPassword.error}
+        />
+      )}
 
-          {resetState.step === 2 && (
-            <Step2Verification
-              email={resetState.email}
-              code={resetState.code}
-              onCodeChange={setCode}
-              onNext={goToNextStep}
-              onBack={goToPreviousStep}
-            />
-          )}
+      {step === 2 && (
+        <Step2Verification
+          email={email}
+          onOpenEmailApp={handleOpenEmailApp}
+          onResend={handleResend}
+          loading={forgotPassword.loading}
+        />
+      )}
 
-          {resetState.step === 3 && (
-            <Step3ChangePassword
-              onNext={() => {
-                setStatus("success");
-                goToNextStep();
-              }}
-              onBack={goToPreviousStep}
-            />
-          )}
+      {step === 3 && (
+        <Step3ChangePassword
+          onNext={handleResetPassword}
+          loading={forgotPassword.loading}
+        />
+      )}
 
-          {resetState.step === 4 && (
-            <Step4PasswordResetResult status={resetState.status} />
-          )}
-        </div>
+      {step === 4 && <Step4PasswordResetResult status="success" />}
+    </>
   );
 }

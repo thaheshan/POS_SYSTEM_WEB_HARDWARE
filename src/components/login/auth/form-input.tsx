@@ -41,14 +41,14 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-semibold text-gray-900 mb-2.5">
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         <div className="relative">
           {icon && (
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
               {getIcon()}
             </div>
           )}
@@ -58,10 +58,10 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             className={cn(
-              "w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 text-base transition-all duration-200",
+              "w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition-all duration-200 sm:text-base sm:py-3",
               "focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0",
               "hover:border-gray-400",
-              icon && "pl-11",
+              icon && "pl-10 sm:pl-11",
               error && "border-red-500 focus:ring-red-500 focus:border-red-500",
               className,
             )}
@@ -71,13 +71,13 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             <button
               type="button"
               onClick={onPasswordToggle}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 transition-colors duration-200 hover:text-gray-700"
               aria-label={isPasswordVisible ? "Hide password" : "Show password"}
             >
               {isPasswordVisible ? (
-                <EyeOff className="w-5 h-5" />
+                <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
               ) : (
-                <Eye className="w-5 h-5" />
+                <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
               )}
             </button>
           )}
