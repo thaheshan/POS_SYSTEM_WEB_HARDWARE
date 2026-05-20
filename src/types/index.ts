@@ -1,6 +1,6 @@
-export type UserRole = 'admin' | 'manager' | 'cashier';
-export type PaymentMethod = 'cash' | 'card' | 'credit' | 'bank_transfer';
-export type OrderStatus = 'pending' | 'sent' | 'received' | 'cancelled';
+export type UserRole = "admin" | "manager" | "cashier";
+export type PaymentMethod = "cash" | "card" | "credit" | "bank_transfer";
+export type OrderStatus = "pending" | "sent" | "received" | "cancelled";
 
 export interface Product {
   id: string;
@@ -120,3 +120,64 @@ export interface TaxBreakdown {
   vatRate: number;
   nbtRate: number;
 }
+
+export interface ReportDateRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface SalesReportCategoryBreakdownItem {
+  categoryId?: string;
+  categoryName: string;
+  revenue: number;
+  salesCount: number;
+  percentage?: number;
+}
+
+export interface SalesReport {
+  revenue: number;
+  salesCount: number;
+  averageTicket?: number;
+  categoryBreakdown: SalesReportCategoryBreakdownItem[];
+}
+
+export interface InventoryReportSlowMovingItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  stockQty: number;
+  daysSinceLastMovement?: number;
+}
+
+export interface InventoryReportSummary {
+  totalProducts: number;
+  totalStockQty: number;
+  stockValue: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+}
+
+export interface InventoryReport {
+  stockValuation: number;
+  summary: InventoryReportSummary;
+  slowMovingItems: InventoryReportSlowMovingItem[];
+}
+
+export interface TaxReport {
+  vatCollected: number;
+  nbtCollected: number;
+  taxableSales?: number;
+  nonTaxableSales?: number;
+}
+
+export interface TopProductReportItem {
+  productId: string;
+  productName: string;
+  sku?: string;
+  quantitySold: number;
+  revenue: number;
+  categoryName?: string;
+}
+
+export type ReportExportType = "sales" | "inventory" | "tax";
+export type ReportExportFormat = "csv" | "pdf";
