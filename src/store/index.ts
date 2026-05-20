@@ -14,12 +14,15 @@ import ordersReducer from "./slices/ordersSlice";
 import staffReducer from "./slices/staffSlice";
 import salesReducer from "./slices/salesSlice";
 import forgotPasswordReducer from "./slices/forgotPasswordSlice";
+import { configureStore } from '@reduxjs/toolkit';
+import { baseApi } from './baseApi';
+import authReducer from '../../lib/store/authSlice';
+import cartReducer from './slices/cartSlice';
 
 export const store = configureStore({
   reducer: {
-    // Source of truth auth slice: lib/store/authSlice.ts
+    [baseApi.reducerPath]: baseApi.reducer,
     auth: authReducer,
-    // Cart state is still managed by local slice under src/store/slices.
     cart: cartReducer,
     products: productsReducer,
     customers: customersReducer,
@@ -30,12 +33,8 @@ export const store = configureStore({
     sales: salesReducer,
     forgotPassword: forgotPasswordReducer,
   },
-  // Keep Redux DevTools enabled for easier state debugging.
-  devTools: true,
+  middleware: (getDefault) => getDefault().concat(baseApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-
-// Re-export auth thunks and selectors for convenient access
-export { loginThunk, logout, selectUser, selectUserRole };
