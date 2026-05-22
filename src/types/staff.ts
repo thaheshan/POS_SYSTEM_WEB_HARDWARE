@@ -24,3 +24,13 @@ export interface StaffMemberResponse {
   status: string;
   created_at: string;
 }
+
+export interface AuthUser {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  tenant_id?: string;
+  shop_id?: string; 
+  role?: string;
+}

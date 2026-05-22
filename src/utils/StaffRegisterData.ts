@@ -98,7 +98,6 @@ export const SHOP_OPTIONS = [
 ];
 
 export const STAFF_ROLES = [
-  { id: "OWNER", label: "Owner" },
   { id: "MANAGER", label: "Manager" },
   { id: "CASHIER", label: "Cashier" },
   { id: "STORE_KEEPER", label: "Store Keeper" },

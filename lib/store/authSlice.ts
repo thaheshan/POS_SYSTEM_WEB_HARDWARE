@@ -41,27 +41,46 @@ const decodeCookieToken = (rawValue: string): string => {
 
 const normalizeAuthUser = (value: unknown): AuthUser | null => {
   if (!value || typeof value !== "object") return null;
-  const candidate = value as Partial<AuthUser>;
 
-  if (!candidate.id || !candidate.email || !candidate.name || !candidate.role) {
-    return null;
-  }
+  const candidate = value as any;
+  const rawRole = String(candidate.role ?? "").toLowerCase();
 
-  const role = candidate.role.toLowerCase();
-  if (!["admin", "manager", "cashier", "staff"].includes(role)) {
-    return null;
-  }
+  const id = candidate.id ?? candidate.user_id ?? candidate.staff_id;
+  const email = candidate.email ?? candidate.user_email;
+  const name =
+    candidate.name ??
+    candidate.full_name ??
+    [candidate.first_name, candidate.last_name].filter(Boolean).join(" ").trim();
+
+  if (!id || !email || !name || !rawRole) return null;
+  if (!["admin", "manager", "cashier", "staff"].includes(rawRole)) return null;
 
   return {
-    id: candidate.id as string,
-    email: candidate.email as string,
-    name: candidate.name as string,
-    role: role as AuthUser["role"],
+    id: String(id),
+    email: String(email),
+    name: String(name),
+    role: rawRole as AuthUser["role"],
     createdAt:
       typeof candidate.createdAt === "string"
         ? candidate.createdAt
         : new Date().toISOString(),
   };
+};
+
+const unwrapLoginPayload = (payload: unknown): any => {
+  if (!payload || typeof payload !== "object") return null;
+
+  const root = payload as any;
+
+  // handles:
+  // { success: true, data: { ... } }
+  // { statusCode: 200, message: "...", data: { access_token, user } }
+  // { access_token, user }
+  const level1 = root.data && typeof root.data === "object" ? root.data : root;
+  const level2 =
+    level1.data && typeof level1.data === "object" ? level1.data : level1;
+
+  return level2;
 };
 
 const getStoredToken = (): string | null => {
@@ -75,7 +94,7 @@ const getStoredToken = (): string | null => {
 
   if (!cookieMatch) return null;
   const cookieToken = decodeCookieToken(
-    cookieMatch.split("=").slice(1).join("="),
+    cookieMatch.split("=").slice(1).join("=")
   ).trim();
 
   if (cookieToken) localStorage.setItem(TOKEN_KEY, cookieToken);
@@ -128,25 +147,32 @@ const initialToken = getStoredToken();
 const initialUser = getStoredUser();
 
 const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
-  if (!payload || typeof payload !== "object") return null;
-  const data = payload as {
-    token?: unknown;
-    accessToken?: unknown;
-    jwt?: unknown;
-    user?: unknown;
-  };
+  const data = unwrapLoginPayload(payload);
+  if (!data) return null;
+
   const rawToken =
     typeof data.token === "string"
       ? data.token
       : typeof data.accessToken === "string"
-        ? data.accessToken
-        : typeof data.jwt === "string"
-          ? data.jwt
-          : null;
-  if (!rawToken) return null;
+      ? data.accessToken
+      : typeof data.access_token === "string"
+      ? data.access_token
+      : typeof data.jwt === "string"
+      ? data.jwt
+      : null;
+
+  if (!rawToken) {
+    console.warn("[loginThunk] Unexpected login response shape:", payload);
+    return null;
+  }
+
   const token = rawToken.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
-  return { token, user: normalizeAuthUser(data.user) };
+
+  return {
+    token,
+    user: normalizeAuthUser(data.user ?? data.user_info ?? data.profile),
+  };
 };
 
 const toBase64Url = (value: string): string => {
@@ -206,7 +232,7 @@ const MOCK_CREDENTIALS =
 
 const getMockLoginResponse = (
   email: string,
-  password: string,
+  password: string
 ): LoginResponse | null => {
   if (process.env.NODE_ENV !== "development") {
     return null;
@@ -217,7 +243,7 @@ const getMockLoginResponse = (
 
   const entry = MOCK_CREDENTIALS.find(
     (c) =>
-      c.email.toLowerCase() === email.toLowerCase() && c.password === password,
+      c.email.toLowerCase() === email.toLowerCase() && c.password === password
   );
   if (!entry) return null;
   return {
@@ -266,14 +292,14 @@ export const loginThunk = createAsyncThunk<
   const mockLogin = getMockLoginResponse(email, password);
   console.log(
     "[loginThunk] Mock login result:",
-    mockLogin ? "Found" : "Not found",
+    mockLogin ? "Found" : "Not found"
   );
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
     console.log(
       "[loginThunk] API Base URL:",
-      baseUrl || "Not configured - using mock",
+      baseUrl || "Not configured - using mock"
     );
 
     // If no API base URL is configured, rely on mock login.
@@ -285,7 +311,7 @@ export const loginThunk = createAsyncThunk<
 
       console.log(
         "[loginThunk] Using mock login. Token length:",
-        mockLogin.token.length,
+        mockLogin.token.length
       );
       persistToken(mockLogin.token);
       persistUser(mockLogin.user);
@@ -299,7 +325,7 @@ export const loginThunk = createAsyncThunk<
 
     console.log(
       "[loginThunk] Calling backend API:",
-      normalizedBaseUrl + "/auth/login",
+      normalizedBaseUrl + "/auth/login"
     );
     const response = await fetch(`${normalizedBaseUrl}/auth/login`, {
       method: "POST",
@@ -343,7 +369,7 @@ export const loginThunk = createAsyncThunk<
 
     console.log(
       "[loginThunk] Backend login successful. Token length:",
-      data.token.length,
+      data.token.length
     );
     persistToken(data.token);
     persistUser(data.user);
@@ -405,11 +431,11 @@ const authSlice = createSlice({
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
         console.log(
-          "[Redux] loginThunk.fulfilled - Setting token and user in Redux state",
+          "[Redux] loginThunk.fulfilled - Setting token and user in Redux state"
         );
         console.log(
           "[Redux] Token length from payload:",
-          action.payload.token.length,
+          action.payload.token.length
         );
         console.log("[Redux] User from payload:", action.payload.user);
 
@@ -423,7 +449,7 @@ const authSlice = createSlice({
           "[Redux] Final auth state - isAuthenticated:",
           state.isAuthenticated,
           "tokenLength:",
-          state.token?.length ?? 0,
+          state.token?.length ?? 0
         );
       })
       .addCase(loginThunk.rejected, (state, action) => {

@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/store";
-import { loginThunk } from "../../../../lib/store/authSlice";
+import { loginThunk, logout } from "../../../../lib/store/authSlice";
 import FormInput from "./form-input";
 import AuthHeader from "./auth-header";
+import { checkStaffStatus } from "@/store/slices/staffSlice";
 
 export default function LoginForm() {
   // Local UI state for the form; auth/session state lives in Redux.
@@ -22,6 +23,16 @@ export default function LoginForm() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams?.get("error") === "rejected") {
+      setError(
+        "Access Denied: Your application to join this shop was declined by the owner."
+      );
+    }
+  }, [searchParams]);
+
   const dashboardMap: Record<string, string> = {
     admin: "/dashboard",
     manager: "/dashboard",
@@ -33,39 +44,58 @@ export default function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
-    console.log("[LoginForm] Submitting login with email:", email);
-
+  
     try {
-      // Dispatch login thunk with form credentials.
-      console.log("[LoginForm] Dispatching loginThunk...");
       const result = await dispatch(loginThunk({ email, password })).unwrap();
-
-      console.log("[LoginForm] Login successful! User:", result.user);
-      if (!result.user) {
+  
+      const user = result.user;
+      if (!user) {
         throw new Error("Login succeeded but user profile is missing.");
       }
-
-      // Redirect each role to its dedicated dashboard/area.
-      const dashboardPath = dashboardMap[result.user.role] || "/dashboard";
-      console.log("[LoginForm] Redirecting to:", dashboardPath);
-
-      // Force a full navigation so middleware always sees the latest cookie.
-      if (typeof window !== "undefined") {
-        window.location.assign(dashboardPath);
-        return;
-      }
-
+  
+      sessionStorage.removeItem("allowPendingAccess");
+  
+      const dashboardPath = dashboardMap[user.role] || "/dashboard";
       router.push(dashboardPath);
     } catch (err: any) {
-      // Surface backend rejection message (including private-tab block reason).
-      console.error("[LoginForm] Login error:", err);
+      const backendStatus =
+        err?.response?.data?.status ||
+        err?.response?.data?.backendStatus ||
+        err?.status;
+  
       const errorMessage =
         err?.message ||
+        err?.response?.data?.message ||
+        err?.error ||
         (typeof err === "string" ? err : "Login failed. Please try again.");
+  
+      const normalizedMessage = errorMessage.toLowerCase();
+  
+      if (
+        backendStatus === "PENDING_APPROVAL" ||
+        normalizedMessage.includes("pending approval") ||
+        normalizedMessage.includes("waiting approval")
+      ) {
+        sessionStorage.setItem("allowPendingAccess", "true");
+        router.push("/auth/pending");
+        return;
+      }
+  
+      if (
+        backendStatus === "REJECTED" ||
+        normalizedMessage.includes("rejected") ||
+        normalizedMessage.includes("declined") ||
+        normalizedMessage.includes("contact support") ||
+        normalizedMessage.includes("inactive")
+      ) {
+        setError(
+          "Access Denied: Your application was rejected by the shop owner."
+        );
+        return;
+      }
+  
       setError(errorMessage);
     } finally {
-      // Always release loading state so redirect bounces don't leave UI spinning.
       setIsLoading(false);
     }
   };

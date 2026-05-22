@@ -12,19 +12,30 @@ export default function ProtectedRoute({
   allowedRoles?: string[];
 }) {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push('/auth/login');
-      } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        router.push('/unauthorized');
-      }
-    }
-  }, [isAuthenticated, isLoading, user, allowedRoles, router]);
+    if (isAuthLoading) return;
 
-  if (isLoading) {
+    if (!isAuthenticated || !user) {
+      router.push('/auth/login');
+      return;
+    } 
+    
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      router.push('/unauthorized');
+      return;
+    }
+  }, [
+    isAuthenticated, 
+    isAuthLoading, 
+    user, 
+    allowedRoles, 
+    router
+  ]);
+
+  if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 text-blue-600 font-bold">
         Authenticating...

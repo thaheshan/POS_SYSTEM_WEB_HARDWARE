@@ -12,7 +12,6 @@ export const staffRegistrationSchema = z
     shop_verification_id: z.string().min(1, "Verification ID is required"),
     role: z.enum(
       [
-        "OWNER",
         "MANAGER",
         "CASHIER",
         "STORE_KEEPER",

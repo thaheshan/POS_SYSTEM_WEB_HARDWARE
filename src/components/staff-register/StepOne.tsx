@@ -24,6 +24,7 @@ import {
   UseFormTrigger,
   UseFormWatch,
 } from "react-hook-form";
+import { useAppSelector } from "@/store/hooks";
 
 interface StepOneProps {
   register: UseFormRegister<StaffRegistrationFormValues>;
@@ -33,6 +34,22 @@ interface StepOneProps {
   trigger: UseFormTrigger<StaffRegistrationFormValues>;
   onNext: () => void;
 }
+
+/* =========================================
+  TODO FOR NEXT DEVELOPER (API INTEGRATION):
+  =========================================
+  [ ] Swap `SHOP_OPTIONS` mock data for real Redux state (`state.shops`).
+  [ ] Update the `.find` and `.filter` methods below to use `shop_id` and `shop_name` instead of `id` and `name`.
+*/
+
+// 2. Kept the secure, local roles to prevent "OWNER" privilege escalation
+const SAFE_STAFF_ROLES = [
+  { id: "MANAGER", label: "Manager" },
+  { id: "CASHIER", label: "Cashier" },
+  { id: "STORE_KEEPER", label: "Store Keeper" },
+  { id: "ACCOUNTANT", label: "Accountant" },
+  { id: "TECHNICIAN", label: "Technician" },
+];
 
 const StepOne = ({
   register,
@@ -53,7 +70,7 @@ const StepOne = ({
   const currentRole = watch("role");
 
   const selectedShop = SHOP_OPTIONS.find((s) => s.id === currentShopId);
-  const selectedRole = STAFF_ROLES.find((r) => r.id === currentRole);
+  const selectedRole = SAFE_STAFF_ROLES.find((r) => r.id === currentRole);
   const filteredShops = SHOP_OPTIONS.filter((shop) =>
     shop.name.toLowerCase().includes(shopSearch.toLowerCase())
   );
@@ -241,6 +258,13 @@ const StepOne = ({
               <Mail size={20} />
             </div>
           </div>
+
+          {errors.email && (
+            <p className="text-red-500 text-xs mt-1.5 font-medium">
+              {errors.email.message}
+            </p>
+          )}
+          
         </div>
 
         {/* Phone Number */}

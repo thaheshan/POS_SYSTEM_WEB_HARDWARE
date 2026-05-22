@@ -41,7 +41,7 @@ const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
   const email = watch("email");
   const phone = watch("phone");
   const currentVerificationId = watch("shop_verification_id") || "";
- 
+
   const hasMinLength = currentPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(currentPassword);
   const hasLowercase = /[a-z]/.test(currentPassword);
@@ -298,6 +298,23 @@ const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
           </label>
         </div>
       </section>
+
+      {/* SERVER ERROR DISPLAY BLOCK */}
+      {errors.root?.serverError && (
+        <div className="w-full mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <div className="p-1 bg-red-100 rounded-full mt-0.5">
+            <Info className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-red-800">
+              Registration Failed
+            </h4>
+            <p className="text-xs text-red-600 mt-0.5 leading-relaxed">
+              {errors.root.serverError.message}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Next Button */}
       <button

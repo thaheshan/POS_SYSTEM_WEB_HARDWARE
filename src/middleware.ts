@@ -67,14 +67,14 @@ export function middleware(request: NextRequest) {
   // 1. Unauthenticated users
   if (!token) {
     // Allow root (/), login, register, and forgot-password without authentication
-    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password");
+    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/pending");;
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
   // 2. Authenticated users
   const payload = decodeJwtPayload(token);
-  const role = payload?.role;
+  const role = String(payload?.role ?? "").toLowerCase();
 
   if (!role) {
     const response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));
