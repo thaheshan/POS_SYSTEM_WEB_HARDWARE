@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRegistration } from '@/lib/register/registration-context';
+import { useRouter } from 'next/navigation';
 import { PricingCard } from './pricing-card';
 import { Button } from '@/components/auth/register/ui/button';
 import { Shield, RotateCcw, Headphones } from 'lucide-react';
@@ -72,15 +73,41 @@ const BILLING_OPTIONS = [
 
 export function Step3Pricing({ onComplete }: Step3PricingProps) {
   const { data, updatePricingData } = useRegistration();
+  const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'professional' | 'enterprise' | null>(
     (data.pricing?.plan as any) || null
   );
 
-  const handleSelectPlan = (planId: 'starter' | 'professional' | 'enterprise') => {
-    setSelectedPlan(planId);
-    updatePricingData({ plan: planId });
-    onComplete();
+  const handleSelectPlan = async (planId: 'starter' | 'professional' | 'enterprise') => {
+    try {
+      setSelectedPlan(planId);
+      updatePricingData({ plan: planId });
+
+      const payload = {
+        shopName: data.shop?.shopName,
+        businessRegistration: data.shop?.businessRegistration,
+        email: data.owner?.email,
+        password: data.owner?.password,
+        firstName: data.owner?.fullName?.split(' ')[0],
+        lastName: data.owner?.fullName?.split(' ').slice(1).join(' ') || data.owner?.fullName?.split(' ')[0],
+        phone: data.owner?.mobileNumber,
+        subscriptionPlan: planId,
+      };
+
+      // @ts-ignore
+      const { authApi } = await import('@/api/auth');
+      await authApi.registerShopOwner(payload);
+
+      localStorage.setItem('registrationStatus', 'pending_approval');
+      localStorage.setItem('pendingEmail', data.owner?.email || '');
+      
+      onComplete();
+      router.push('/auth/approval-waiting');
+    } catch (error: any) {
+      console.error("Registration failed:", error);
+      alert(error.message || "Registration failed. Please try again.");
+    }
   };
 
   return (

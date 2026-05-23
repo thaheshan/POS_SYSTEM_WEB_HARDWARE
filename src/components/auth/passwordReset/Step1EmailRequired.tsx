@@ -29,13 +29,19 @@ export default function Step1EmailRequired({
       return;
     }
 
-    setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-    // Simulate API call to send verification code
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+      // @ts-ignore
+      const { authApi } = await import('@/api/auth');
+      await authApi.requestPasswordReset(email);
 
-    setIsLoading(false);
-    onNext();
+      setIsLoading(false);
+      onNext();
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.message || "Failed to send reset email");
+    }
   };
 
   return (

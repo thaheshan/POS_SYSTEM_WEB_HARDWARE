@@ -5,6 +5,8 @@ import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 
 interface Step3Props {
+  email: string;
+  code: string;
   onNext: () => void;
   onBack: () => void;
 }
@@ -30,7 +32,7 @@ function strengthScore(pw: string) {
   return n;
 }
 
-export default function Step3ChangePassword({ onNext }: Step3Props) {
+export default function Step3ChangePassword({ email, code, onNext }: Step3Props) {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -71,10 +73,18 @@ export default function Step3ChangePassword({ onNext }: Step3Props) {
       return;
     }
     setErrors([]);
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setIsLoading(false);
-    onNext();
+    
+    try {
+      setIsLoading(true);
+      // @ts-ignore
+      const { authApi } = await import('@/api/auth');
+      await authApi.resetPassword({ email, verification_code: code, new_password: newPw });
+      setIsLoading(false);
+      onNext();
+    } catch (error: any) {
+      setIsLoading(false);
+      setErrors([error.message || "Failed to reset password"]);
+    }
   };
 
   return (

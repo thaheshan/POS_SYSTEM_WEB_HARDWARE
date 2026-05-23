@@ -21,16 +21,16 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 const menuItems = [
-  { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'manager'] },
-  { icon: Printer, label: 'Point of Sale', href: '/pos', roles: ['admin', 'manager', 'cashier', 'staff'] },
-  { icon: Boxes, label: 'Inventory', href: '/inventory', badge: 15, roles: ['admin', 'manager'] },
-  { icon: Users, label: 'Customers', href: '/customers', roles: ['admin', 'manager', 'cashier', 'staff'] },
-  { icon: Truck, label: 'Suppliers', href: '/suppliers', roles: ['admin', 'manager'] },
-  { icon: FileText, label: 'Sales', href: '/sales', roles: ['admin', 'manager'] },
+  { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'owner', 'manager'] },
+  { icon: Printer, label: 'Point of Sale', href: '/pos', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
+  { icon: Boxes, label: 'Inventory', href: '/inventory', badge: 15, roles: ['admin', 'owner', 'manager'] },
+  { icon: Users, label: 'Customers', href: '/customers', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
+  { icon: Truck, label: 'Suppliers', href: '/suppliers', roles: ['admin', 'owner', 'manager'] },
+  { icon: FileText, label: 'Sales', href: '/sales', roles: ['admin', 'owner', 'manager'] },
   { icon: Wrench, label: 'Labour & Services', href: '/labour-services', roles: ['staff', 'cashier'] },
-  { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin'] },
-  { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'manager'] },
-  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin'] },
+  { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin', 'owner'] },
+  { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'owner', 'manager'] },
+  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'owner'] },
 ];
 
 export default function Sidebar() {

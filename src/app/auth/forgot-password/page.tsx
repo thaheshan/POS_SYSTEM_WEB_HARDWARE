@@ -8,6 +8,8 @@ import Step3ChangePassword from "@/components/auth/passwordReset/Step3ChangePass
 import Step4PasswordResetResult from "@/components/auth/passwordReset/Step4PasswordResetResult";
 import Link from "next/link";
 
+import AuthLayout from "@/components/login/auth/auth-layout";
+
 export default function ForgotPasswordPage() {
   const [resetState, setResetState] = useState<PasswordResetState>({
     step: 1,
@@ -41,38 +43,42 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {resetState.step === 1 && (
-            <Step1EmailRequired
-              email={resetState.email}
-              onEmailChange={setEmail}
-              onNext={goToNextStep}
-            />
-          )}
+    <AuthLayout>
+      <div className="w-full">
+        {resetState.step === 1 && (
+          <Step1EmailRequired
+            email={resetState.email}
+            onEmailChange={setEmail}
+            onNext={goToNextStep}
+          />
+        )}
 
-          {resetState.step === 2 && (
-            <Step2Verification
-              email={resetState.email}
-              code={resetState.code}
-              onCodeChange={setCode}
-              onNext={goToNextStep}
-              onBack={goToPreviousStep}
-            />
-          )}
+        {resetState.step === 2 && (
+          <Step2Verification
+            email={resetState.email}
+            code={resetState.code}
+            onCodeChange={setCode}
+            onNext={goToNextStep}
+            onBack={goToPreviousStep}
+          />
+        )}
 
-          {resetState.step === 3 && (
-            <Step3ChangePassword
-              onNext={() => {
-                setStatus("success");
-                goToNextStep();
-              }}
-              onBack={goToPreviousStep}
-            />
-          )}
+        {resetState.step === 3 && (
+          <Step3ChangePassword
+            email={resetState.email}
+            code={resetState.code}
+            onNext={() => {
+              setStatus("success");
+              goToNextStep();
+            }}
+            onBack={goToPreviousStep}
+          />
+        )}
 
-          {resetState.step === 4 && (
-            <Step4PasswordResetResult status={resetState.status} />
-          )}
-        </div>
+        {resetState.step === 4 && (
+          <Step4PasswordResetResult status={resetState.status} />
+        )}
+      </div>
+    </AuthLayout>
   );
 }

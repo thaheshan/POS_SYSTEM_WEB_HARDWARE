@@ -10,7 +10,7 @@ interface Step2Props {
   onBack: () => void;
 }
 
-export default function Step2Verification({ email, onNext }: Step2Props) {
+export default function Step2Verification({ email, code, onCodeChange, onNext, onBack }: Step2Props) {
   return (
     <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
@@ -34,14 +34,31 @@ export default function Step2Verification({ email, onNext }: Step2Props) {
           <span className="font-semibold text-gray-900">Futura Hardware</span>.
         </p>
 
-        {/* Main Action Button */}
-        <div className="mx-auto max-w-md">
+        {/* Main Action Form */}
+        <div className="mx-auto max-w-md mb-6">
+          <label htmlFor="code" className="block text-sm font-semibold text-gray-900 mb-2.5 text-left">
+            Verification Code
+          </label>
+          <input
+            id="code"
+            type="text"
+            value={code}
+            onChange={(e) => onCodeChange(e.target.value)}
+            className="block w-full px-4 py-3 border border-gray-300 rounded-lg text-base text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all outline-none mb-4 text-center tracking-[0.25em] font-mono"
+            placeholder="123456"
+            maxLength={6}
+            required
+          />
           <button
-            onClick={onNext}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 mb-6"
+            onClick={() => {
+              if (code.length >= 4) {
+                onNext();
+              }
+            }}
+            disabled={!code || code.length < 4}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm flex items-center justify-center gap-2"
           >
-            <Mail className="w-5 h-5" />
-            <span>Open Email App</span>
+            <span>Verify Code</span>
           </button>
         </div>
 
