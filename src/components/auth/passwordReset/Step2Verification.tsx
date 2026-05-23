@@ -7,6 +7,7 @@ interface Step2Props {
   code: string;
   onCodeChange: (code: string) => void;
   onNext: () => void;
+  onOpenEmailApp: () => void;
   onResend: () => void;
   loading: boolean;
 }
@@ -16,6 +17,7 @@ export default function Step2Verification({
   code,
   onCodeChange,
   onNext,
+  onOpenEmailApp,
   onResend,
   loading,
 }: Step2Props) {
@@ -29,7 +31,6 @@ export default function Step2Verification({
           We've sent a verification link to:
         </p>
 
-        {/* Email Badge */}
         <div className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 rounded-lg mb-8 border border-blue-100">
           <span className="text-sm font-semibold text-blue-700">
             {email || "john@abchardware.lk"}
@@ -44,7 +45,10 @@ export default function Step2Verification({
 
         {/* Main Action Form */}
         <div className="mx-auto max-w-md mb-6">
-          <label htmlFor="code" className="block text-sm font-semibold text-gray-900 mb-2.5 text-left">
+          <label
+            htmlFor="code"
+            className="block text-sm font-semibold text-gray-900 mb-2.5 text-left"
+          >
             Verification Code
           </label>
           <input
@@ -65,7 +69,7 @@ export default function Step2Verification({
               }
             }}
             disabled={!code || code.length < 4 || loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
             <span>Verify Code</span>
@@ -84,7 +88,6 @@ export default function Step2Verification({
           </button>
         </div>
 
-        {/* Warning Box */}
         <div className="bg-amber-50 rounded-lg p-4 max-w-md mx-auto flex items-start text-left gap-3 mb-8 border border-amber-100">
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800 leading-relaxed">
@@ -93,8 +96,10 @@ export default function Step2Verification({
           </p>
         </div>
 
-        {/* Contact Support */}
-        <button className="flex items-center justify-center gap-2 mx-auto text-base font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors">
+        <button
+          onClick={onOpenEmailApp}
+          className="flex items-center justify-center gap-2 mx-auto text-base font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+        >
           <Headphones className="w-5 h-5" />
           <span>Need help? Contact support</span>
         </button>

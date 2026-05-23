@@ -40,7 +40,6 @@ export default function Step1EmailRequired({
   return (
     <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
-        {/* Key icon */}
         <div className="flex justify-center mb-6">
           <KeyRound
             strokeWidth={2.5}
@@ -86,7 +85,9 @@ export default function Step1EmailRequired({
               />
             </div>
             {displayError && (
-              <p className="mt-1.5 text-sm font-medium text-red-600">{displayError}</p>
+              <p className="mt-1.5 text-sm font-medium text-red-600">
+                {displayError}
+              </p>
             )}
           </div>
 

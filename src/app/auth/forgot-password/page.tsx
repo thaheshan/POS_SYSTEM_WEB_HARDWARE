@@ -31,6 +31,8 @@ const decodeResetTokenEmail = (token: string): string => {
       "=",
     );
     const parsed = JSON.parse(atob(paddedPayload)) as { email?: unknown };
+    // The token encodes the original email at issuance time; decode it here
+    // so the UI can pre-fill the email field when the reset link is used.
     return typeof parsed.email === "string"
       ? parsed.email.trim().toLowerCase()
       : "";
@@ -59,16 +61,21 @@ export default function ForgotPasswordPage() {
 
   useEffect(() => {
     dispatch(clearForgotPasswordFlow());
+
     return () => {
       dispatch(clearForgotPasswordFlow());
     };
   }, [dispatch]);
 
   useEffect(() => {
-    if (step !== 4) return;
+    if (step !== 4) {
+      return;
+    }
+
     const timeoutId = window.setTimeout(() => {
       router.replace("/auth/login?reset=success");
     }, 2500);
+
     return () => window.clearTimeout(timeoutId);
   }, [router, step]);
 
@@ -120,6 +127,7 @@ export default function ForgotPasswordPage() {
             code={code}
             onCodeChange={setCode}
             onNext={() => setStep(3)}
+            onOpenEmailApp={handleOpenEmailApp}
             onResend={handleResend}
             loading={forgotPassword.loading}
           />
