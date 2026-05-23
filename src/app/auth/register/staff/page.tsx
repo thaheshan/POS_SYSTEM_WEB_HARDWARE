@@ -30,10 +30,28 @@ export default function SignupPage() {
   const handleNext = () => setCurrentStep((prev) => prev + 1);
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
-  const handleSubmit = () => {
-    // TODO: call your API here
-    console.log("Final submission:", data);
-    handleNext(); // move to step 3
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        shopId: data.shopId,
+        firstName: data.fullName.split(' ')[0],
+        lastName: data.fullName.split(' ').slice(1).join(' ') || data.fullName.split(' ')[0],
+        email: data.email,
+        phone: data.phoneNumber,
+        role: data.role || 'CASHIER',
+        password: data.password,
+      };
+
+      // @ts-ignore
+      const { authApi } = await import('@/api/auth');
+      await authApi.registerStaff(payload);
+      
+      // Redirect to approval waiting
+      window.location.href = '/auth/approval-waiting';
+    } catch (error: any) {
+      console.error("Staff registration failed:", error);
+      alert(error.message || "Registration failed. Please try again.");
+    }
   };
 
   return (

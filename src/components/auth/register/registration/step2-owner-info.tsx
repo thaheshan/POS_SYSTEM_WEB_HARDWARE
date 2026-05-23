@@ -76,10 +76,13 @@ export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
     setPasswordRequirements(requirements);
   }, [password]);
 
-  const onSubmit = (formData: OwnerDataForm) => {
-    updateOwnerData(formData);
-    onNext();
-    router.push('/auth/register/subscription'); 
+  const onSubmit = async (formData: OwnerDataForm) => {
+    try {
+      updateOwnerData(formData);
+      onNext();
+    } catch (error: any) {
+      console.error("Validation failed:", error);
+    }
   };
 
   return (

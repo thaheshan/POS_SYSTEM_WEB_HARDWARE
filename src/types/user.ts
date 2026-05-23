@@ -2,8 +2,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "cashier" | "manager" | "staff";
+  role: "admin" | "cashier" | "manager" | "staff" | "owner";
   phone?: string;
+  paymentStatus?: string;
+  subscriptionPlan?: string;
   createdAt: string;
 }
 

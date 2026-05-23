@@ -8,6 +8,21 @@ const LOGIN_PATH = "/auth/login";
 // Managers can access management tools but NOT core settings or staff management.
 // Admins have full access.
 const ROLE_ACCESS_MAP: Record<string, string[]> = {
+  super_admin: [
+    "/admin"
+  ],
+  owner: [
+    "/dashboard", 
+    "/pos", 
+    "/inventory", 
+    "/customers", 
+    "/suppliers", 
+    "/sales", 
+    "/reports", 
+    "/staff-management", 
+    "/settings",
+    "/payment"
+  ],
   admin: [
     "/dashboard", 
     "/pos", 
@@ -17,7 +32,8 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
     "/sales", 
     "/reports", 
     "/staff-management", 
-    "/settings"
+    "/settings",
+    "/payment"
   ],
   manager: [
     "/dashboard", 
@@ -34,6 +50,8 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
 
 // Default entry point for each role after login
 const ROLE_HOME_MAP: Record<string, string> = {
+  super_admin: "/admin/dashboard",
+  owner: "/dashboard",
   admin: "/dashboard",
   manager: "/dashboard",
   cashier: "/dashboard",
@@ -66,15 +84,15 @@ export function middleware(request: NextRequest) {
 
   // 1. Unauthenticated users
   if (!token) {
-    // Allow root (/), login, register, and forgot-password without authentication
-    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password");
+    // Allow root (/), login, register, forgot-password, approval-waiting, request-successful, request-rejected without authentication
+    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/approval-waiting") || pathname.startsWith("/auth/request-successful") || pathname.startsWith("/auth/request-rejected") || pathname.startsWith("/payment");
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
   // 2. Authenticated users
   const payload = decodeJwtPayload(token);
-  const role = payload?.role;
+  const role = payload?.role?.toLowerCase();
 
   if (!role) {
     const response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));

@@ -41,26 +41,35 @@ const decodeCookieToken = (rawValue: string): string => {
 
 const normalizeAuthUser = (value: unknown): AuthUser | null => {
   if (!value || typeof value !== "object") return null;
-  const candidate = value as Partial<AuthUser>;
 
-  if (!candidate.id || !candidate.email || !candidate.name || !candidate.role) {
+  const candidate = value as any;
+  const id = candidate.id || candidate.user_id;
+  const name =
+    candidate.name ||
+    (candidate.first_name
+      ? `${candidate.first_name} ${candidate.last_name || ""}`.trim()
+      : null);
+
+  if (!id || !candidate.email || !name || !candidate.role) {
     return null;
   }
 
   const role = candidate.role.toLowerCase();
-  if (!["admin", "manager", "cashier", "staff"].includes(role)) {
+  if (!["admin", "manager", "cashier", "staff", "owner"].includes(role)) {
     return null;
   }
 
   return {
-    id: candidate.id as string,
+    id: id as string,
     email: candidate.email as string,
-    name: candidate.name as string,
+    name: name as string,
     role: role as AuthUser["role"],
     createdAt:
       typeof candidate.createdAt === "string"
         ? candidate.createdAt
         : new Date().toISOString(),
+    paymentStatus: candidate.paymentStatus,
+    subscriptionPlan: candidate.subscriptionPlan,
   };
 };
 
@@ -129,20 +138,24 @@ const initialUser = getStoredUser();
 
 const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
   if (!payload || typeof payload !== "object") return null;
-  const data = payload as {
-    token?: unknown;
-    accessToken?: unknown;
-    jwt?: unknown;
-    user?: unknown;
-  };
+
+  // Handle backend wrapper { data: { access_token, user } }
+  let data: any = payload;
+  if ("data" in data && data.data) {
+    data = data.data;
+  }
+
   const rawToken =
     typeof data.token === "string"
       ? data.token
       : typeof data.accessToken === "string"
         ? data.accessToken
-        : typeof data.jwt === "string"
-          ? data.jwt
-          : null;
+        : typeof data.access_token === "string"
+          ? data.access_token
+          : typeof data.jwt === "string"
+            ? data.jwt
+            : null;
+
   if (!rawToken) return null;
   const token = rawToken.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
@@ -176,6 +189,18 @@ const MOCK_CREDENTIALS =
             email: "admin@abchardware.lk",
             name: "Shop Owner",
             role: "admin",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+        {
+          email: "owner@abchardware.lk",
+          password: "Owner@123",
+          user: {
+            id: "mock-owner-1",
+            email: "owner@abchardware.lk",
+            name: "Shop Owner",
+            role: "owner",
+            paymentStatus: "PENDING",
             createdAt: "2026-01-01T00:00:00.000Z",
           },
         },
@@ -214,7 +239,6 @@ const getMockLoginResponse = (
 
   // NOTE: mock credentials are deliberately only available in development
   // to avoid accidental use of factory accounts in production builds.
-
   const entry = MOCK_CREDENTIALS.find(
     (c) =>
       c.email.toLowerCase() === email.toLowerCase() && c.password === password,
@@ -222,7 +246,7 @@ const getMockLoginResponse = (
   if (!entry) return null;
   return {
     token: createMockJwt(entry.user.role as AuthUser["role"]),
-    user: entry.user,
+    user: entry.user as any,
   };
 };
 
@@ -270,7 +294,7 @@ export const loginThunk = createAsyncThunk<
   );
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     console.log(
       "[loginThunk] API Base URL:",
       baseUrl || "Not configured - using mock",
@@ -334,12 +358,58 @@ export const loginThunk = createAsyncThunk<
       return rejectWithValue(message);
     }
 
-    const rawData = (await response.json()) as unknown;
-    const data = normalizeLoginResponse(rawData);
+    const rawData = (await response.json()) as any;
+    console.log(
+      "[loginThunk] Raw response from backend:",
+      JSON.stringify(rawData).substring(0, 200),
+    );
 
-    if (!data) {
+    // Directly handle the known backend shape which might be double-wrapped by interceptors:
+    // { success: true, data: { statusCode: 200, data: { access_token, user } } }
+    let actualData = rawData;
+    if (
+      actualData?.data &&
+      typeof actualData.data === "object" &&
+      !actualData.access_token
+    ) {
+      actualData = actualData.data;
+    }
+    if (
+      actualData?.data &&
+      typeof actualData.data === "object" &&
+      !actualData.access_token
+    ) {
+      actualData = actualData.data;
+    }
+
+    const token: string | null =
+      actualData?.access_token ??
+      actualData?.token ??
+      actualData?.accessToken ??
+      null;
+    const userPayload = actualData?.user ?? null;
+
+    console.log(
+      "[loginThunk] Extracted token exists:",
+      !!token,
+      "| user exists:",
+      !!userPayload,
+    );
+
+    if (!token) {
+      console.error(
+        "[loginThunk] Could not extract token from response:",
+        rawData,
+      );
       return rejectWithValue("Invalid login response from server");
     }
+
+    const normalizedUser = normalizeAuthUser(userPayload);
+    console.log("[loginThunk] Normalized user:", normalizedUser);
+    const data: LoginResponse = {
+      token: token.replace(/^Bearer\s+/i, "").trim(),
+      user: normalizedUser,
+    };
 
     console.log(
       "[loginThunk] Backend login successful. Token length:",

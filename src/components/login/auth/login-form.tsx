@@ -24,6 +24,7 @@ export default function LoginForm() {
 
   const dashboardMap: Record<string, string> = {
     admin: "/dashboard",
+    owner: "/dashboard",
     manager: "/dashboard",
     cashier: "/dashboard",
     staff: "/dashboard",
@@ -46,12 +47,13 @@ export default function LoginForm() {
         throw new Error("Login succeeded but user profile is missing.");
       }
 
-      // Redirect each role to its dedicated dashboard/area.
-      const dashboardPath = dashboardMap[result.user.role] || "/dashboard";
+      let dashboardPath = dashboardMap[result.user.role?.toLowerCase()] || "/dashboard";
+
       console.log("[LoginForm] Redirecting to:", dashboardPath);
 
       // Force a full navigation so middleware always sees the latest cookie.
       if (typeof window !== "undefined") {
+        localStorage.removeItem('registrationStatus');
         window.location.assign(dashboardPath);
         return;
       }
@@ -63,7 +65,18 @@ export default function LoginForm() {
       const errorMessage =
         err?.message ||
         (typeof err === "string" ? err : "Login failed. Please try again.");
-      setError(errorMessage);
+
+      if (typeof window !== "undefined") {
+        localStorage.removeItem('registrationStatus');
+      }
+
+      if (errorMessage.includes("APPROVAL_WAITING")) {
+        router.push("/auth/approval-waiting");
+      } else if (errorMessage.toLowerCase().includes("rejected by administration")) {
+        router.push("/auth/request-rejected");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       // Always release loading state so redirect bounces don't leave UI spinning.
       setIsLoading(false);

@@ -18,10 +18,18 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('pos_token');
-    if (token) {
+    // Check both localStorage and cookies for the token to prevent false redirects
+    const localToken = localStorage.getItem('pos_token');
+    const hasCookieToken = document.cookie.includes('pos_token=');
+    
+    if (localToken && hasCookieToken) {
       router.push('/dashboard');
       return;
+    }
+
+    // Clean up invalid local storage if cookie is missing
+    if (localToken && !hasCookieToken) {
+      localStorage.removeItem('pos_token');
     }
 
     // Show splash for 2.5 seconds then reveal marketing page

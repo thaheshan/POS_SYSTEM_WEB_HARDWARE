@@ -29,11 +29,11 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
   const isStaff = user?.role === "staff" || user?.role === "cashier";
 
   return (
-    <ProtectedRoute allowedRoles={["admin", "manager", "staff", "cashier"]}>
+    <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
       <MainLayout>
         <div className="max-w-[1600px] mx-auto space-y-8">
           {/* Header Section */}
