@@ -1,18 +1,26 @@
 "use client";
 
-import { Mail, AlertTriangle, Headphones } from "lucide-react";
+import { Mail, AlertTriangle, Headphones, Loader2 } from "lucide-react";
 
 interface Step2Props {
   email: string;
   code: string;
   onCodeChange: (code: string) => void;
   onNext: () => void;
-  onBack: () => void;
+  onResend: () => void;
+  loading: boolean;
 }
 
-export default function Step2Verification({ email, code, onCodeChange, onNext, onBack }: Step2Props) {
+export default function Step2Verification({
+  email,
+  code,
+  onCodeChange,
+  onNext,
+  onResend,
+  loading,
+}: Step2Props) {
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+    <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
           Check Your Email
@@ -29,7 +37,7 @@ export default function Step2Verification({ email, code, onCodeChange, onNext, o
         </div>
 
         <p className="text-base text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
-          Please click the verification link in the email to activate your
+          Please click the verification link in the email or enter the code here to activate your
           account and start using{" "}
           <span className="font-semibold text-gray-900">Futura Hardware</span>.
         </p>
@@ -44,6 +52,7 @@ export default function Step2Verification({ email, code, onCodeChange, onNext, o
             type="text"
             value={code}
             onChange={(e) => onCodeChange(e.target.value)}
+            disabled={loading}
             className="block w-full px-4 py-3 border border-gray-300 rounded-lg text-base text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all outline-none mb-4 text-center tracking-[0.25em] font-mono"
             placeholder="123456"
             maxLength={6}
@@ -55,17 +64,22 @@ export default function Step2Verification({ email, code, onCodeChange, onNext, o
                 onNext();
               }
             }}
-            disabled={!code || code.length < 4}
+            disabled={!code || code.length < 4 || loading}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm flex items-center justify-center gap-2"
           >
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
             <span>Verify Code</span>
           </button>
         </div>
 
         {/* Resend Link */}
-        <div className="text-base text-gray-600 mb-8">
+        <div className="text-base text-gray-600 mb-8 mt-6">
           Didn't receive the email?{" "}
-          <button className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors">
+          <button
+            onClick={onResend}
+            disabled={loading}
+            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors disabled:opacity-50"
+          >
             Resend
           </button>
         </div>

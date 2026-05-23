@@ -41,8 +41,8 @@ const decodeCookieToken = (rawValue: string): string => {
 
 const normalizeAuthUser = (value: unknown): AuthUser | null => {
   if (!value || typeof value !== "object") return null;
-  const candidate = value as any;
   
+  const candidate = value as any;
   const id = candidate.id || candidate.user_id;
   const name = candidate.name || (candidate.first_name ? `${candidate.first_name} ${candidate.last_name || ''}`.trim() : null);
 
@@ -76,7 +76,9 @@ const getStoredToken = (): string | null => {
     .find((entry) => entry.startsWith(`${TOKEN_KEY}=`));
 
   if (!cookieMatch) return null;
-  const cookieToken = decodeCookieToken(cookieMatch.split("=").slice(1).join("=")).trim();
+  const cookieToken = decodeCookieToken(
+    cookieMatch.split("=").slice(1).join("="),
+  ).trim();
   
   if (cookieToken) localStorage.setItem(TOKEN_KEY, cookieToken);
   return cookieToken || null;
@@ -149,26 +151,49 @@ const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
 
 const toBase64Url = (value: string): string => {
   if (typeof btoa !== "function") return "";
-  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 };
 
 const createMockJwt = (role: AuthUser["role"]): string => {
   const header = toBase64Url(JSON.stringify({ alg: "none", typ: "JWT" }));
   const payload = toBase64Url(JSON.stringify({ role }));
-  return header && payload ? `${header}.${payload}.mock-signature` : `mock-token-${role}`;
+  return header && payload
+    ? `${header}.${payload}.mock-signature`
+    : `mock-token-${role}`;
 };
 
-const MOCK_CREDENTIALS = [
-  { email: "admin@abchardware.lk", password: "Admin@123", user: { id: "mock-admin-1", email: "admin@abchardware.lk", name: "Shop Owner", role: "admin", createdAt: "2026-01-01T00:00:00.000Z" } },
-  { email: "owner@abchardware.lk", password: "Owner@123", user: { id: "mock-owner-1", email: "owner@abchardware.lk", name: "Shop Owner", role: "owner", paymentStatus: "PENDING", createdAt: "2026-01-01T00:00:00.000Z" } },
-  { email: "manager@test.com", password: "Manager@123", user: { id: "mock-manager-1", email: "manager@test.com", name: "Test Manager", role: "manager", createdAt: "2026-01-01T00:00:00.000Z" } },
-  { email: "staff@test.com", password: "Staff@123", user: { id: "mock-staff-1", email: "staff@test.com", name: "Test Staff", role: "staff", createdAt: "2026-01-01T00:00:00.000Z" } },
-];
+const MOCK_CREDENTIALS =
+  process.env.NODE_ENV === "development"
+    ? ([
+        { email: "admin@abchardware.lk", password: "Admin@123", user: { id: "mock-admin-1", email: "admin@abchardware.lk", name: "Shop Owner", role: "admin", createdAt: "2026-01-01T00:00:00.000Z" } },
+        { email: "owner@abchardware.lk", password: "Owner@123", user: { id: "mock-owner-1", email: "owner@abchardware.lk", name: "Shop Owner", role: "owner", paymentStatus: "PENDING", createdAt: "2026-01-01T00:00:00.000Z" } },
+        { email: "manager@test.com", password: "Manager@123", user: { id: "mock-manager-1", email: "manager@test.com", name: "Test Manager", role: "manager", createdAt: "2026-01-01T00:00:00.000Z" } },
+        { email: "staff@test.com", password: "Staff@123", user: { id: "mock-staff-1", email: "staff@test.com", name: "Test Staff", role: "staff", createdAt: "2026-01-01T00:00:00.000Z" } },
+      ] as const)
+    : ([] as const);
 
-const getMockLoginResponse = (email: string, password: string): LoginResponse | null => {
-  const entry = MOCK_CREDENTIALS.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+const getMockLoginResponse = (
+  email: string,
+  password: string,
+): LoginResponse | null => {
+  if (process.env.NODE_ENV !== "development") {
+    return null;
+  }
+
+  // NOTE: mock credentials are deliberately only available in development
+  // to avoid accidental use of factory accounts in production builds.
+  const entry = MOCK_CREDENTIALS.find(
+    (c) =>
+      c.email.toLowerCase() === email.toLowerCase() && c.password === password,
+  );
   if (!entry) return null;
-  return { token: createMockJwt(entry.user.role), user: entry.user };
+  return {
+    token: createMockJwt(entry.user.role as AuthUser["role"]),
+    user: entry.user as any,
+  };
 };
 
 const isPrivateTab = (): boolean => {
@@ -177,7 +202,9 @@ const isPrivateTab = (): boolean => {
     localStorage.setItem(test, test);
     localStorage.removeItem(test);
     return false;
-  } catch { return true; }
+  } catch {
+    return true;
+  }
 };
 
 if (typeof window !== "undefined" && isPrivateTab()) {

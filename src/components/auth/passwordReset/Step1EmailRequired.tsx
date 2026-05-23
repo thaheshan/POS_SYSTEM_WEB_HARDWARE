@@ -7,45 +7,38 @@ import Link from "next/link";
 interface Step1Props {
   email: string;
   onEmailChange: (email: string) => void;
-  onNext: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+  error: string;
 }
 
 export default function Step1EmailRequired({
   email,
   onEmailChange,
-  onNext,
+  onSubmit,
+  loading,
+  error: serverError,
 }: Step1Props) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setLocalError("");
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
-      setError("Please enter a valid email address");
+      setLocalError("Please enter a valid email address");
       return;
     }
 
-    try {
-      setIsLoading(true);
-
-      // @ts-ignore
-      const { authApi } = await import('@/api/auth');
-      await authApi.requestPasswordReset(email);
-
-      setIsLoading(false);
-      onNext();
-    } catch (err: any) {
-      setIsLoading(false);
-      setError(err.message || "Failed to send reset email");
-    }
+    onSubmit();
   };
 
+  const displayError = localError || serverError;
+
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+    <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
         {/* Key icon */}
         <div className="flex justify-center mb-6">
@@ -82,25 +75,28 @@ export default function Step1EmailRequired({
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
+                onChange={(e) => {
+                  onEmailChange(e.target.value);
+                  setLocalError("");
+                }}
                 className="block w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg text-base text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all outline-none"
                 placeholder="you@example.com"
                 required
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
-            {error && (
-              <p className="mt-1.5 text-sm font-medium text-red-600">{error}</p>
+            {displayError && (
+              <p className="mt-1.5 text-sm font-medium text-red-600">{displayError}</p>
             )}
           </div>
 
           <div className="mx-auto max-w-sm pt-2">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Sending link...</span>
