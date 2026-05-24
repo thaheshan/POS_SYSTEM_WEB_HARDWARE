@@ -29,24 +29,25 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [showExportMenu, setShowExportMenu]     = useState(false);
   const [showAddExpense, setShowAddExpense]     = useState(false);
-  const [entries, setEntries]                   = useState(MOCK_ENTRIES);
   const [search, setSearch]                     = useState('');
 
   if (!isOpen) return null;
 
-  const filtered = entries.filter(e =>
-    e.labour.toLowerCase().includes(search.toLowerCase()) ||
+  const entries = data.catC?.allTxns || [];
+
+  const filtered = entries.filter((e: any) =>
     e.id.toLowerCase().includes(search.toLowerCase()) ||
-    e.expenseType.toLowerCase().includes(search.toLowerCase())
+    e.type.toLowerCase().includes(search.toLowerCase()) ||
+    e.desc.toLowerCase().includes(search.toLowerCase())
   );
 
-  const subtotal = filtered.reduce((s, e) => s + e.total, 0);
+  const subtotal = data.catC?.core || 0;
 
   const handleCSV = () => {
     const rows = [
-      ['Labour', 'ID', 'Expense Type', 'Total (Rs)'],
-      ...filtered.map(e => [e.labour, e.id, e.expenseType, e.total]),
-      ['', '', 'Subtotal', subtotal],
+      ['Date', 'ID', 'Type', 'Description', 'Amount (Rs)'],
+      ...filtered.map((e: any) => [e.date, e.id, e.type, e.desc, e.amount]),
+      ['', '', '', 'Subtotal', subtotal],
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob([rows], { type: 'text/csv' });
     const a = document.createElement('a');
@@ -59,6 +60,10 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
   const handlePDF = () => {
     setShowExportMenu(false);
     onPrintPDF(timeFilter);
+  };
+
+  const navigateToDetailedView = () => {
+    router.push('/sales/category-c');
   };
 
   return (
@@ -82,9 +87,9 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
           {/* Stats row */}
           <div className="mt-5 grid grid-cols-3 gap-3">
             {[
-              { label: 'Labour',       value: `Rs. ${data.catC.labour.toLocaleString()}`  },
-              { label: 'Installation', value: `Rs. ${data.catC.install.toLocaleString()}` },
-              { label: 'Misc',         value: `Rs. ${data.catC.misc.toLocaleString()}`    },
+              { label: 'Labour',       value: `Rs. ${data.catC?.labour.toLocaleString()}`  },
+              { label: 'Installation', value: `Rs. ${data.catC?.install.toLocaleString()}` },
+              { label: 'Misc',         value: `Rs. ${data.catC?.misc.toLocaleString()}`    },
             ].map(s => (
               <div key={s.label} className="bg-white/15 rounded-2xl p-3 text-center">
                 <p className="text-[9px] font-black text-amber-200 uppercase tracking-widest mb-1">{s.label}</p>
@@ -160,7 +165,7 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
 
           {/* Search */}
           <div className="relative mb-5">
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search labours..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search entries..."
               className="w-full border border-gray-200 rounded-xl px-4 py-3 pl-10 text-[13px] font-bold text-gray-700 outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-300 transition-all" />
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
           </div>
@@ -170,39 +175,31 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Labour</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Expense Type</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
-                  <th className="py-3 px-3"></th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Entry</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((e, i) => (
+                {filtered.map((e: any, i: number) => (
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-4 px-4">
-                      <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center mb-1">
-                        <span className="text-[12px] font-black text-amber-700">{e.labour}</span>
-                      </div>
-                      <p className="text-[10px] font-bold text-gray-400">{e.id}</p>
+                      <p className="text-[13px] font-bold text-gray-900">{e.id}</p>
+                      <p className="text-[10px] font-bold text-gray-400">{e.date}</p>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-3 py-1.5 rounded-full text-[11px] font-black ${EXPENSE_COLORS[e.expenseType] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {e.expenseType}
+                      <span className={`px-3 py-1.5 rounded-full text-[11px] font-black bg-amber-50 text-amber-700`}>
+                        {e.type}
                       </span>
+                      <p className="text-[10px] font-bold text-gray-500 mt-1">{e.desc}</p>
                     </td>
                     <td className="py-4 px-4 text-right text-[13px] font-black text-amber-600 font-mono">
-                      Rs. {e.total.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-3">
-                      <button onClick={() => setEntries(entries.filter((_, j) => j !== i))}
-                        className="w-7 h-7 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center transition-all">
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      </button>
+                      Rs. {e.amount}
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={4} className="py-8 text-center text-[13px] font-bold text-gray-300">No entries found</td></tr>
+                  <tr><td colSpan={3} className="py-8 text-center text-[13px] font-bold text-gray-300">No entries found</td></tr>
                 )}
               </tbody>
             </table>
@@ -212,11 +209,11 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
           <div className="space-y-2 border-t border-gray-100 pt-5">
             <div className="flex justify-between text-[13px] font-bold text-gray-500">
               <span>Subtotal</span>
-              <span className="font-mono">Rs. {subtotal.toLocaleString()}.00</span>
+              <span className="font-mono">Rs. {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-[17px] font-black text-gray-900 pt-2 border-t border-gray-100">
               <span>Total Amount</span>
-              <span className="text-amber-600 font-mono">Rs. {subtotal.toLocaleString()}.00</span>
+              <span className="text-amber-600 font-mono">Rs. {subtotal.toLocaleString()}</span>
             </div>
           </div>
         </div>

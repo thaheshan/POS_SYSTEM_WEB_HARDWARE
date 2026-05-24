@@ -43,7 +43,8 @@ export function useDashboardStats() {
     api
       .get('/dashboard/stats')
       .then((res) => {
-        const d = res.data;
+        // Unpack nested data object if needed
+        const d = res.data?.data || res.data;
         setStats({
           todaySales: d.todaySales ?? 0,
           todayTransactions: d.todayTransactions ?? 0,
@@ -113,7 +114,15 @@ export function useWeeklyChart() {
     api
       .get('/dashboard/weekly-chart')
       .then((res) => {
-        const items = Array.isArray(res.data) ? res.data : [];
+        const raw = res.data;
+        const items: any[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.items)
+          ? raw.items
+          : [];
+
         setChartData(
           items.map((day: any) => ({
             name: day.name,
@@ -156,7 +165,15 @@ export function useTopProducts() {
     api
       .get('/dashboard/top-products')
       .then((res) => {
-        const items = Array.isArray(res.data) ? res.data : [];
+        const raw = res.data;
+        const items: any[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.items)
+          ? raw.items
+          : [];
+
         setProducts(
           items.map((p: any) => ({
             id: p.id,

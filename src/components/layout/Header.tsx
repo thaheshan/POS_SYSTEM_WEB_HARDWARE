@@ -1,8 +1,9 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, Settings, LogOut, Copy } from 'lucide-react';
+import { Settings, LogOut, Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -74,12 +75,7 @@ export default function Header() {
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            <button className="relative w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10 group">
-              <Bell className="w-[19px] h-[19px] text-white group-hover:rotate-12 transition-transform" strokeWidth={2.5} />
-              <div className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-[10px] font-black text-white bg-red-500 rounded-full border-2 border-[#2563eb] shadow-sm">
-                3
-              </div>
-            </button>
+            <NotificationDropdown />
             <button className="w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10">
               <Settings className="w-[19px] h-[19px] text-white" strokeWidth={2.5} />
             </button>

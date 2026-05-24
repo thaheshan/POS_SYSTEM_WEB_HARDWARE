@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect } from 'react';
+import api from '@/api/axiosInstance';
 
 const menuItems = [
   { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'owner', 'manager'] },
   { icon: Printer, label: 'Point of Sale', href: '/pos', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
-  { icon: Boxes, label: 'Inventory', href: '/inventory', badge: 15, roles: ['admin', 'owner', 'manager'] },
+  { icon: Boxes, label: 'Inventory', href: '/inventory', roles: ['admin', 'owner', 'manager'] },
   { icon: Users, label: 'Customers', href: '/customers', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
   { icon: Truck, label: 'Suppliers', href: '/suppliers', roles: ['admin', 'owner', 'manager'] },
   { icon: FileText, label: 'Sales', href: '/sales', roles: ['admin', 'owner', 'manager'] },
@@ -36,6 +38,23 @@ const menuItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
+  const [lowStockCount, setLowStockCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      api.get('/stock')
+        .then(res => {
+          const items = res.data?.data || res.data || [];
+          const count = items.filter((item: any) => {
+             const qty = item.available_quantity ?? item.quantity ?? 0;
+             const minStock = item.minimum_stock_level ?? 0;
+             return qty <= minStock;
+          }).length;
+          setLowStockCount(count > 0 ? count : null);
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
   
   const visibleMenuItems = menuItems.filter(item => 
     user?.role && item.roles.includes(user.role as any)
@@ -93,9 +112,9 @@ export default function Sidebar() {
                   isActive ? "font-semibold text-white" : "font-medium text-white/90"
                 )}>{item.label}</span>
               </div>
-              {item.badge && (
+              {(item.label === 'Inventory' ? lowStockCount : (item as any).badge) && (
                 <span className="text-[12px] font-semibold text-white pr-1">
-                  {item.badge}
+                  {item.label === 'Inventory' ? lowStockCount : (item as any).badge}
                 </span>
               )}
             </Link>

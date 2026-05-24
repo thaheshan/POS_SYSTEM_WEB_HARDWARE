@@ -25,24 +25,25 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [filter, setFilter]                 = useState<'all' | 'nontax'>('all');
-  const [invoices, setInvoices]             = useState(MOCK_INVOICES);
   const [search, setSearch]                 = useState('');
 
   if (!isOpen) return null;
 
-  const filtered = invoices.filter(inv => {
-    const matchFilter = filter === 'all' || inv.taxStatus === 'Non-Taxable';
-    const matchSearch  = inv.name.toLowerCase().includes(search.toLowerCase());
+  const invoices = data.catB?.allTxns || [];
+
+  const filtered = invoices.filter((inv: any) => {
+    const matchFilter = filter === 'all' || inv.type !== 'Overflow';
+    const matchSearch  = inv.id.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
 
-  const subtotal = filtered.reduce((s, i) => s + i.total, 0);
+  const subtotal = data.catB?.core || 0;
 
   const handleCSV = () => {
     const rows = [
-      ['Invoice', 'SKU', 'Tax Status', 'Total (Rs)'],
-      ...filtered.map(i => [i.name, i.id, i.taxStatus, i.total]),
-      ['', '', 'Subtotal', subtotal],
+      ['Invoice', 'Time', 'Type', 'Amount (Rs)', 'Mode'],
+      ...filtered.map((i: any) => [i.id, i.time, i.type, i.rawAmount, i.mode]),
+      ['', '', '', 'Subtotal', subtotal],
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob([rows], { type: 'text/csv' });
     const a = document.createElement('a');
@@ -55,6 +56,10 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
   const handlePDF = () => {
     setShowExportMenu(false);
     onPrintPDF(timeFilter);
+  };
+
+  const navigateToDetailedView = () => {
+    router.push('/sales/category-b');
   };
 
   return (
@@ -75,9 +80,15 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
           <h2 className="text-[22px] font-black tracking-tight mb-1">View Detailed Report (Category B)</h2>
           <p className="text-[13px] font-bold text-emerald-200">Non-taxable items &amp; overflow above Rs. 200,000</p>
 
-          <div className="mt-5 bg-white/15 rounded-2xl p-4">
-            <p className="text-[11px] font-black text-emerald-200 uppercase tracking-widest mb-1">Overflow Amount Today</p>
-            <p className="text-[20px] font-black text-white">Rs. {data.catB.overflow.toLocaleString()}</p>
+          <div className="mt-5 bg-white/15 rounded-2xl p-4 flex justify-between">
+            <div>
+              <p className="text-[11px] font-black text-emerald-200 uppercase tracking-widest mb-1">Total Category B</p>
+              <p className="text-[20px] font-black text-white">Rs. {data.catB?.core.toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-black text-emerald-200 uppercase tracking-widest mb-1">Overflow Only</p>
+              <p className="text-[14px] font-black text-emerald-300">Rs. {data.catB?.overflow.toLocaleString()}</p>
+            </div>
           </div>
         </div>
 
@@ -157,7 +168,7 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
 
           {/* Search */}
           <div className="relative mb-5">
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search invoices..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search invoices by ID..."
               className="w-full border border-gray-200 rounded-xl px-4 py-3 pl-10 text-[13px] font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-300 transition-all" />
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
@@ -168,34 +179,27 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Status</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
-                  <th className="py-3 px-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((inv, i) => (
+                {filtered.map((inv: any, i: number) => (
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-4 px-4">
-                      <p className="text-[13px] font-bold text-gray-900">{inv.name}</p>
-                      <p className="text-[10px] font-bold text-gray-400">{inv.id}</p>
+                      <p className="text-[13px] font-bold text-gray-900">{inv.id}</p>
+                      <p className="text-[10px] font-bold text-gray-400">{inv.time}</p>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${inv.taxStatus === 'Non-Taxable' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {inv.taxStatus}
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${inv.type !== 'Overflow' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {inv.type}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">Rs. {inv.total.toLocaleString()}</td>
-                    <td className="py-4 px-3">
-                      <button onClick={() => setInvoices(invoices.filter((_, j) => j !== i))}
-                        className="w-7 h-7 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center transition-all">
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      </button>
-                    </td>
+                    <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">Rs. {inv.rawAmount?.toLocaleString() || inv.amount}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={4} className="py-8 text-center text-[13px] font-bold text-gray-300">No records found</td></tr>
+                  <tr><td colSpan={3} className="py-8 text-center text-[13px] font-bold text-gray-300">No records found</td></tr>
                 )}
               </tbody>
             </table>
@@ -204,17 +208,18 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
           {/* Totals */}
           <div className="space-y-3 border-t border-gray-100 pt-5">
             <div className="flex justify-between text-[13px] font-bold text-gray-500">
-              <span>Subtotal</span><span className="font-mono">Rs. {subtotal.toLocaleString()}.00</span>
+              <span>Subtotal</span><span className="font-mono">Rs. {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[13px] font-bold text-gray-500">Tax Status</span>
-              <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[11px] font-black rounded-full uppercase tracking-wider">Non-Taxable</span>
+              <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[11px] font-black rounded-full uppercase tracking-wider">Non-Taxable & Overflow</span>
             </div>
             <div className="flex justify-between text-[17px] font-black text-gray-900 pt-2 border-t border-gray-100">
               <span>Total Amount</span>
-              <span className="text-emerald-600 font-mono">Rs. {subtotal.toLocaleString()}.00</span>
+              <span className="text-emerald-600 font-mono">Rs. {subtotal.toLocaleString()}</span>
             </div>
           </div>
+
         </div>
 
         {/* FOOTER */}
