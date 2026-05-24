@@ -106,11 +106,11 @@ export default function DashboardPage() {
 
             <StatsCard
               title={isStaff ? "Active Orders" : "Active Customers"}
-              value={isStaff ? "3 Orders" : "1,248"}
+              value={isStaff ? "3 Orders" : loading ? "..." : (stats?.totalCustomers || 0).toLocaleString()}
               icon={isStaff ? ShoppingCart : Users}
               iconBg="bg-blue-50"
               iconColor="text-blue-600"
-              subtext={isStaff ? "Pending processing" : "23 new this week"}
+              subtext={isStaff ? "Pending processing" : "Registered customers"}
               viewAllHref={isStaff ? "/pos" : "/customers"}
             />
 

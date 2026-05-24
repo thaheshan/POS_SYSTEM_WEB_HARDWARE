@@ -24,18 +24,19 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
   const [timeFilter, setTimeFilter]             = useState('Last 24 Hours');
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [showExportMenu, setShowExportMenu]     = useState(false);
-  const [orders, setOrders]                     = useState(MOCK_ORDERS);
 
   if (!isOpen) return null;
 
-  const subtotal = orders.reduce((s, o) => s + o.total, 0);
-  const vat      = Math.round(subtotal * 0.18 * 100) / 100;
-  const total    = subtotal + vat;
+  const orders = data.catA?.allTxns || [];
+
+  const subtotal = data.catA?.core || 0;
+  const vat = data.catA?.vat || 0;
+  const total = subtotal + vat;
 
   const handleCSV = () => {
     const rows = [
-      ['Product', 'ID', 'Unit Price (Rs)', 'Tax (Rs)', 'Total (Rs)'],
-      ...orders.map(o => [o.name, o.id, o.unitPrice, o.tax, o.total]),
+      ['Invoice', 'Time', 'Amount (Rs)', 'Tax (Rs)', 'Mode'],
+      ...orders.map((o: any) => [o.id, o.time, o.rawAmount, Math.round(o.rawAmount * 0.18), o.mode]),
       ['', '', '', 'Subtotal', subtotal],
       ['', '', '', 'VAT (18%)', vat.toFixed(2)],
       ['', '', '', 'Total', total.toFixed(2)],
@@ -51,6 +52,15 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
   const handlePDF = () => {
     setShowExportMenu(false);
     onPrintPDF(timeFilter);
+  };
+
+  const navigateToDetailedView = () => {
+    // Assuming dateRange is available from the parent, we can just push without params
+    // or ideally the parent could pass the dateRange so we append it, but simpler is just navigating
+    // because the user will still see the dedicated page.
+    // Wait, let's use search params if possible. The parent doesn't pass dateRange to Modal.
+    // So we just push to /sales/category-a
+    router.push('/sales/category-a');
   };
 
   return (
@@ -74,11 +84,11 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
           <div className="mt-5 bg-white/15 rounded-2xl p-4 flex justify-between items-center">
             <div>
               <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Today's Category A Total</p>
-              <p className="text-[16px] font-black text-white">Rs. {data.catA.core.toLocaleString()} / Rs. 200,000</p>
+              <p className="text-[16px] font-black text-white">Rs. {data.catA?.core.toLocaleString()} / Rs. 200,000</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Remaining</p>
-              <p className="text-[14px] font-black text-yellow-300">Rs. {Math.max(0, 200000 - data.catA.core).toLocaleString()}</p>
+              <p className="text-[14px] font-black text-yellow-300">Rs. {Math.max(0, 200000 - (data.catA?.core || 0)).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -144,40 +154,36 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
           {/* Sales table */}
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-[13px] font-black text-gray-900">Sales Transactions</h4>
-            <button onClick={() => setOrders([])} className="text-[11px] font-black text-red-400 hover:text-red-600 transition-colors">Clear All</button>
           </div>
 
           <div className="border border-gray-100 rounded-2xl overflow-hidden mb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Amt</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax (18%)</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
-                  <th className="py-3 px-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o, i) => (
-                  <tr key={i} className="border-b border-gray-50 last:border-0">
-                    <td className="py-4 px-4">
-                      <p className="text-[13px] font-bold text-gray-900">{o.name}</p>
-                      <p className="text-[10px] font-bold text-gray-400">{o.id}</p>
-                    </td>
-                    <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-700 font-mono">Rs. {o.unitPrice.toLocaleString()}</td>
-                    <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-400 font-mono">Rs. {o.tax}</td>
-                    <td className="py-4 px-4 text-right text-[13px] font-black text-blue-600 font-mono">Rs. {o.total.toLocaleString()}</td>
-                    <td className="py-4 px-3">
-                      <button onClick={() => setOrders(orders.filter((_, j) => j !== i))}
-                        className="w-7 h-7 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center transition-all">
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {orders.map((o: any, i: number) => {
+                  const rawAmt = o.rawAmount || 0;
+                  const itemVat = Math.round(rawAmt * 0.18);
+                  return (
+                    <tr key={i} className="border-b border-gray-50 last:border-0">
+                      <td className="py-4 px-4">
+                        <p className="text-[13px] font-bold text-gray-900">{o.id}</p>
+                        <p className="text-[10px] font-bold text-gray-400">{o.time}</p>
+                      </td>
+                      <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-700 font-mono">Rs. {rawAmt.toLocaleString()}</td>
+                      <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-400 font-mono">Rs. {itemVat.toLocaleString()}</td>
+                      <td className="py-4 px-4 text-right text-[13px] font-black text-blue-600 font-mono">Rs. {(rawAmt + itemVat).toLocaleString()}</td>
+                    </tr>
+                  )
+                })}
                 {orders.length === 0 && (
-                  <tr><td colSpan={5} className="py-8 text-center text-[13px] font-bold text-gray-300">No transactions</td></tr>
+                  <tr><td colSpan={4} className="py-8 text-center text-[13px] font-bold text-gray-300">No transactions</td></tr>
                 )}
               </tbody>
             </table>
@@ -186,14 +192,14 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
           {/* Totals */}
           <div className="space-y-2 border-t border-gray-100 pt-5">
             <div className="flex justify-between text-[13px] font-bold text-gray-500">
-              <span>Subtotal</span><span className="font-mono">Rs. {subtotal.toLocaleString()}.00</span>
+              <span>Subtotal</span><span className="font-mono">Rs. {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-[13px] font-bold text-gray-500">
-              <span>VAT (18%)</span><span className="font-mono">Rs. {vat.toFixed(2)}</span>
+              <span>VAT (18%)</span><span className="font-mono">Rs. {vat.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-[17px] font-black text-gray-900 pt-2 border-t border-gray-100">
               <span>Total Amount</span>
-              <span className="text-blue-600 font-mono">Rs. {total.toFixed(2)}</span>
+              <span className="text-blue-600 font-mono">Rs. {total.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -203,7 +209,7 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
           <button onClick={onClose} className="flex-1 py-3.5 border-2 border-gray-200 rounded-2xl text-[14px] font-black text-gray-600 hover:bg-gray-50 transition-all">
             Cancel
           </button>
-          <button onClick={() => { onClose(); router.push('/sales/category-a'); }} className="flex-1 py-3.5 bg-[#1e40af] hover:bg-blue-800 rounded-2xl text-[14px] font-black text-white shadow-lg shadow-blue-100 transition-all active:scale-95">
+          <button onClick={navigateToDetailedView} className="flex-1 py-3.5 bg-[#1e40af] hover:bg-blue-800 rounded-2xl text-[14px] font-black text-white shadow-lg shadow-blue-100 transition-all active:scale-95">
             View All
           </button>
         </div>

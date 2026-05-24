@@ -14,10 +14,10 @@ import { useAuth } from '@/hooks/useAuth';
 
 const actions = [
   { id: 1, label: 'New Sale', icon: Terminal, iconBg: 'bg-transparent', iconColor: 'text-white', isPrimary: true, href: '/pos', roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
-  { id: 2, label: 'Add Product', icon: Plus, iconBg: 'bg-emerald-500', iconColor: 'text-white', isPrimary: false, roles: ['admin', 'owner', 'manager'] },
-  { id: 3, label: 'Add Customer', icon: UserPlus, iconBg: 'bg-orange-500', iconColor: 'text-white', isPrimary: false, roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
-  { id: 4, label: 'Create Quotation', icon: FileText, iconBg: 'bg-purple-500', iconColor: 'text-white', isPrimary: false, roles: ['admin', 'owner', 'manager'] },
-  { id: 5, label: 'View Reports', icon: PieChart, iconBg: 'bg-blue-500', iconColor: 'text-white', isPrimary: false, roles: ['admin', 'owner'] },
+  { id: 2, label: 'Add Product', icon: Plus, iconBg: 'bg-emerald-500', iconColor: 'text-white', isPrimary: false, href: '/inventory', roles: ['admin', 'owner', 'manager'] },
+  { id: 3, label: 'Add Customer', icon: UserPlus, iconBg: 'bg-orange-500', iconColor: 'text-white', isPrimary: false, href: '/customers', roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
+  { id: 4, label: 'Create Quotation', icon: FileText, iconBg: 'bg-purple-500', iconColor: 'text-white', isPrimary: false, href: '/sales', roles: ['admin', 'owner', 'manager'] },
+  { id: 5, label: 'View Reports', icon: PieChart, iconBg: 'bg-blue-500', iconColor: 'text-white', isPrimary: false, href: '/reports', roles: ['admin', 'owner'] },
 ];
 
 export default function QuickActions() {

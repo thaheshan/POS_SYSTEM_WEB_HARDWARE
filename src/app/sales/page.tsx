@@ -328,46 +328,56 @@ export default function SalesPage() {
                       <h5 className="text-[13px] font-black uppercase tracking-widest text-gray-900">
                         Recent Transactions
                       </h5>
-                      <button className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                      <button
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                          router.push(`/sales/category-a?${params.toString()}`);
+                        }}
+                        className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                      >
                         View All
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {[
-                        { id: 'INV-2026-001234', time: '10:24 AM', amount: '5,450', mode: 'Cash' },
-                        { id: 'INV-2026-001233', time: '9:58 AM', amount: '3,200', mode: 'Card' },
-                        { id: 'INV-2026-001232', time: '9:15 AM', amount: '12,450', mode: 'Credit' },
-                      ].map((txn) => (
-                        <div
-                          key={txn.id}
-                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col">
-                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                                {txn.id}
-                              </span>
-                              <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[13px] font-black text-blue-600 font-mono tracking-tighter">
-                                Rs. {txn.amount}
-                              </span>
-                              <span
-                                className={`text-[10px] font-black uppercase tracking-wider ${
-                                  txn.mode === 'Cash'
-                                    ? 'text-emerald-500'
-                                    : txn.mode === 'Card'
-                                    ? 'text-blue-500'
-                                    : 'text-amber-500'
-                                }`}
-                              >
-                                {txn.mode}
-                              </span>
+                      {(data.catA.recentTxns || []).length > 0 ? (
+                        (data.catA.recentTxns || []).map((txn: any) => (
+                          <div
+                            key={txn.id}
+                            className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex flex-col">
+                                <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                  {txn.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-blue-600 font-mono tracking-tighter">
+                                  Rs. {txn.amount}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-black uppercase tracking-wider ${
+                                    txn.mode === 'Cash'
+                                      ? 'text-emerald-500'
+                                      : txn.mode === 'Card'
+                                      ? 'text-blue-500'
+                                      : 'text-amber-500'
+                                  }`}
+                                >
+                                  {txn.mode}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                          No recent transactions found.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -445,28 +455,38 @@ export default function SalesPage() {
                       <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                         Top Non-Taxable Products
                       </h5>
-                      <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline">
+                      <button
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                          router.push(`/sales/category-b?${params.toString()}`);
+                        }}
+                        className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
+                      >
                         View All
                       </button>
                     </div>
                     <div className="space-y-4 mb-8">
-                      {[
-                        { name: 'Educational Books', sold: '12 units sold', amount: '8,450' },
-                        { name: 'Medical Supplies', sold: '8 units sold', amount: '6,750' },
-                        { name: 'Agricultural Tools', sold: '5 units sold', amount: '8,000' },
-                      ].map((item) => (
-                        <div key={item.name} className="flex justify-between items-center">
-                          <div className="flex flex-col">
-                            <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
-                              {item.name}
+                      {(data.catB.topProducts || []).length > 0 ? (
+                        (data.catB.topProducts || []).map((item: any) => (
+                          <div key={item.name} className="flex justify-between items-center">
+                            <div className="flex flex-col">
+                              <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
+                                {item.name}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400">{item.sold} units sold</span>
+                            </div>
+                            <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
+                              Rs. {item.amount}
                             </span>
-                            <span className="text-[10px] font-bold text-gray-400">{item.sold}</span>
                           </div>
-                          <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
-                            Rs. {item.amount}
-                          </span>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4 border-b border-gray-50 last:border-0">
+                          No top products data.
                         </div>
-                      ))}
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between mb-4 mt-8">
@@ -475,32 +495,35 @@ export default function SalesPage() {
                       </h5>
                     </div>
                     <div className="space-y-4">
-                      {[
-                        { id: 'INV-2026-001240', time: '2:15 PM', amount: '8,200', type: 'Non-Tax' },
-                        { id: 'INV-2026-001239', time: '1:48 PM', amount: '15,250', type: 'Overflow' },
-                      ].map((txn) => (
-                        <div
-                          key={txn.id}
-                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col">
-                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                                {txn.id}
-                              </span>
-                              <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[13px] font-black text-emerald-600 font-mono tracking-tighter">
-                                Rs. {txn.amount}
-                              </span>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">
-                                {txn.type}
-                              </span>
+                      {(data.catB.recentTxns || []).length > 0 ? (
+                        (data.catB.recentTxns || []).map((txn: any) => (
+                          <div
+                            key={txn.id}
+                            className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex flex-col">
+                                <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                  {txn.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-emerald-600 font-mono tracking-tighter">
+                                  Rs. {txn.amount}
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">
+                                  {txn.type}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                          No recent transactions found.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -564,28 +587,38 @@ export default function SalesPage() {
                     <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                       Labour Type Breakdown
                     </h5>
-                    <button className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline">
+                    <button
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                        if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                        router.push(`/sales/category-c?${params.toString()}`);
+                      }}
+                      className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
+                    >
                       View All
                     </button>
                   </div>
                   <div className="space-y-4 mb-10">
-                    {[
-                      { name: 'Plumbing Installation', jobs: '5 jobs completed', amount: '12,500' },
-                      { name: 'Electrical Work', jobs: '3 jobs completed', amount: '8,500' },
-                      { name: 'Carpentry Services', jobs: '2 jobs completed', amount: '6,000' },
-                    ].map((item) => (
-                      <div key={item.name} className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
-                            {item.name}
+                    {(data.catC.breakdown || []).length > 0 ? (
+                      (data.catC.breakdown || []).map((item: any) => (
+                        <div key={item.name} className="flex justify-between items-center">
+                          <div className="flex flex-col">
+                            <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
+                              {item.name}
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-400">{item.jobs} jobs completed</span>
+                          </div>
+                          <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
+                            Rs. {item.amount}
                           </span>
-                          <span className="text-[10px] font-bold text-gray-400">{item.jobs}</span>
                         </div>
-                        <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
-                          Rs. {item.amount}
-                        </span>
+                      ))
+                    ) : (
+                      <div className="text-[13px] font-bold text-gray-400 text-center py-4 border-b border-gray-50 last:border-0">
+                        No breakdown data.
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between mb-4 mt-8">
@@ -594,40 +627,38 @@ export default function SalesPage() {
                     </h5>
                   </div>
                   <div className="space-y-5">
-                    {[
-                      {
-                        id: 'LAB-2026-0034',
-                        date: '3:45 PM',
-                        amount: '4,500',
-                        desc: 'Pipe installation - Mr. Perera',
-                        type: 'Labour',
-                      },
-                    ].map((txn) => (
-                      <div
-                        key={txn.id}
-                        className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <div className="flex flex-col">
-                            <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                              {txn.id}
-                            </span>
-                            <span className="text-[11px] font-bold text-gray-400">{txn.date}</span>
+                    {(data.catC.recentEntries || []).length > 0 ? (
+                      (data.catC.recentEntries || []).map((txn: any) => (
+                        <div
+                          key={txn.id}
+                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="flex flex-col">
+                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                {txn.id}
+                              </span>
+                              <span className="text-[11px] font-bold text-gray-400">{txn.date}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[13px] font-black text-amber-600 font-mono tracking-tighter">
+                                Rs. {txn.amount}
+                              </span>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">
+                                {txn.type}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-[13px] font-black text-amber-600 font-mono tracking-tighter">
-                              Rs. {txn.amount}
-                            </span>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">
-                              {txn.type}
-                            </span>
-                          </div>
+                          <p className="text-[11.5px] font-bold text-gray-500 tracking-tight leading-relaxed text-left">
+                            {txn.desc}
+                          </p>
                         </div>
-                        <p className="text-[11.5px] font-bold text-gray-500 tracking-tight leading-relaxed text-left">
-                          {txn.desc}
-                        </p>
+                      ))
+                    ) : (
+                      <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                        No recent entries found.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
