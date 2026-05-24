@@ -3,12 +3,14 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
-  Info,
+  KeyRound,
   Lock,
   Mail,
   Phone,
+  ShieldCheck,
   Store,
   User,
+  X,
 } from "lucide-react";
 import React, { useState } from "react";
 import { StaffRegisterData } from "@/types/staff";
@@ -19,9 +21,10 @@ interface StepTwoProps {
   updateFields: (fields: Partial<StaffRegisterData>) => void;
   onNext: () => void;
   onBack: () => void;
+  selectedShopId: string; // first 8 chars used for verification
 }
 
-const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
+const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -37,8 +40,17 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
     (data.confirmPassword ?? "").length > 0 &&
     data.password === data.confirmPassword;
 
+  // Verify the code: must match first 8 characters of the selected shop id
+  const expectedCode = selectedShopId ? selectedShopId.substring(0, 8) : "";
+  const verificationCode = data.shopVerificationCode ?? "";
+  const isCodeCorrect =
+    expectedCode.length > 0 &&
+    verificationCode.toLowerCase() === expectedCode.toLowerCase();
+  const isCodeEmpty = verificationCode.length === 0;
+  const isCodeWrong = !isCodeEmpty && !isCodeCorrect;
+
   const canGoNext =
-    (data.shopPrivateId ?? "").length > 0 &&
+    isCodeCorrect &&
     isPasswordStrong &&
     passwordsMatch &&
     agreedToTerms;
@@ -54,12 +66,12 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           Join Your Shop
         </h1>
         <p className="text-slate-500 mt-2 text-sm lg:text-base">
-          Tell us about yourself and request to join a shop
+          Enter your shop's verification code to confirm access
         </p>
       </div>
 
       <div className="w-full space-y-6">
-        {/* Personal Information */}
+        {/* Personal Information - Read-only summary */}
         <section className="space-y-4 border-b-2 border-slate-200 pb-6">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Personal Information
@@ -107,33 +119,63 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
           </div>
         </section>
 
-        {/* Shop Details */}
+        {/* Shop Verification Code */}
         <section className="space-y-4 border-b-2 border-slate-200 pb-6">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-            Shop Details
+            Shop Verification
           </h3>
-          <div className="flex items-center justify-start p-4 bg-[#FEFCE8] border border-[#FEF08A] rounded-lg">
-            <Info className="md:w-[16px] md:h-[16px] text-[#CA8A04] mr-2 shrink-0" />
-            <p className="text-[#713F12] text-[12px]">
-              Ask your shop owner for the Shop Private ID
+
+          {/* Info banner */}
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <p className="text-blue-800 text-sm leading-relaxed">
+              Ask your <span className="font-semibold">shop owner</span> for the{" "}
+              <span className="font-semibold">Shop Verification Code</span>. They
+              can find it displayed at the top of their dashboard.
             </p>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Shop Private ID <span className="text-red-500">*</span>
+              Shop Verification Code <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
               <input
                 type="text"
-                value={data.shopPrivateId}
-                onChange={(e) => updateFields({ shopPrivateId: e.target.value })}
-                placeholder="Enter Shop Private ID"
-                className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={data.shopVerificationCode ?? ""}
+                onChange={(e) =>
+                  updateFields({ shopVerificationCode: e.target.value })
+                }
+                placeholder="e.g. 30d5c1b6"
+                maxLength={8}
+                className={`w-full pl-12 pr-12 py-3 border rounded-xl focus:outline-none transition-all font-mono tracking-widest text-base ${
+                  isCodeWrong
+                    ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-100"
+                    : isCodeCorrect
+                    ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
+                    : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                }`}
               />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                {isCodeCorrect && (
+                  <CheckCircle className="size-5 text-green-500" />
+                )}
+                {isCodeWrong && <X className="size-5 text-red-500" />}
+              </div>
             </div>
-            <p className="text-slate-500 text-xs mt-1">
-              Unique identifier provided by your shop owner
+            {isCodeWrong && (
+              <p className="text-xs text-red-500 mt-1.5 font-medium">
+                Incorrect code. Please check with your shop owner.
+              </p>
+            )}
+            {isCodeCorrect && (
+              <p className="text-xs text-green-600 mt-1.5 font-medium">
+                ✓ Shop verified successfully!
+              </p>
+            )}
+            <p className="text-slate-400 text-xs mt-1">
+              8-character code shown on the owner's dashboard header
             </p>
           </div>
         </section>
@@ -274,7 +316,7 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
             : "bg-slate-100 text-slate-400 cursor-not-allowed"
         }`}
       >
-        Next
+        Create Account
       </button>
 
       {/* Sign In Link */}
@@ -297,4 +339,4 @@ const StepTwo = ({ data, updateFields, onNext }: StepTwoProps) => {
   );
 };
 
-export default StepTwo;
+export default StepTwo;

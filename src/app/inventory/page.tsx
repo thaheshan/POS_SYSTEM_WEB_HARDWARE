@@ -11,8 +11,14 @@ import InventoryCharts from '@/components/inventory/InventoryCharts';
 import InventoryAlertsAction from '@/components/inventory/InventoryAlertsAction';
 import EditInventoryModal from '@/components/inventory/EditInventoryModal';
 import DeleteInventoryModal from '@/components/inventory/DeleteInventoryModal';
-import { INVENTORY_MOCK_DATA } from '@/components/inventory/inventoryData';
+import AddProductModal from '@/components/inventory/AddProductModal';
+import AdjustStockModal from '@/components/inventory/AdjustStockModal';
+import PhysicalStockCountModal from '@/components/inventory/PhysicalStockCountModal';
+import TransferStockModal from '@/components/inventory/TransferStockModal';
+import PurchaseOrderModal from '@/components/inventory/PurchaseOrderModal';
+import ImportExportModal from '@/components/inventory/ImportExportModal';
 import { DateRange } from 'react-day-picker';
+import api from '@/api/axiosInstance';
 import { format, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import * as Popover from '@radix-ui/react-popover';
@@ -23,8 +29,70 @@ export default function InventoryPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
+  const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] = useState(false);
+  const [isTransferStockModalOpen, setIsTransferStockModalOpen] = useState(false);
+  const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
+  const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [inventoryData, setInventoryData] = useState(INVENTORY_MOCK_DATA);
+  const [inventoryData, setInventoryData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchInventory();
+  }, []);
+
+  const fetchInventory = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/stock');
+      const items = res.data?.data || res.data || [];
+      // Map flat StockOverviewResponse fields from backend to component-expected shape
+      const mapped = items.map((item: any) => {
+        const qty = item.available_quantity ?? item.quantity ?? 0;
+        const minStock = item.minimum_stock_level ?? 0;
+        const cost = item.selling_price ?? item.product?.sellingPrice ?? 0;
+        const totalVal = qty * cost;
+        const status =
+          qty <= 0
+            ? 'Out of Stock'
+            : item.low_stock
+            ? 'Low Stock'
+            : 'In Stock';
+
+        return {
+          id: item.product_id || item.id,
+          // Fields for InventoryTable
+          name: item.product_name || item.product?.name || 'Unknown',
+          sku: item.sku || item.product?.sku || 'N/A',
+          skuInfo: item.sku || item.product?.sku || 'N/A',
+          category: item.category_name || item.product?.category?.name || 'Uncategorized',
+          warehouse: item.warehouse_name || item.warehouse?.name || 'Main Warehouse',
+          qty,
+          maxLevel: Math.max(minStock, qty, 1),
+          minStock,
+          unit: 'units',
+          status,
+          unitCost: `Rs. ${cost.toLocaleString()}`,
+          totalValue: `Rs. ${totalVal.toLocaleString()}`,
+          lastMovement: new Date().toLocaleDateString('en-GB'),
+          reorder: qty <= 0 ? 'critical' : item.low_stock ? 'warning' : 'good',
+          // Extra fields for KPI cards
+          quantity: qty,
+          price: cost,
+          cost,
+          warehouseId: item.warehouse_id,
+          productId: item.product_id,
+        };
+      });
+      setInventoryData(mapped);
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,8 +100,8 @@ export default function InventoryPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(2025, 11, 1), // Dec 1, 2025
-    to: new Date(2026, 0, 31)   // Jan 31, 2026
+    from: new Date(new Date().getFullYear() - 1, new Date().getMonth(), new Date().getDate()),
+    to: new Date()
   });
 
   // Filter Stats
@@ -52,13 +120,19 @@ export default function InventoryPage() {
       const matchesWarehouse = !selectedWarehouse || item.warehouse === selectedWarehouse;
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
 
-      // 3. Date Range Filter
+      // 3. Date Range Filter — skip if no date range set
       let matchesDate = true;
-      if (dateRange?.from) {
-        const itemDate = parse(item.lastMovement, 'dd/MM/yyyy', new Date());
-        const start = startOfDay(dateRange.from);
-        const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
-        matchesDate = isWithinInterval(itemDate, { start, end });
+      if (dateRange?.from && item.lastMovement && item.lastMovement !== 'Invalid Date') {
+        try {
+          const itemDate = parse(item.lastMovement, 'dd/MM/yyyy', new Date());
+          if (!isNaN(itemDate.getTime())) {
+            const start = startOfDay(dateRange.from);
+            const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+            matchesDate = isWithinInterval(itemDate, { start, end });
+          }
+        } catch {
+          matchesDate = true; // Don't filter if date can't be parsed
+        }
       }
 
       return matchesSearch && matchesCategory && matchesWarehouse && matchesStatus && matchesDate;
@@ -146,20 +220,33 @@ export default function InventoryPage() {
         <InventoryKPICards data={filteredData} />
         
         {/* 2. ACTION ROW - Re-implemented */}
-        <InventoryActionRow />
+        <InventoryActionRow 
+          onAddProduct={() => setIsAddProductModalOpen(true)}
+          onAdjustStock={() => setIsAdjustStockModalOpen(true)}
+          onPhysicalStockCount={() => setIsPhysicalStockModalOpen(true)}
+          onTransferStock={() => setIsTransferStockModalOpen(true)}
+          onPurchaseOrder={() => setIsPurchaseOrderModalOpen(true)}
+          onImportExport={() => setIsImportExportModalOpen(true)}
+        />
 
         {/* 3. INVENTORY TABLE */}
-        <InventoryTable 
-          data={filteredData}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onFilterToggle={() => setIsFilterModalOpen(true)}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={handleClearAllFilters}
-          activeFilterCount={activeFilterCount}
-        />
+        {isLoading ? (
+          <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <InventoryTable 
+            data={filteredData}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onFilterToggle={() => setIsFilterModalOpen(true)}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={handleClearAllFilters}
+            activeFilterCount={activeFilterCount}
+          />
+        )}
 
         {/* 4. ANALYSIS SECTION */}
         <div className="space-y-10">
@@ -195,6 +282,61 @@ export default function InventoryPage() {
         onClose={() => setIsDeleteModalOpen(false)} 
         onConfirm={handleConfirmDelete} 
         item={selectedItem}
+      />
+
+      <AddProductModal
+        isOpen={isAddProductModalOpen}
+        onClose={() => setIsAddProductModalOpen(false)}
+        onSuccess={() => {
+          setIsAddProductModalOpen(false);
+          fetchInventory();
+        }}
+      />
+
+      <AdjustStockModal
+        isOpen={isAdjustStockModalOpen}
+        onClose={() => setIsAdjustStockModalOpen(false)}
+        onSuccess={() => {
+          setIsAdjustStockModalOpen(false);
+          fetchInventory();
+        }}
+      />
+
+      <PhysicalStockCountModal
+        isOpen={isPhysicalStockModalOpen}
+        onClose={() => setIsPhysicalStockModalOpen(false)}
+        onSuccess={() => {
+          setIsPhysicalStockModalOpen(false);
+          fetchInventory();
+        }}
+      />
+
+      <TransferStockModal
+        isOpen={isTransferStockModalOpen}
+        onClose={() => setIsTransferStockModalOpen(false)}
+        onSuccess={() => {
+          setIsTransferStockModalOpen(false);
+          fetchInventory();
+        }}
+      />
+
+      <PurchaseOrderModal
+        isOpen={isPurchaseOrderModalOpen}
+        onClose={() => setIsPurchaseOrderModalOpen(false)}
+        onSuccess={() => {
+          setIsPurchaseOrderModalOpen(false);
+          fetchInventory();
+        }}
+      />
+
+      <ImportExportModal
+        isOpen={isImportExportModalOpen}
+        onClose={() => setIsImportExportModalOpen(false)}
+        onSuccess={() => {
+          setIsImportExportModalOpen(false);
+          fetchInventory();
+        }}
+        inventoryData={inventoryData}
       />
 
       {/* HIDDEN PRINT VIEW */}

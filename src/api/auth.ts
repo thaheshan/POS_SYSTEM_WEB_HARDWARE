@@ -10,6 +10,14 @@ export const authApi = {
     // Unwrap the response.interceptor.ts format
     return json.data || json;
   },
+  async getActiveShops(): Promise<{ id: string; name: string }[]> {
+    const response = await fetch(`${API_URL}/system/shops`);
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(json.message || 'Failed to fetch shops');
+    }
+    return json.data || json;
+  },
   async cancelRegistration(email: string) {
     const response = await fetch(`${API_URL}/auth/cancel-registration`, {
       method: 'POST',

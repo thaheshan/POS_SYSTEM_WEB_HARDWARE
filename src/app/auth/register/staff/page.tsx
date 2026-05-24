@@ -13,7 +13,7 @@ const defaultData: StaffRegisterData = {
   email: "",
   phoneNumber: "",
   role: "",
-  shopPrivateId: "",
+  shopVerificationCode: "",
   shopNameVerification: "",
   password: "",
   confirmPassword: "",
@@ -34,6 +34,7 @@ export default function SignupPage() {
     try {
       const payload = {
         shopId: data.shopId,
+        shopVerificationCode: data.shopVerificationCode,
         firstName: data.fullName.split(' ')[0],
         lastName: data.fullName.split(' ').slice(1).join(' ') || data.fullName.split(' ')[0],
         email: data.email,
@@ -60,7 +61,7 @@ export default function SignupPage() {
         <StepOne data={data} updateFields={updateFields} onNext={handleNext} />
       )}
       {currentStep === 2 && (
-        <StepTwo data={data} updateFields={updateFields} onNext={handleSubmit} onBack={handleBack} />
+        <StepTwo data={data} updateFields={updateFields} onNext={handleSubmit} onBack={handleBack} selectedShopId={data.shopId} />
       )}
       {currentStep === 3 && (
         <StepThree data={data} />

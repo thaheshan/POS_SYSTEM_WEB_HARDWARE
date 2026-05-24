@@ -10,9 +10,9 @@ import CreatePurchaseOrderAction from "./CreatePurchaseOrderAction";
 import {
   getInventoryValueAtRisk,
   getStockSeverity,
-  lowStockProducts,
   type LowStockProduct,
 } from "./data";
+import api from "@/api/axiosInstance";
 
 interface LowStockAlertModalProps {
   isOpen: boolean;
@@ -35,7 +35,10 @@ export default function LowStockAlertModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState("");
+  const [liveProducts, setLiveProducts] = useState<LowStockProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Fetch live low-stock products whenever modal opens
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
@@ -44,45 +47,66 @@ export default function LowStockAlertModal({
       return;
     }
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
+    const fetchLowStock = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get('/stock?low_stock=true');
+        const items = res.data?.data || res.data || [];
+        const mapped: LowStockProduct[] = items.map((item: any, index: number) => ({
+          id: item.product_id || item.id || `ls-${index}`,
+          name: item.product_name || item.product?.name || 'Unknown',
+          sku: item.sku || item.product?.sku || 'N/A',
+          category: item.category_name || item.product?.category?.name || 'Uncategorized',
+          currentStock: item.available_quantity ?? 0,
+          reorderLevel: item.minimum_stock_level ?? 20,
+          reorderQty: Math.max(0, (item.minimum_stock_level ?? 20) - (item.available_quantity ?? 0)),
+          lastSale: 'Recently',
+          unitsSold: 0,
+          unitCost: item.selling_price ?? item.product?.sellingPrice ?? 0,
+          warehouseId: item.warehouse_id,
+          warehouseName: item.warehouse_name,
+        }));
+        setLiveProducts(mapped);
+      } catch (err) {
+        console.error('Failed to fetch low stock data', err);
+        setLiveProducts([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
+    fetchLowStock();
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
+    if (!term) return liveProducts;
+    return liveProducts.filter((product) =>
+      product.name.toLowerCase().includes(term) ||
+      product.sku.toLowerCase().includes(term)
+    );
+  }, [searchTerm, liveProducts]);
 
-    if (!term) {
-      return lowStockProducts;
-    }
-
-    return lowStockProducts.filter((product) => {
-      return (
-        product.name.toLowerCase().includes(term) ||
-        product.sku.toLowerCase().includes(term)
-      );
-    });
-  }, [searchTerm]);
-
-  const criticalCount = lowStockProducts.filter(
+  const criticalCount = liveProducts.filter(
     (product) => product.currentStock === 0,
   ).length;
-  const veryLowCount = lowStockProducts.filter(
+  const veryLowCount = liveProducts.filter(
     (product) => getStockSeverity(product) === "Very Low",
   ).length;
   const totalValueAtRisk = formatCurrency(
-    filteredProducts.reduce(
+    liveProducts.reduce(
       (total, product) => total + getInventoryValueAtRisk(product),
       0,
     ),
   );
 
-  const selectedProducts = lowStockProducts.filter((product) =>
+  const selectedProducts = liveProducts.filter((product) =>
     selectedIds.includes(product.id),
   );
   const selectedVisibleCount = filteredProducts.filter((product) =>
@@ -191,15 +215,34 @@ export default function LowStockAlertModal({
           />
 
           <div className="flex min-h-0 flex-1 flex-col bg-white">
-            <LowStockProductsTable
-              products={filteredProducts}
-              selectedIds={selectedIds}
-              onToggleSelected={updateSelection}
-              onToggleAll={selectAllVisible}
-              onReorder={handleReorder}
-              onClearSelection={clearSelection}
-              selectedVisibleCount={selectedVisibleCount}
-            />
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center py-20">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+                  <p className="text-sm font-semibold text-slate-400">Loading live stock data...</p>
+                </div>
+              </div>
+            ) : liveProducts.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+                  <svg className="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-[15px] font-bold text-slate-700">All stock levels are healthy!</p>
+                <p className="text-sm text-slate-400">No products are below their minimum stock level.</p>
+              </div>
+            ) : (
+              <LowStockProductsTable
+                products={filteredProducts}
+                selectedIds={selectedIds}
+                onToggleSelected={updateSelection}
+                onToggleAll={selectAllVisible}
+                onReorder={handleReorder}
+                onClearSelection={clearSelection}
+                selectedVisibleCount={selectedVisibleCount}
+              />
+            )}
 
             <CreatePurchaseOrderAction
               selectedCount={selectedProducts.length}

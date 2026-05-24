@@ -1,11 +1,11 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Bell, Settings, LogOut, Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
@@ -27,11 +27,31 @@ export default function Header() {
     <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">
       <div className="flex justify-between items-center h-full px-10">
         
-        {/* Left: System Title */}
-        <div className="w-[300px] flex items-center">
+        {/* Left: System Title & Shop Code */}
+        <div className="w-[300px] flex flex-col justify-center">
           <h1 className="text-white text-[17px] font-medium tracking-wide">
             POS CHECKOUT SYSTEM
           </h1>
+          {user?.role === 'OWNER' && user?.tenant_id && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-white/70 text-[11px] font-medium uppercase tracking-wider">Shop Code:</span>
+              <div className="flex items-center bg-white/10 rounded px-2 py-0.5 border border-white/20 hover:bg-white/15 transition-colors group">
+                <span className="text-white text-xs font-mono tracking-wider font-semibold">
+                  {user.tenant_id.substring(0, 8).toUpperCase()}
+                </span>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.tenant_id.substring(0, 8).toUpperCase());
+                    alert('Shop verification code copied to clipboard!');
+                  }}
+                  className="ml-2 text-white/50 group-hover:text-white transition-colors"
+                  title="Copy Verification Code"
+                >
+                  <Copy size={12} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Center: Digital Clock */}
