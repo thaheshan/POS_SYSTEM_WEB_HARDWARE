@@ -22,9 +22,50 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { MOCK_CUSTOMERS } from '@/lib/customers-mock-data';
+import api from '@/api/axiosInstance';
+import { useEffect } from 'react';
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/customers');
+      const data = res.data?.data || res.data || [];
+      // map data to frontend format
+      const mapped = data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email || 'N/A',
+        totalPurchases: c.totalPurchases || 0,
+        outstanding: c.outstandingBalance || 0,
+        transactions: c.transactionsCount || 0,
+        isOverdue: c.isOverdue || false,
+        lastActive: new Date(c.createdAt).toLocaleDateString(),
+        type: 'Individual', // Default for now
+        initials: c.name.substring(0, 2).toUpperCase(),
+        hasAvatar: false,
+      }));
+      setCustomers(mapped);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const totalCustomers = customers.length;
+  const creditCustomers = customers.filter(c => c.outstanding > 0).length;
+  const outstandingTotal = customers.reduce((sum, c) => sum + c.outstanding, 0);
+  const overdueAccounts = customers.filter(c => c.isOverdue).length;
 
   return (
     <MainLayout>
@@ -59,10 +100,10 @@ export default function CustomersPage() {
                     <Users className="w-4 h-4 text-blue-600" />
                  </div>
               </div>
-              <div>
-                 <h3 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-2">1,247</h3>
+               <div>
+                 <h3 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-2">{isLoading ? '...' : totalCustomers.toLocaleString()}</h3>
                  <p className="text-[12px] font-bold text-emerald-500">↑ 12% from last month</p>
-              </div>
+               </div>
            </div>
 
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 flex flex-col justify-between h-[150px]">
@@ -72,10 +113,10 @@ export default function CustomersPage() {
                     <CreditCard className="w-4 h-4 text-yellow-600" />
                  </div>
               </div>
-              <div>
-                 <h3 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-2">87</h3>
-                 <p className="text-[12px] font-bold text-gray-400">7% of total customers</p>
-              </div>
+               <div>
+                 <h3 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-2">{isLoading ? '...' : creditCustomers.toLocaleString()}</h3>
+                 <p className="text-[12px] font-bold text-gray-400">{isLoading ? '...' : Math.round((creditCustomers/totalCustomers)*100 || 0)}% of total customers</p>
+               </div>
            </div>
 
            {/* Overdue Alert KPI block exactly like image 1 */}
@@ -86,10 +127,10 @@ export default function CustomersPage() {
                     <AlertCircle className="w-3.5 h-3.5 text-red-600" />
                  </div>
               </div>
-              <div>
-                 <h3 className="text-[32px] font-black tracking-tight text-red-600 leading-none mb-3">Rs. 487,650</h3>
-                 <span className="bg-[#dc2626] text-white px-2.5 py-1 rounded text-[11px] font-bold">24 overdue accounts</span>
-              </div>
+               <div>
+                 <h3 className="text-[32px] font-black tracking-tight text-red-600 leading-none mb-3">{isLoading ? '...' : `Rs. ${outstandingTotal.toLocaleString()}`}</h3>
+                 <span className="bg-[#dc2626] text-white px-2.5 py-1 rounded text-[11px] font-bold">{isLoading ? '...' : overdueAccounts} overdue accounts</span>
+               </div>
            </div>
 
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 flex flex-col justify-between h-[150px]">
@@ -140,13 +181,15 @@ export default function CustomersPage() {
                  <button className="p-1.5 bg-white text-blue-600 shadow-sm rounded-md"><LayoutGrid className="w-4 h-4" /></button>
                  <button className="p-1.5 text-gray-400 hover:text-gray-600"><List className="w-4 h-4" /></button>
               </div>
-              <span className="text-[12px] font-black text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">1,247 Results</span>
-           </div>
-        </div>
+               <span className="text-[12px] font-black text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">{customers.length} Results</span>
+            </div>
+         </div>
 
         {/* CUSTOMER GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-           {MOCK_CUSTOMERS.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map((cust) => (
+            {isLoading ? (
+                <div className="col-span-full py-12 text-center text-gray-500">Loading customers...</div>
+            ) : customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map((cust) => (
               <div key={cust.id} className={`bg-white rounded-[20px] shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-md ${
                  cust.isOverdue ? 'border-2 border-red-200 bg-red-50/10' : 'border border-gray-200'
               }`}>

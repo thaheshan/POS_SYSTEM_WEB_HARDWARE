@@ -27,12 +27,11 @@ import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
 import CategoryBReportModal from '@/components/sales/CategoryBReportModal';
 import CategoryCReportModal from '@/components/sales/CategoryCReportModal';
 import CategoryPrintView from '@/components/sales/CategoryPrintView';
-
-import { getMockSalesData } from '@/lib/sales-mock-data';
+import { useSalesData } from '@/hooks/useSales';
 
 export default function SalesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role?.toLowerCase() === 'owner';
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -42,7 +41,7 @@ export default function SalesPage() {
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
-  const data = getMockSalesData(dateRange);
+  const { data, loading } = useSalesData(dateRange);
   const threshold = 200000;
 
   const daysSelected =
@@ -245,19 +244,17 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <h4 className="text-[15px] font-black text-blue-900 mb-0.5">
-                    Today's Taxable Sales (Category A): Rs.{' '}
-                    {data.catA.core.toLocaleString()} / Rs.{' '}
-                    {currentThreshold.toLocaleString()}
+                    {loading ? 'Loading...' : `Today's Taxable Sales (Category A): Rs. ${data.catA.core.toLocaleString()} / Rs. ${currentThreshold.toLocaleString()}`}
                   </h4>
                   <p className="text-[12.5px] font-bold text-blue-600 opacity-80">
                     Remaining before non-tax threshold: Rs.{' '}
-                    {Math.max(0, currentThreshold - data.catA.core).toLocaleString()}
+                    {loading ? '...' : Math.max(0, currentThreshold - data.catA.core).toLocaleString()}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4 ml-auto">
                 <span className="text-[16px] font-black text-blue-900">
-                  {percentage.toFixed(1)}%
+                  {loading ? '...' : `${percentage.toFixed(1)}%`}
                 </span>
                 <div className="w-[120px] h-2.5 bg-blue-200/50 rounded-full overflow-hidden">
                   <div
@@ -287,11 +284,11 @@ export default function SalesPage() {
                   </p>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[32px] font-black tracking-tighter text-white">
-                      Rs. {data.catA.core.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catA.core.toLocaleString()}`}
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-blue-200 mb-0">
-                    {data.catA.txns} Transactions
+                    {loading ? '...' : `${data.catA.txns} Transactions`}
                   </p>
                 </div>
 
@@ -301,7 +298,7 @@ export default function SalesPage() {
                       VAT (18%)
                     </span>
                     <span className="text-[14px] font-black text-gray-900">
-                      Rs. {data.catA.vat.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
                     </span>
                   </div>
                 </div>
@@ -313,7 +310,7 @@ export default function SalesPage() {
                         Average Bill
                       </span>
                       <span className="text-[16px] font-black text-gray-900 font-mono tracking-tighter">
-                        Rs. {data.catA.avg.toLocaleString()}
+                        {loading ? '...' : `Rs. ${data.catA.avg.toLocaleString()}`}
                       </span>
                     </div>
                     <div>
@@ -321,7 +318,7 @@ export default function SalesPage() {
                         Items Sold
                       </span>
                       <span className="text-[16px] font-black text-gray-900">
-                        {data.catA.items} Units
+                        {loading ? '...' : `${data.catA.items} Units`}
                       </span>
                     </div>
                   </div>
@@ -400,11 +397,11 @@ export default function SalesPage() {
                   </p>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[32px] font-black tracking-tighter text-white font-mono">
-                      Rs. {data.catB.core.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catB.core.toLocaleString()}`}
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-emerald-200 mb-0">
-                    {data.catB.txns} Transactions
+                    {loading ? '...' : `${data.catB.txns} Transactions`}
                   </p>
                 </div>
 
@@ -532,11 +529,11 @@ export default function SalesPage() {
                 </p>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-[32px] font-black tracking-tighter text-white font-mono">
-                    Rs. {data.catC.core.toLocaleString()}
+                    {loading ? '...' : `Rs. ${data.catC.core.toLocaleString()}`}
                   </span>
                 </div>
                 <p className="text-[13px] font-bold text-amber-200 mb-0">
-                  {data.catC.entries} Entries
+                  {loading ? '...' : `${data.catC.entries} Entries`}
                 </p>
               </div>
 

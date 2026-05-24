@@ -12,8 +12,9 @@ import {
   Store,
   User,
   UserPlus,
+  Loader2,
 } from "lucide-react";
-import { SHOP_OPTIONS, STAFF_ROLES } from "@/utils/StaffRegisterData";
+import { STAFF_ROLES } from "@/utils/StaffRegisterData";
 
 interface StepOneProps {
   data: StaffRegisterData;
@@ -25,13 +26,31 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const [shopSearch, setShopSearch] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  
+  const [shops, setShops] = useState<{ id: string; name: string }[]>([]);
+  const [loadingShops, setLoadingShops] = useState(true);
 
   const shopDropdownRef = useRef<HTMLDivElement>(null);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedShop = SHOP_OPTIONS.find((s) => s.id === data.shopId);
+  useEffect(() => {
+    const loadShops = async () => {
+      try {
+        const { authApi } = await import('@/api/auth');
+        const activeShops = await authApi.getActiveShops();
+        setShops(activeShops);
+      } catch (error) {
+        console.error("Failed to load active shops", error);
+      } finally {
+        setLoadingShops(false);
+      }
+    };
+    loadShops();
+  }, []);
+
+  const selectedShop = shops.find((s) => s.id === data.shopId);
   const selectedRole = STAFF_ROLES.find((r) => r.id === data.role);
-  const filteredShops = SHOP_OPTIONS.filter((shop) =>
+  const filteredShops = shops.filter((shop) =>
     shop.name.toLowerCase().includes(shopSearch.toLowerCase())
   );
 
