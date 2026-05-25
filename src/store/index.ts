@@ -1,10 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer, {
-  loginThunk,
-  logout,
-  selectUser,
-  selectUserRole,
-} from "../../lib/store/authSlice";
+import authReducer from "../../lib/store/authSlice";
 import cartReducer from "./slices/cartSlice";
 import productsReducer from "./slices/productsSlice";
 import customersReducer from "./slices/customersSlice";
@@ -14,10 +9,7 @@ import ordersReducer from "./slices/ordersSlice";
 import staffReducer from "./slices/staffSlice";
 import salesReducer from "./slices/salesSlice";
 import forgotPasswordReducer from "./slices/forgotPasswordSlice";
-import { configureStore } from '@reduxjs/toolkit';
-import { baseApi } from './baseApi';
-import authReducer from '../../lib/store/authSlice';
-import cartReducer from './slices/cartSlice';
+import { baseApi } from "./baseApi";
 
 export const store = configureStore({
   reducer: {

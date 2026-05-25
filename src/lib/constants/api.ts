@@ -16,11 +16,6 @@ export const ENDPOINTS = {
     LOGOUT: "/auth/logout",
   },
 
-  PRODUCTS: {
-    BASE: "/products",
-    BY_ID: (id: string) => `/products/${id}`,
-  },
-
   INVENTORY: {
     BASE: "/inventory",
     BY_ID: (id: string) => `/inventory/${id}`,

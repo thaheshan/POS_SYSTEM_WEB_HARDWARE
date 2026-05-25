@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Inter_Tight } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { ReduxProvider } from '@/store/provider'
+import { Toaster } from "@/components/login/ui/sonner";
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
