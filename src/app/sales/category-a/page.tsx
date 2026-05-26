@@ -5,8 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { useSalesData } from "@/hooks/useSales";
 import { DateRange } from "react-day-picker";
-import { ArrowLeft, Download, FileText, FileSpreadsheet, TrendingUp, Receipt, Percent } from "lucide-react";
+import {
+  ArrowLeft, Download, FileText, FileSpreadsheet,
+  TrendingUp, Receipt, Percent, MoreVertical, Trash2, AlertCircle,
+} from "lucide-react";
 import { format } from "date-fns";
+import api from "@/api/axiosInstance";
 
 export default function CategoryAReportPage() {
   const router = useRouter();
@@ -21,8 +25,13 @@ export default function CategoryAReportPage() {
     to: toParam ? new Date(toParam) : today,
   });
 
-  const { data, loading } = useSalesData(dateRange);
+  const { data, loading, refresh } = useSalesData(dateRange);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // ── Three-dot menu & delete state ────────────────────────────────────────────
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [txnToDelete, setTxnToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const catA = data.catA;
   const threshold = 200000;
@@ -52,6 +61,35 @@ export default function CategoryAReportPage() {
     window.print();
   };
 
+  // Opens the dropdown for a row
+  const toggleMenu = (e: React.MouseEvent, key: string) => {
+    e.stopPropagation();
+    setOpenMenuId(prev => (prev === key ? null : key));
+  };
+
+  // Transfers from dropdown to confirmation modal
+  const openDeleteConfirm = (txn: any) => {
+    setOpenMenuId(null);
+    setTxnToDelete(txn);
+  };
+
+  // Actual deletion
+  const confirmDelete = async () => {
+    if (!txnToDelete) return;
+    setIsDeleting(true);
+    try {
+      const id = txnToDelete.rawId || txnToDelete.id;
+      await api.delete(`/sales/${id}`);
+      setTxnToDelete(null);
+      refresh();
+    } catch (err: any) {
+      console.error("[CategoryA] Delete failed:", err);
+      alert(err?.response?.data?.message || "Failed to delete invoice. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const dateLabel =
     dateRange?.from && dateRange.to
       ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
@@ -61,7 +99,8 @@ export default function CategoryAReportPage() {
 
   return (
     <MainLayout>
-      <div className="max-w-[1200px] mx-auto pb-20">
+      {/* Close any open dropdown when clicking outside */}
+      <div className="max-w-[1200px] mx-auto pb-20" onClick={() => setOpenMenuId(null)}>
 
         {/* PAGE HEADER */}
         <div className="flex items-center justify-between mb-8">
@@ -91,7 +130,7 @@ export default function CategoryAReportPage() {
           {/* Export */}
           <div className="relative">
             <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
+              onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
               className="flex items-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
             >
               <Download className="w-4 h-4" /> Export
@@ -165,35 +204,66 @@ export default function CategoryAReportPage() {
                   <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">VAT</th>
-                  <th className="text-right py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mode</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mode</th>
+                  <th className="py-3 px-6 w-14"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={5} className="py-4 px-6">
+                      <td colSpan={6} className="py-4 px-6">
                         <div className="h-4 bg-gray-100 rounded animate-pulse" />
                       </td>
                     </tr>
                   ))
                 ) : (catA.recentTxns || []).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-16 text-center text-[13px] font-bold text-gray-300">
+                    <td colSpan={6} className="py-16 text-center text-[13px] font-bold text-gray-300">
                       No Category A transactions found for this period.
                     </td>
                   </tr>
                 ) : (
                   (catA.recentTxns || []).map((txn: any, i: number) => {
                     const amt = Number(String(txn.amount).replace(/,/g, ""));
+                    const menuKey = txn.rawId || txn.id || String(i);
+                    const isOpen = openMenuId === menuKey;
                     return (
                       <tr key={i} className="hover:bg-blue-50/30 transition-colors">
                         <td className="py-4 px-6 text-[13px] font-bold text-gray-900 font-mono">{txn.id}</td>
                         <td className="py-4 px-4 text-[13px] font-medium text-gray-500">{txn.time}</td>
                         <td className="py-4 px-4 text-right text-[13px] font-black text-blue-600 font-mono">Rs. {txn.amount}</td>
                         <td className="py-4 px-4 text-right text-[13px] font-medium text-gray-400 font-mono">Rs. {Math.round(amt * 0.18).toLocaleString()}</td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-4 text-right">
                           <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-full uppercase tracking-wider">{txn.mode}</span>
+                        </td>
+                        {/* ── Three-dot Actions ── */}
+                        <td className="py-4 px-6">
+                          <div className="relative flex justify-end">
+                            <button
+                              onClick={(e) => toggleMenu(e, menuKey)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {isOpen && (
+                              <div
+                                className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 py-1 z-50 w-[175px]"
+                                style={{ animation: 'fadeInScale 0.15s ease-out' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => openDeleteConfirm(txn)}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-red-600 hover:bg-red-50 transition-all rounded-xl"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete / Void
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -223,6 +293,81 @@ export default function CategoryAReportPage() {
         </div>
 
       </div>
+
+      {/* ── Delete Confirmation Modal ──────────────────────────────────────────── */}
+      {txnToDelete && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => !isDeleting && setTxnToDelete(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            style={{ animation: 'fadeInScale 0.2s ease-out' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-red-600 px-6 py-5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-black text-[16px]">Delete Invoice</h3>
+                <p className="text-red-100 text-[11px] font-medium mt-0.5">This action cannot be undone</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-6">
+              <p className="text-gray-700 text-[14px] leading-relaxed">
+                You are about to permanently delete invoice{' '}
+                <span className="font-black text-gray-900">{txnToDelete.id}</span>.
+              </p>
+              <div className="mt-4 bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <p className="text-red-700 text-[12px] leading-relaxed">
+                  All invoice items, payment records, and associated data will be{' '}
+                  <strong>permanently removed</strong> from the database. This cannot be recovered.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setTxnToDelete(null)}
+                disabled={isDeleting}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[13px] font-black transition shadow-sm disabled:opacity-70 disabled:cursor-wait"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Yes, Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes fadeInScale {
+              from { opacity: 0; transform: scale(0.92); }
+              to   { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
     </MainLayout>
   );
 }
