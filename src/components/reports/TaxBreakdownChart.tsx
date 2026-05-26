@@ -2,11 +2,29 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-export default function TaxBreakdownChart() {
+interface Props {
+  salesData?: any;
+  loading?: boolean;
+}
+
+export default function TaxBreakdownChart({ salesData, loading }: Props) {
+  const catAVal = salesData?.catA?.core || 0;
+  const catBVal = salesData?.catB?.core || 0;
+  const catCVal = salesData?.catC?.core || 0;
+  const total = catAVal + catBVal + catCVal;
+
+  const pctA = total > 0 ? ((catAVal / total) * 100).toFixed(1) : '0.0';
+  const pctB = total > 0 ? ((catBVal / total) * 100).toFixed(1) : '0.0';
+  const pctC = total > 0 ? ((catCVal / total) * 100).toFixed(1) : '0.0';
+
+  const formattedTotal = total >= 1000000 
+    ? `Rs. ${(total / 1000000).toFixed(2)}M` 
+    : `Rs. ${total.toLocaleString()}`;
+
   const data = [
-    { name: 'Category A', value: 2839824, color: '#2563eb' },
-    { name: 'Category B', value: 1335012, color: '#059669' },
-    { name: 'Category C', value: 697614, color: '#dc2626' },
+    { name: 'Category A', value: catAVal > 0 ? catAVal : 1, color: '#2563eb', realValue: catAVal },
+    { name: 'Category B', value: catBVal > 0 ? catBVal : 1, color: '#059669', realValue: catBVal },
+    { name: 'Category C', value: catCVal > 0 ? catCVal : 1, color: '#dc2626', realValue: catCVal },
   ];
 
   return (
@@ -40,14 +58,16 @@ export default function TaxBreakdownChart() {
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(val: any) => `Rs. ${val?.toLocaleString()}`}
+                formatter={(val: any, name: string, props: any) => `Rs. ${props.payload.realValue?.toLocaleString()}`}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '13px' }}
               />
             </PieChart>
           </ResponsiveContainer>
           
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
-            <span className="text-[18px] font-black text-gray-900 tracking-tight">Rs. 4.87M</span>
+            <span className="text-[18px] font-black text-gray-900 tracking-tight">
+              {loading ? '...' : formattedTotal}
+            </span>
             <span className="text-[11px] font-bold text-gray-400">Total</span>
           </div>
         </div>
@@ -57,7 +77,9 @@ export default function TaxBreakdownChart() {
             <div className="w-1.5 h-10 bg-[#2563eb] rounded-full shrink-0" />
             <div>
               <p className="text-[12px] font-black text-gray-900 leading-tight mb-1">Category A<br/>(Taxable)</p>
-              <p className="text-[11px] font-bold text-[#2563eb]">Rs. 2,839,824 (58.2%)</p>
+              <p className="text-[11px] font-bold text-[#2563eb]">
+                {loading ? '...' : `Rs. ${catAVal.toLocaleString()} (${pctA}%)`}
+              </p>
             </div>
           </div>
           
@@ -65,7 +87,9 @@ export default function TaxBreakdownChart() {
             <div className="w-1.5 h-10 bg-[#059669] rounded-full shrink-0" />
             <div>
               <p className="text-[12px] font-black text-gray-900 leading-tight mb-1">Category B (Non-<br/>Tax)</p>
-              <p className="text-[11px] font-bold text-[#059669]">Rs. 1,335,012 (27.4%)</p>
+              <p className="text-[11px] font-bold text-[#059669]">
+                {loading ? '...' : `Rs. ${catBVal.toLocaleString()} (${pctB}%)`}
+              </p>
             </div>
           </div>
 
@@ -73,7 +97,9 @@ export default function TaxBreakdownChart() {
             <div className="w-1.5 h-10 bg-[#dc2626] rounded-full shrink-0" />
             <div>
               <p className="text-[12px] font-black text-gray-900 leading-tight mb-1">Category C<br/>(Labour)</p>
-              <p className="text-[11px] font-bold text-[#dc2626]">Rs. 697,614 (14.4%)</p>
+              <p className="text-[11px] font-bold text-[#dc2626]">
+                {loading ? '...' : `Rs. ${catCVal.toLocaleString()} (${pctC}%)`}
+              </p>
             </div>
           </div>
         </div>

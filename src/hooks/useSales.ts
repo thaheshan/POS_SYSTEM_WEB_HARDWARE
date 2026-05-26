@@ -74,7 +74,8 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catBOverflow += amt;
           catBTxns += 1;
           catBItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, time, amount: amt.toLocaleString(), mode, type: 'Overflow' };
+          const rawId = inv.id || inv._id || '';
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: 'Overflow' };
           if (recentCatBTxns.length < 5) recentCatBTxns.push(txnObj);
           allCatBTxns.push({ ...txnObj, rawAmount: amt });
         } else if (prevRunning + amt <= threshold) {
@@ -82,7 +83,8 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catACore += amt;
           catATxns += 1;
           catAItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, time, amount: amt.toLocaleString(), mode, type: 'Taxable' };
+          const rawId = inv.id || inv._id || '';
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: 'Taxable' };
           if (recentCatATxns.length < 5) recentCatATxns.push(txnObj);
           allCatATxns.push({ ...txnObj, rawAmount: amt });
         } else {
@@ -95,12 +97,13 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catBTxns += 1;
           catAItemCount += inv.items?.length || 1;
           catBItemCount += inv.items?.length || 1;
-          
-          const txnObjA = { id: inv.invoiceNumber, time, amount: catAPortion.toLocaleString(), mode, type: 'Taxable' };
+          const rawId = inv.id || inv._id || '';
+
+          const txnObjA = { id: inv.invoiceNumber, rawId, time, amount: catAPortion.toLocaleString(), mode, type: 'Taxable' };
           if (recentCatATxns.length < 5) recentCatATxns.push(txnObjA);
           allCatATxns.push({ ...txnObjA, rawAmount: catAPortion });
 
-          const txnObjB = { id: inv.invoiceNumber, time, amount: catBPortion.toLocaleString(), mode, type: 'Overflow' };
+          const txnObjB = { id: inv.invoiceNumber, rawId, time, amount: catBPortion.toLocaleString(), mode, type: 'Overflow' };
           if (recentCatBTxns.length < 5) recentCatBTxns.push(txnObjB);
           allCatBTxns.push({ ...txnObjB, rawAmount: catBPortion });
         }

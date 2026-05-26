@@ -19,7 +19,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
-import { getMockSalesData } from '@/lib/sales-mock-data';
+import { useSalesData } from '@/hooks/useSales';
 
 // Modals from previous implementation
 import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
@@ -32,6 +32,7 @@ import ReportStatCard from '@/components/reports/ReportStatCard';
 import ReportCategoryCard from '@/components/reports/ReportCategoryCard';
 import RevenueTrendChart from '@/components/reports/RevenueTrendChart';
 import TaxBreakdownChart from '@/components/reports/TaxBreakdownChart';
+import AllTransactionsTable from '@/components/reports/AllTransactionsTable';
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function ReportsPage() {
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
-  const data = getMockSalesData(dateRange);
+  const { data, loading } = useSalesData(dateRange);
 
   return (
     <MainLayout>
@@ -132,7 +133,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <ReportStatCard 
              title="Total Revenue"
-             value="Rs. 4,872,450"
+             value={loading ? '...' : `Rs. ${(data.catA.core + data.catB.core + data.catC.core).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Coins className="w-5 h-5 text-white" /></div>}
              variant="blue"
              trend="+18.5%"
@@ -140,14 +141,14 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="Gross Profit"
-             value="Rs. 1,248,780"
+             value={loading ? '...' : `Rs. ${(Math.round((data.catA.core + data.catB.core + data.catC.core) * 0.256)).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
              marginText="25.6%"
           />
           <ReportStatCard 
              title="Transactions"
-             value="3,842"
+             value={loading ? '...' : (data.catA.txns + data.catB.txns).toLocaleString()}
              icon={<div className="w-9 h-9 rounded-xl bg-[#fef08a] flex items-center justify-center"><FileText className="w-5 h-5 text-[#854d0e]" /></div>}
              variant="white"
              trend="+8.2%"
@@ -155,7 +156,7 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="VAT Collected"
-             value="Rs. 628,420"
+             value={loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center"><FileText className="w-5 h-5 text-[#9333ea]" /></div>}
              variant="white"
              badge="IRD Compliant"
@@ -209,9 +210,14 @@ export default function ReportsPage() {
         </div>
 
         {/* CHARTS SECTOR */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0 mb-8">
           <RevenueTrendChart />
-          <TaxBreakdownChart />
+          <TaxBreakdownChart salesData={data} loading={loading} />
+        </div>
+
+        {/* ALL TRANSACTIONS LEDGER */}
+        <div className="relative z-0">
+          <AllTransactionsTable dateRange={dateRange} />
         </div>
       </div>
 

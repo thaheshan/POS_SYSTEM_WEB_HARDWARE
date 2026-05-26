@@ -823,6 +823,7 @@ export default function SalesDashboardPage() {
         isOpen={!!selectedTxn}
         onClose={() => setSelectedTxn(null)}
         invoiceId={selectedTxn || ''}
+        initialMode={modalTab}
       />
     </MainLayout>
   );

@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 
 export default function TransactionTable() {
-  const { transactions, loading, refresh } = useRecentTransactions();
+  const { transactions: allTx, loading, refresh } = useRecentTransactions();
+  const transactions = allTx.slice(0, 6);
 
   const getStatusStyle = (status: string) => {
     const s = status?.toUpperCase();
