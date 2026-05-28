@@ -9,6 +9,7 @@ import {
   Phone,
   Store,
   User,
+  X,
 } from "lucide-react";
 import React, { useState } from "react";
 import Link from "next/link";
@@ -41,6 +42,14 @@ const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
   const email = watch("email");
   const phone = watch("phone");
   const currentVerificationId = watch("shop_verification_id") || "";
+
+  const expectedCode = (selectedShop?.id ?? "").substring(0, 8);
+  const verificationCode = watch("shop_verification_id") || "";
+  const isCodeCorrect =
+    expectedCode.length > 0 &&
+    verificationCode.toLowerCase() === expectedCode.toLowerCase();
+  const isCodeEmpty = verificationCode.length === 0;
+  const isCodeWrong = !isCodeEmpty && !isCodeCorrect;
 
   const hasMinLength = currentPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(currentPassword);
@@ -160,10 +169,25 @@ const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
                     : "border-slate-200 focus:ring-blue-500 focus:border-blue-500"
                 }`}
               />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                {isCodeCorrect && (
+                  <CheckCircle className="size-5 text-green-500" />
+                )}
+                {isCodeWrong && <X className="size-5 text-red-500" />}
+              </div>
             </div>
+
             {errors.shop_verification_id ? (
               <p className="text-red-500 text-xs mt-1 font-medium">
                 {errors.shop_verification_id.message}
+              </p>
+            ) : isCodeWrong ? (
+              <p className="text-red-500 text-xs mt-1 font-medium">
+                Incorrect code. Please check with your shop owner.
+              </p>
+            ) : isCodeCorrect ? (
+              <p className="text-green-600 text-xs mt-1 font-medium">
+                ✓ Shop verified successfully!
               </p>
             ) : (
               <p className="text-slate-500 text-xs mt-1">

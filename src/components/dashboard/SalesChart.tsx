@@ -16,15 +16,7 @@ import {
 import { ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-// Using mock data, but structure updated for Cost, Sales, Revenue
-const data = [
-  { name: 'Jan 11', cost: 200, sales: 100, revenue: 150 },
-  { name: 'Jan 12', cost: 250, sales: 150, revenue: 200 },
-  { name: 'Jan 13', cost: 220, sales: 180, revenue: 180 },
-  { name: 'Jan 14', cost: 380, sales: 120, revenue: 300 },
-  { name: 'Jan 15', cost: 350, sales: 220, revenue: 250 },
-  { name: 'Jan 16', cost: 280, sales: 320, revenue: 380 },
-];
+import { useWeeklyChart } from '@/hooks/useDashboard';
 
 interface SalesChartProps {
   title?: string;
@@ -35,6 +27,7 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { chartData, loading } = useWeeklyChart();
 
   // Recharts needs to be mounted on client to avoid hydration mismatch
   useEffect(() => {
@@ -54,10 +47,10 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
 
   const options = ['Last 7 Days', 'Last 28 Days', 'Last 90 Days'];
 
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex-1 min-h-[450px] flex items-center justify-center">
-        <div className="animate-pulse flex flex-col items-center">
+        <div className="animate-pulse flex flex-col items-center w-full">
           <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
           <div className="h-64 w-full bg-gray-50 rounded"></div>
         </div>
@@ -103,7 +96,7 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
 
       <div className="w-full h-[320px] -ml-3">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis 
               dataKey="name" 

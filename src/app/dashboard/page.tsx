@@ -24,16 +24,20 @@ import TransactionTable from "@/components/dashboard/TransactionTable";
 import QuickActions from "@/components/dashboard/QuickActions";
 import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
+import { useDashboardStats, useLowStockCount } from '@/hooks/useDashboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
   const isStaff = user?.role === "staff" || user?.role === "cashier";
+  
+  const { stats, loading } = useDashboardStats();
+  const lowStockCount = useLowStockCount();
 
   return (
-    <ProtectedRoute allowedRoles={["admin", "manager", "staff", "cashier"]}>
+    <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
       <MainLayout>
         <div className="max-w-[1600px] mx-auto space-y-8">
           {/* Header Section */}
@@ -68,11 +72,11 @@ export default function DashboardPage() {
             {!isStaff ? (
               <StatsCard
                 title={isAdmin ? "Today's Sales" : "Today's Operations"}
-                value={isAdmin ? "LKR 245,680" : "LKR 68,450"}
+                value={loading ? "Loading..." : `LKR ${(stats?.todaySales || 0).toLocaleString()}`}
                 icon={FileText}
                 iconBg="bg-blue-50"
                 iconColor="text-blue-600"
-                subtext={isAdmin ? "38 transactions" : "Operational Records"}
+                subtext={loading ? "..." : isAdmin ? `${stats?.todayTransactions || 0} transactions` : "Operational Records"}
                 viewAllHref="/sales"
               />
             ) : (
@@ -90,7 +94,7 @@ export default function DashboardPage() {
 
             <StatsCard
               title={isStaff ? "Your Sales" : "Low Stock Items"}
-              value={isStaff ? "LKR 42,300" : "15 Products"}
+              value={isStaff ? "LKR 42,300" : loading ? "..." : `${lowStockCount} Products`}
               icon={isStaff ? DollarSign : Package}
               iconBg={isStaff ? "bg-emerald-50" : "bg-green-50"}
               iconColor={isStaff ? "text-emerald-600" : "text-green-600"}
@@ -102,18 +106,18 @@ export default function DashboardPage() {
 
             <StatsCard
               title={isStaff ? "Active Orders" : "Active Customers"}
-              value={isStaff ? "3 Orders" : "1,248"}
+              value={isStaff ? "3 Orders" : loading ? "..." : (stats?.totalCustomers || 0).toLocaleString()}
               icon={isStaff ? ShoppingCart : Users}
               iconBg="bg-blue-50"
               iconColor="text-blue-600"
-              subtext={isStaff ? "Pending processing" : "23 new this week"}
+              subtext={isStaff ? "Pending processing" : "Registered customers"}
               viewAllHref={isStaff ? "/pos" : "/customers"}
             />
 
             {isAdmin && (
               <StatsCard
                 title="Monthly Revenue"
-                value="LKR 5.2M"
+                value={loading ? "Loading..." : `LKR ${(stats?.monthlyRevenue || 0).toLocaleString()}`}
                 icon={TrendingUp}
                 iconBg="bg-purple-50"
                 iconColor="text-purple-600"
@@ -148,11 +152,11 @@ export default function DashboardPage() {
 
           {/* Alert Banners */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {!isStaff && (
+            {!isStaff && lowStockCount > 0 && (
               <AlertBanner
                 type="stock"
                 title="Low Stock Alert"
-                message="15 products are running low on stock and need immediate reordering."
+                message={`${lowStockCount} products are running low on stock and need immediate reordering.`}
                 actionText="View Low Stock Items"
                 onActionClick={() => setIsLowStockModalOpen(true)}
               />

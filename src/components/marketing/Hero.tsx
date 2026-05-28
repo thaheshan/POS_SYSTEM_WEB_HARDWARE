@@ -3,6 +3,7 @@
 import { Button } from "@/components/marketing/ui/button";
 import { CheckCircle2, ShieldCheck, Link2, Clock } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export function Hero() {
   return (
@@ -68,14 +69,15 @@ export function Hero() {
 
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
-              <Button className="bg-white text-emerald-800 hover:bg-emerald-50 font-semibold text-base px-7 py-5 shadow-md rounded-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                Start Free Trial
+              <Button asChild className="bg-white text-emerald-800 hover:bg-emerald-50 font-semibold text-base px-7 py-5 shadow-md rounded-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+                <Link href="/auth/register/role">Start Free Trial</Link>
               </Button>
               <Button
+                asChild
                 variant="outline"
                 className="border-2 border-white text-white bg-transparent hover:bg-white/10 font-semibold text-base px-7 py-5 rounded-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
               >
-                View Demo
+                <Link href="/auth/login">Login</Link>
               </Button>
             </div>
 

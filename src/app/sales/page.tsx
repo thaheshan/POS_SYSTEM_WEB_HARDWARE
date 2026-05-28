@@ -27,12 +27,11 @@ import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
 import CategoryBReportModal from '@/components/sales/CategoryBReportModal';
 import CategoryCReportModal from '@/components/sales/CategoryCReportModal';
 import CategoryPrintView from '@/components/sales/CategoryPrintView';
-
-import { getMockSalesData } from '@/lib/sales-mock-data';
+import { useSalesData } from '@/hooks/useSales';
 
 export default function SalesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role?.toLowerCase() === 'owner';
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -42,7 +41,7 @@ export default function SalesPage() {
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
-  const data = getMockSalesData(dateRange);
+  const { data, loading } = useSalesData(dateRange);
   const threshold = 200000;
 
   const daysSelected =
@@ -245,19 +244,17 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <h4 className="text-[15px] font-black text-blue-900 mb-0.5">
-                    Today's Taxable Sales (Category A): Rs.{' '}
-                    {data.catA.core.toLocaleString()} / Rs.{' '}
-                    {currentThreshold.toLocaleString()}
+                    {loading ? 'Loading...' : `Today's Taxable Sales (Category A): Rs. ${data.catA.core.toLocaleString()} / Rs. ${currentThreshold.toLocaleString()}`}
                   </h4>
                   <p className="text-[12.5px] font-bold text-blue-600 opacity-80">
                     Remaining before non-tax threshold: Rs.{' '}
-                    {Math.max(0, currentThreshold - data.catA.core).toLocaleString()}
+                    {loading ? '...' : Math.max(0, currentThreshold - data.catA.core).toLocaleString()}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4 ml-auto">
                 <span className="text-[16px] font-black text-blue-900">
-                  {percentage.toFixed(1)}%
+                  {loading ? '...' : `${percentage.toFixed(1)}%`}
                 </span>
                 <div className="w-[120px] h-2.5 bg-blue-200/50 rounded-full overflow-hidden">
                   <div
@@ -287,11 +284,11 @@ export default function SalesPage() {
                   </p>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[32px] font-black tracking-tighter text-white">
-                      Rs. {data.catA.core.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catA.core.toLocaleString()}`}
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-blue-200 mb-0">
-                    {data.catA.txns} Transactions
+                    {loading ? '...' : `${data.catA.txns} Transactions`}
                   </p>
                 </div>
 
@@ -301,7 +298,7 @@ export default function SalesPage() {
                       VAT (18%)
                     </span>
                     <span className="text-[14px] font-black text-gray-900">
-                      Rs. {data.catA.vat.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
                     </span>
                   </div>
                 </div>
@@ -313,7 +310,7 @@ export default function SalesPage() {
                         Average Bill
                       </span>
                       <span className="text-[16px] font-black text-gray-900 font-mono tracking-tighter">
-                        Rs. {data.catA.avg.toLocaleString()}
+                        {loading ? '...' : `Rs. ${data.catA.avg.toLocaleString()}`}
                       </span>
                     </div>
                     <div>
@@ -321,7 +318,7 @@ export default function SalesPage() {
                         Items Sold
                       </span>
                       <span className="text-[16px] font-black text-gray-900">
-                        {data.catA.items} Units
+                        {loading ? '...' : `${data.catA.items} Units`}
                       </span>
                     </div>
                   </div>
@@ -331,46 +328,56 @@ export default function SalesPage() {
                       <h5 className="text-[13px] font-black uppercase tracking-widest text-gray-900">
                         Recent Transactions
                       </h5>
-                      <button className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                      <button
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                          router.push(`/sales/category-a?${params.toString()}`);
+                        }}
+                        className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                      >
                         View All
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {[
-                        { id: 'INV-2026-001234', time: '10:24 AM', amount: '5,450', mode: 'Cash' },
-                        { id: 'INV-2026-001233', time: '9:58 AM', amount: '3,200', mode: 'Card' },
-                        { id: 'INV-2026-001232', time: '9:15 AM', amount: '12,450', mode: 'Credit' },
-                      ].map((txn) => (
-                        <div
-                          key={txn.id}
-                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col">
-                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                                {txn.id}
-                              </span>
-                              <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[13px] font-black text-blue-600 font-mono tracking-tighter">
-                                Rs. {txn.amount}
-                              </span>
-                              <span
-                                className={`text-[10px] font-black uppercase tracking-wider ${
-                                  txn.mode === 'Cash'
-                                    ? 'text-emerald-500'
-                                    : txn.mode === 'Card'
-                                    ? 'text-blue-500'
-                                    : 'text-amber-500'
-                                }`}
-                              >
-                                {txn.mode}
-                              </span>
+                      {(data.catA.recentTxns || []).length > 0 ? (
+                        (data.catA.recentTxns || []).map((txn: any) => (
+                          <div
+                            key={txn.id}
+                            className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex flex-col">
+                                <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                  {txn.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-blue-600 font-mono tracking-tighter">
+                                  Rs. {txn.amount}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-black uppercase tracking-wider ${
+                                    txn.mode === 'Cash'
+                                      ? 'text-emerald-500'
+                                      : txn.mode === 'Card'
+                                      ? 'text-blue-500'
+                                      : 'text-amber-500'
+                                  }`}
+                                >
+                                  {txn.mode}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                          No recent transactions found.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -400,11 +407,11 @@ export default function SalesPage() {
                   </p>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[32px] font-black tracking-tighter text-white font-mono">
-                      Rs. {data.catB.core.toLocaleString()}
+                      {loading ? '...' : `Rs. ${data.catB.core.toLocaleString()}`}
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-emerald-200 mb-0">
-                    {data.catB.txns} Transactions
+                    {loading ? '...' : `${data.catB.txns} Transactions`}
                   </p>
                 </div>
 
@@ -448,28 +455,38 @@ export default function SalesPage() {
                       <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                         Top Non-Taxable Products
                       </h5>
-                      <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline">
+                      <button
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                          router.push(`/sales/category-b?${params.toString()}`);
+                        }}
+                        className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
+                      >
                         View All
                       </button>
                     </div>
                     <div className="space-y-4 mb-8">
-                      {[
-                        { name: 'Educational Books', sold: '12 units sold', amount: '8,450' },
-                        { name: 'Medical Supplies', sold: '8 units sold', amount: '6,750' },
-                        { name: 'Agricultural Tools', sold: '5 units sold', amount: '8,000' },
-                      ].map((item) => (
-                        <div key={item.name} className="flex justify-between items-center">
-                          <div className="flex flex-col">
-                            <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
-                              {item.name}
+                      {(data.catB.topProducts || []).length > 0 ? (
+                        (data.catB.topProducts || []).map((item: any) => (
+                          <div key={item.name} className="flex justify-between items-center">
+                            <div className="flex flex-col">
+                              <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
+                                {item.name}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400">{item.sold} units sold</span>
+                            </div>
+                            <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
+                              Rs. {item.amount}
                             </span>
-                            <span className="text-[10px] font-bold text-gray-400">{item.sold}</span>
                           </div>
-                          <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
-                            Rs. {item.amount}
-                          </span>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4 border-b border-gray-50 last:border-0">
+                          No top products data.
                         </div>
-                      ))}
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between mb-4 mt-8">
@@ -478,32 +495,35 @@ export default function SalesPage() {
                       </h5>
                     </div>
                     <div className="space-y-4">
-                      {[
-                        { id: 'INV-2026-001240', time: '2:15 PM', amount: '8,200', type: 'Non-Tax' },
-                        { id: 'INV-2026-001239', time: '1:48 PM', amount: '15,250', type: 'Overflow' },
-                      ].map((txn) => (
-                        <div
-                          key={txn.id}
-                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col">
-                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                                {txn.id}
-                              </span>
-                              <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[13px] font-black text-emerald-600 font-mono tracking-tighter">
-                                Rs. {txn.amount}
-                              </span>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">
-                                {txn.type}
-                              </span>
+                      {(data.catB.recentTxns || []).length > 0 ? (
+                        (data.catB.recentTxns || []).map((txn: any) => (
+                          <div
+                            key={txn.id}
+                            className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex flex-col">
+                                <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                  {txn.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-400">{txn.time}</span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-emerald-600 font-mono tracking-tighter">
+                                  Rs. {txn.amount}
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">
+                                  {txn.type}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                          No recent transactions found.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -532,11 +552,11 @@ export default function SalesPage() {
                 </p>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-[32px] font-black tracking-tighter text-white font-mono">
-                    Rs. {data.catC.core.toLocaleString()}
+                    {loading ? '...' : `Rs. ${data.catC.core.toLocaleString()}`}
                   </span>
                 </div>
                 <p className="text-[13px] font-bold text-amber-200 mb-0">
-                  {data.catC.entries} Entries
+                  {loading ? '...' : `${data.catC.entries} Entries`}
                 </p>
               </div>
 
@@ -567,28 +587,38 @@ export default function SalesPage() {
                     <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                       Labour Type Breakdown
                     </h5>
-                    <button className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline">
+                    <button
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+                        if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+                        router.push(`/sales/category-c?${params.toString()}`);
+                      }}
+                      className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
+                    >
                       View All
                     </button>
                   </div>
                   <div className="space-y-4 mb-10">
-                    {[
-                      { name: 'Plumbing Installation', jobs: '5 jobs completed', amount: '12,500' },
-                      { name: 'Electrical Work', jobs: '3 jobs completed', amount: '8,500' },
-                      { name: 'Carpentry Services', jobs: '2 jobs completed', amount: '6,000' },
-                    ].map((item) => (
-                      <div key={item.name} className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
-                            {item.name}
+                    {(data.catC.breakdown || []).length > 0 ? (
+                      (data.catC.breakdown || []).map((item: any) => (
+                        <div key={item.name} className="flex justify-between items-center">
+                          <div className="flex flex-col">
+                            <span className="text-[12.5px] font-bold text-gray-900 leading-tight">
+                              {item.name}
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-400">{item.jobs} jobs completed</span>
+                          </div>
+                          <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
+                            Rs. {item.amount}
                           </span>
-                          <span className="text-[10px] font-bold text-gray-400">{item.jobs}</span>
                         </div>
-                        <span className="text-[13px] font-black text-gray-900 font-mono tracking-tighter">
-                          Rs. {item.amount}
-                        </span>
+                      ))
+                    ) : (
+                      <div className="text-[13px] font-bold text-gray-400 text-center py-4 border-b border-gray-50 last:border-0">
+                        No breakdown data.
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between mb-4 mt-8">
@@ -597,40 +627,38 @@ export default function SalesPage() {
                     </h5>
                   </div>
                   <div className="space-y-5">
-                    {[
-                      {
-                        id: 'LAB-2026-0034',
-                        date: '3:45 PM',
-                        amount: '4,500',
-                        desc: 'Pipe installation - Mr. Perera',
-                        type: 'Labour',
-                      },
-                    ].map((txn) => (
-                      <div
-                        key={txn.id}
-                        className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <div className="flex flex-col">
-                            <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                              {txn.id}
-                            </span>
-                            <span className="text-[11px] font-bold text-gray-400">{txn.date}</span>
+                    {(data.catC.recentEntries || []).length > 0 ? (
+                      (data.catC.recentEntries || []).map((txn: any) => (
+                        <div
+                          key={txn.id}
+                          className="flex flex-col gap-2 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="flex flex-col">
+                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
+                                {txn.id}
+                              </span>
+                              <span className="text-[11px] font-bold text-gray-400">{txn.date}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[13px] font-black text-amber-600 font-mono tracking-tighter">
+                                Rs. {txn.amount}
+                              </span>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">
+                                {txn.type}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-[13px] font-black text-amber-600 font-mono tracking-tighter">
-                              Rs. {txn.amount}
-                            </span>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">
-                              {txn.type}
-                            </span>
-                          </div>
+                          <p className="text-[11.5px] font-bold text-gray-500 tracking-tight leading-relaxed text-left">
+                            {txn.desc}
+                          </p>
                         </div>
-                        <p className="text-[11.5px] font-bold text-gray-500 tracking-tight leading-relaxed text-left">
-                          {txn.desc}
-                        </p>
+                      ))
+                    ) : (
+                      <div className="text-[13px] font-bold text-gray-400 text-center py-4">
+                        No recent entries found.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,11 +1,11 @@
 'use client';
 
 import { 
-  PlusCircle, 
+  Plus, 
   UserPlus, 
   FileText, 
-  BarChart, 
-  ShoppingCart,
+  PieChart, 
+  Terminal,
   ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
@@ -13,12 +13,11 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 const actions = [
-  { id: 1, label: 'New Sale', icon: ShoppingCart, color: 'text-white', bg: 'bg-[#1e3a8a]', href: '/pos', roles: ['admin', 'manager', 'staff', 'cashier'] },
-  { id: 2, label: 'Add Product', icon: PlusCircle, color: 'text-green-500', bg: 'bg-green-50', roles: ['admin', 'manager'] },
-  { id: 3, label: 'Add Customer', icon: UserPlus, color: 'text-orange-500', bg: 'bg-orange-50', roles: ['admin', 'manager', 'staff', 'cashier'] },
-  { id: 4, label: 'Create Quotation', icon: FileText, color: 'text-purple-500', bg: 'bg-purple-50', roles: ['admin', 'manager'] },
-  { id: 5, label: 'Sales Dashboard', icon: BarChart, color: 'text-blue-500', bg: 'bg-blue-50', href: '/sales', roles: ['admin'] },
-  { id: 6, label: 'View Reports', icon: BarChart, color: 'text-blue-500', bg: 'bg-blue-50', roles: ['admin'] },
+  { id: 1, label: 'New Sale', icon: Terminal, iconBg: 'bg-transparent', iconColor: 'text-white', isPrimary: true, href: '/pos', roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
+  { id: 2, label: 'Add Product', icon: Plus, iconBg: 'bg-emerald-500', iconColor: 'text-white', isPrimary: false, href: '/inventory', roles: ['admin', 'owner', 'manager'] },
+  { id: 3, label: 'Add Customer', icon: UserPlus, iconBg: 'bg-orange-500', iconColor: 'text-white', isPrimary: false, href: '/customers', roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
+  { id: 4, label: 'Create Quotation', icon: FileText, iconBg: 'bg-purple-500', iconColor: 'text-white', isPrimary: false, href: '/sales', roles: ['admin', 'owner', 'manager'] },
+  { id: 5, label: 'View Reports', icon: PieChart, iconBg: 'bg-blue-500', iconColor: 'text-white', isPrimary: false, href: '/reports', roles: ['admin', 'owner'] },
 ];
 
 export default function QuickActions() {
@@ -29,27 +28,34 @@ export default function QuickActions() {
   );
 
   return (
-    <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 w-full lg:w-[320px]">
-      <h3 className="text-xl font-bold text-gray-900 tracking-tight mb-6">Quick Actions</h3>
+    <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 w-full">
+      <h3 className="text-[17px] font-black text-gray-900 tracking-tight mb-6">Quick Actions</h3>
 
       <div className="space-y-3">
         {visibleActions.map((action) => {
           const content = (
             <>
-              <div className="flex items-center gap-3">
-                <action.icon className={cn("w-[22px] h-[22px]", action.color)} strokeWidth={2.5} />
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-9 h-9 flex items-center justify-center rounded-full shrink-0",
+                  action.isPrimary ? "bg-white/20" : action.iconBg
+                )}>
+                  <action.icon className={cn("w-5 h-5", action.iconColor)} strokeWidth={2.5} />
+                </div>
                 <span className="text-[14px] font-bold tracking-tight">{action.label}</span>
               </div>
               <ArrowRight className={cn(
-                "w-[18px] h-[18px] transition-transform group-hover:translate-x-1",
-                action.bg === 'bg-[#1e3a8a]' ? "text-white" : "text-gray-500"
+                "w-5 h-5 transition-transform group-hover:translate-x-1",
+                action.isPrimary ? "text-white/80" : "text-gray-400"
               )} />
             </>
           );
           
           const className = cn(
-            "w-full flex items-center justify-between p-4 rounded-xl transition-all group hover:scale-[1.02] text-left",
-            action.bg === 'bg-[#1e3a8a]' ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-md shadow-blue-500/20" : "bg-gray-50 text-gray-900 hover:bg-gray-100 border border-transparent shadow-sm"
+            "w-full flex items-center justify-between p-3.5 rounded-2xl transition-all group hover:scale-[1.02] text-left",
+            action.isPrimary 
+              ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/20" 
+              : "bg-gray-50 text-gray-900 hover:bg-gray-100 border border-gray-100 shadow-sm"
           );
 
           if (action.href) {

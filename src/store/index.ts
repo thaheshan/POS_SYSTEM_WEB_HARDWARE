@@ -14,7 +14,7 @@ import ordersReducer from "./slices/ordersSlice";
 import staffReducer from "./slices/staffSlice";
 import salesReducer from "./slices/salesSlice";
 import forgotPasswordReducer from "./slices/forgotPasswordSlice";
-import { baseApi } from "./baseApi";
+import { baseApi } from './baseApi';
 
 export const store = configureStore({
   reducer: {

@@ -11,6 +11,7 @@ import {
   Store,
   User,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 
 // TODO: Replace SHOP_OPTIONS import with Redux shops state (useAppSelector)
@@ -62,6 +63,9 @@ const StepOne = ({
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const [shopSearch, setShopSearch] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  
+  const [shops, setShops] = useState<{ id: string; name: string }[]>([]);
+  const [loadingShops, setLoadingShops] = useState(true);
 
   const shopDropdownRef = useRef<HTMLDivElement>(null);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
@@ -264,7 +268,7 @@ const StepOne = ({
               {errors.email.message}
             </p>
           )}
-          
+
         </div>
 
         {/* Phone Number */}

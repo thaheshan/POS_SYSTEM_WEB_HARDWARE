@@ -14,6 +14,7 @@ import {
   resetPassword,
   selectForgotPassword,
 } from "@/store/slices/forgotPasswordSlice";
+import AuthLayout from "@/components/login/auth/auth-layout";
 
 const decodeResetTokenEmail = (token: string): string => {
   const encodedPayload = token.split(".")[0];
@@ -56,6 +57,7 @@ export default function ForgotPasswordPage() {
   const [resetToken, setResetToken] = useState<string | null>(
     tokenFromQuery || null,
   );
+  const [code, setCode] = useState("");
 
   useEffect(() => {
     dispatch(clearForgotPasswordFlow());
@@ -84,14 +86,15 @@ export default function ForgotPasswordPage() {
   };
 
   const handleResetPassword = async (newPassword: string) => {
+    // If we have a code from step 2, use it as the token
+    const finalToken = tokenFromQuery || code || resetToken || "";
     await dispatch(
       resetPassword({
         email: email || tokenEmailFromQuery,
-        resetToken: tokenFromQuery || resetToken || "",
+        resetToken: finalToken,
         newPassword,
       }),
     ).unwrap();
-
     setStep(4);
   };
 
@@ -106,34 +109,39 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <>
-      {step === 1 && (
-        <Step1EmailRequired
-          email={email}
-          onEmailChange={setEmail}
-          onSubmit={handleRequestReset}
-          loading={forgotPassword.loading}
-          error={forgotPassword.error}
-        />
-      )}
+    <AuthLayout>
+      <div className="w-full">
+        {step === 1 && (
+          <Step1EmailRequired
+            email={email}
+            onEmailChange={setEmail}
+            onSubmit={handleRequestReset}
+            loading={forgotPassword.loading}
+            error={forgotPassword.error || ""}
+          />
+        )}
 
-      {step === 2 && (
-        <Step2Verification
-          email={email}
-          onOpenEmailApp={handleOpenEmailApp}
-          onResend={handleResend}
-          loading={forgotPassword.loading}
-        />
-      )}
+        {step === 2 && (
+          <Step2Verification
+            email={email}
+            code={code}
+            onCodeChange={setCode}
+            onNext={() => setStep(3)}
+            onOpenEmailApp={handleOpenEmailApp}
+            onResend={handleResend}
+            loading={forgotPassword.loading}
+          />
+        )}
 
-      {step === 3 && (
-        <Step3ChangePassword
-          onNext={handleResetPassword}
-          loading={forgotPassword.loading}
-        />
-      )}
+        {step === 3 && (
+          <Step3ChangePassword
+            onNext={handleResetPassword}
+            loading={forgotPassword.loading}
+          />
+        )}
 
-      {step === 4 && <Step4PasswordResetResult status="success" />}
-    </>
+        {step === 4 && <Step4PasswordResetResult status="success" />}
+      </div>
+    </AuthLayout>
   );
 }

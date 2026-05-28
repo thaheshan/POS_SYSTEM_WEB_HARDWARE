@@ -8,10 +8,8 @@ import type { AppDispatch } from "@/store";
 import { loginThunk, logout } from "../../../../lib/store/authSlice";
 import FormInput from "./form-input";
 import AuthHeader from "./auth-header";
-import { checkStaffStatus } from "@/store/slices/staffSlice";
 
 export default function LoginForm() {
-  // Local UI state for the form; auth/session state lives in Redux.
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +17,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Redux dispatch for login thunk (typed for thunk support).
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -35,6 +31,7 @@ export default function LoginForm() {
 
   const dashboardMap: Record<string, string> = {
     admin: "/dashboard",
+    owner: "/dashboard",
     manager: "/dashboard",
     cashier: "/dashboard",
     staff: "/dashboard",
@@ -44,43 +41,61 @@ export default function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-  
+
     try {
       const result = await dispatch(loginThunk({ email, password })).unwrap();
-  
+
       const user = result.user;
       if (!user) {
         throw new Error("Login succeeded but user profile is missing.");
       }
-  
-      sessionStorage.removeItem("allowPendingAccess");
-  
-      const dashboardPath = dashboardMap[user.role] || "/dashboard";
+
+      // Clear any temporary registration flags
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("allowPendingAccess");
+        localStorage.removeItem("registrationStatus");
+      }
+
+      const roleKey = String(user.role ?? "").toLowerCase();
+      const dashboardPath = dashboardMap[roleKey] || "/dashboard";
+
+      // Force full navigation so middleware sees fresh cookies
+      if (typeof window !== "undefined") {
+        console.log("[LoginForm] Redirecting to:", dashboardPath);
+        window.location.assign(dashboardPath);
+        return;
+      }
+
       router.push(dashboardPath);
     } catch (err: any) {
       const backendStatus =
         err?.response?.data?.status ||
         err?.response?.data?.backendStatus ||
         err?.status;
-  
+
       const errorMessage =
         err?.message ||
         err?.response?.data?.message ||
         err?.error ||
         (typeof err === "string" ? err : "Login failed. Please try again.");
-  
-      const normalizedMessage = errorMessage.toLowerCase();
-  
+
+      const normalizedMessage = String(errorMessage).toLowerCase();
+
+      // Pending approval
       if (
         backendStatus === "PENDING_APPROVAL" ||
         normalizedMessage.includes("pending approval") ||
-        normalizedMessage.includes("waiting approval")
+        normalizedMessage.includes("waiting approval") ||
+        normalizedMessage.includes("approval_waiting")
       ) {
-        sessionStorage.setItem("allowPendingAccess", "true");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("allowPendingAccess", "true");
+        }
         router.push("/auth/pending");
         return;
       }
-  
+
+      // Rejected flows
       if (
         backendStatus === "REJECTED" ||
         normalizedMessage.includes("rejected") ||
@@ -88,12 +103,15 @@ export default function LoginForm() {
         normalizedMessage.includes("contact support") ||
         normalizedMessage.includes("inactive")
       ) {
-        setError(
-          "Access Denied: Your application was rejected by the shop owner."
-        );
+        // If backend gives a specific "rejected by administration" message, route to a dedicated page
+        if (normalizedMessage.includes("rejected by administration")) {
+          router.push("/auth/request-rejected");
+          return;
+        }
+        setError("Access Denied: Your application was rejected by the shop owner.");
         return;
       }
-  
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -102,14 +120,9 @@ export default function LoginForm() {
 
   return (
     <div className="w-full">
-      <AuthHeader
-        title="Welcome Back"
-        subtitle="Sign in to your shop account"
-      />
+      <AuthHeader title="Welcome Back" subtitle="Sign in to your shop account" />
 
-      {/* Login Form */}
       <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-        {/* Error Message Display */}
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4">
             <p className="text-sm font-medium text-red-800 leading-relaxed">
@@ -143,7 +156,6 @@ export default function LoginForm() {
           disabled={isLoading}
         />
 
-        {/* Remember Me & Forgot Password */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <label className="flex items-center gap-2 cursor-pointer group min-w-0">
             <input
@@ -165,7 +177,6 @@ export default function LoginForm() {
           </Link>
         </div>
 
-        {/* Sign In Button */}
         <button
           type="submit"
           disabled={isLoading}
@@ -202,7 +213,6 @@ export default function LoginForm() {
         </button>
       </form>
 
-      {/* Divider */}
       <div className="relative my-6 sm:my-8">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300"></div>
@@ -212,7 +222,6 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {/* Sign Up Link */}
       <div className="text-center">
         <p className="text-gray-700 text-sm">
           Don't have an account?{" "}

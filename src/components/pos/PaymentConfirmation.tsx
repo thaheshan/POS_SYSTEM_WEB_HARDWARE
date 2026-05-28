@@ -1,11 +1,14 @@
 'use client';
 
 import { CheckCircle2, ArrowLeft, Printer, X } from 'lucide-react';
+import { useState } from 'react';
+import api from '@/api/axiosInstance';
+import { toast } from 'sonner';
 
 type PaymentConfirmationProps = {
   onBack: () => void;
   onProcess: () => void;
-  items: { id: string, name: string, price: number, qty: number, img: string }[];
+  items: { id: string, name: string, price: number, qty: number, img: string, warehouseId?: string, branchId?: string }[];
   customerType: string;
   paymentMethod: string;
   amountTendered: number;
@@ -31,6 +34,41 @@ export default function PaymentConfirmation({
   total,
   notes
 }: PaymentConfirmationProps) {
+  const [processing, setProcessing] = useState(false);
+
+  const handleProcess = async () => {
+    setProcessing(true);
+    try {
+      const payload = {
+        items: items.map((item) => ({
+          productId: item.id,
+          quantity: item.qty,
+          unitPrice: item.price,
+          warehouseId: item.warehouseId,
+          branchId: item.branchId,
+        })),
+        subtotal,
+        discount,
+        tax,
+        total,
+        paidAmount: amountTendered,
+        change,
+        paymentMethod: paymentMethod.toUpperCase(),
+        notes,
+        customerId: null,
+      };
+      console.log('[POS Checkout] Sending payload:', payload);
+      await api.post('/sales/checkout', payload);
+      onProcess(); // triggers success modal
+    } catch (err: any) {
+      console.error('[POS Checkout Error]', err?.response?.data || err);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || 'Checkout failed. Please try again. Check console for details.';
+      toast.error(msg);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <div className="flex-1 bg-white flex h-full">
       {/* LEFT COLUMN: Details */}
@@ -231,10 +269,11 @@ export default function PaymentConfirmation({
              <X className="w-4 h-4" strokeWidth={3} /> Cancel Transaction
            </button>
            <button 
-             onClick={onProcess}
-             className="flex-[1.5] py-4 bg-[#059669] hover:bg-emerald-700 text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+             onClick={handleProcess}
+             disabled={processing}
+             className="flex-[1.5] py-4 bg-[#059669] hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
            >
-             <CheckCircle2 className="w-5 h-5" /> Process Payment
+             <CheckCircle2 className="w-5 h-5" /> {processing ? 'Processing...' : 'Process Payment'}
            </button>
         </div>
 

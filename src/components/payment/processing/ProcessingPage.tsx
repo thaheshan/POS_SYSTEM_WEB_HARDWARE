@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authApi } from "@/api/auth";
 import ProcessingBackground from "./ProcessingBackground";
 import PulsatingLock from "./PulsatingLock";
 import ProcessingSteps from "./ProcessingSteps";
@@ -16,7 +17,7 @@ export default function ProcessingPage({ onComplete }: ProcessingPageProps) {
   const steps = [
     "Validating card details",
     "Contacting payment gateway",
-    "Creating your account",
+    "Activating your account",
   ];
 
   useEffect(() => {
@@ -31,12 +32,34 @@ export default function ProcessingPage({ onComplete }: ProcessingPageProps) {
       return () => clearTimeout(timer);
     }
 
-    const redirectTimer = setTimeout(() => {
-      const mockSuccess = Math.random() > 0.3;
-      onComplete(mockSuccess);
-    }, 1000);
+    const processPayment = async () => {
+      try {
+        // Simulate payment gateway delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    return () => clearTimeout(redirectTimer);
+        // Use email from localStorage (set during registration) to complete payment
+        const email = typeof window !== "undefined"
+          ? localStorage.getItem("pendingEmail")
+          : null;
+
+        if (!email) {
+          throw new Error("No pending email found. Please try again.");
+        }
+
+        await authApi.completePaymentByEmail(email);
+
+        // Clear registration state now that payment is done
+        localStorage.removeItem("registrationStatus");
+        localStorage.removeItem("pendingEmail");
+
+        onComplete(true);
+      } catch (error) {
+        console.error("Payment failed:", error);
+        onComplete(false);
+      }
+    };
+
+    processPayment();
   }, [activeStep, onComplete, steps.length]);
 
   return (

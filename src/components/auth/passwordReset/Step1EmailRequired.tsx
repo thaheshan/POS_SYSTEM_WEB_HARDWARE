@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Mail, KeyRound, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -16,15 +17,28 @@ export default function Step1EmailRequired({
   onEmailChange,
   onSubmit,
   loading,
-  error,
+  error: serverError,
 }: Step1Props) {
+  const [localError, setLocalError] = useState("");
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError("");
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      setLocalError("Please enter a valid email address");
+      return;
+    }
+
     onSubmit();
   };
 
+  const displayError = localError || serverError;
+
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+    <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
         <div className="flex justify-center mb-6">
           <KeyRound
@@ -60,15 +74,20 @@ export default function Step1EmailRequired({
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
+                onChange={(e) => {
+                  onEmailChange(e.target.value);
+                  setLocalError("");
+                }}
                 className="block w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg text-base text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 hover:border-gray-400 transition-all outline-none"
                 placeholder="you@example.com"
                 required
                 disabled={loading}
               />
             </div>
-            {error && (
-              <p className="mt-1.5 text-sm font-medium text-red-600">{error}</p>
+            {displayError && (
+              <p className="mt-1.5 text-sm font-medium text-red-600">
+                {displayError}
+              </p>
             )}
           </div>
 

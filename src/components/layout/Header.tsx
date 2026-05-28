@@ -1,11 +1,12 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
@@ -27,11 +28,31 @@ export default function Header() {
     <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">
       <div className="flex justify-between items-center h-full px-10">
         
-        {/* Left: System Title */}
-        <div className="w-[300px] flex items-center">
+        {/* Left: System Title & Shop Code */}
+        <div className="w-[300px] flex flex-col justify-center">
           <h1 className="text-white text-[17px] font-medium tracking-wide">
             POS CHECKOUT SYSTEM
           </h1>
+          {user?.role === 'OWNER' && user?.tenant_id && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-white/70 text-[11px] font-medium uppercase tracking-wider">Shop Code:</span>
+              <div className="flex items-center bg-white/10 rounded px-2 py-0.5 border border-white/20 hover:bg-white/15 transition-colors group">
+                <span className="text-white text-xs font-mono tracking-wider font-semibold">
+                  {user.tenant_id.substring(0, 8).toUpperCase()}
+                </span>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.tenant_id.substring(0, 8).toUpperCase());
+                    alert('Shop verification code copied to clipboard!');
+                  }}
+                  className="ml-2 text-white/50 group-hover:text-white transition-colors"
+                  title="Copy Verification Code"
+                >
+                  <Copy size={12} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Center: Digital Clock */}
@@ -54,12 +75,7 @@ export default function Header() {
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            <button className="relative w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10 group">
-              <Bell className="w-[19px] h-[19px] text-white group-hover:rotate-12 transition-transform" strokeWidth={2.5} />
-              <div className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-[10px] font-black text-white bg-red-500 rounded-full border-2 border-[#2563eb] shadow-sm">
-                3
-              </div>
-            </button>
+            <NotificationDropdown />
             <button className="w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10">
               <Settings className="w-[19px] h-[19px] text-white" strokeWidth={2.5} />
             </button>

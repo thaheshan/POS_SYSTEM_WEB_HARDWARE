@@ -7,22 +7,27 @@ export const staffRole = [
   { id: "TECHNICIAN", label: "Technician" },
 ] as const;
 
+export type StaffRoleId = typeof staffRole[number]["id"];
+
 export interface StaffRegistrationPayload {
   full_name: string;
-  email: string;
+  email?: string;
   mobile_number: string;
   shop_id: string;
-  role: typeof staffRole[number]['id'];
-  password: string;
+  role: StaffRoleId;
+  password?: string;
+  confirmPassword?: string;
+  shopVerificationCode?: string;
+  shopNameVerification?: string;
 }
 
 export interface StaffMemberResponse {
   id: string;
   full_name: string;
-  email: string;
-  mobile_number: string;
-  status: string;
-  created_at: string;
+  email?: string;
+  mobile_number?: string;
+  status?: string;
+  created_at?: string;
 }
 
 export interface AuthUser {
@@ -30,7 +35,8 @@ export interface AuthUser {
   last_name?: string;
   email?: string;
   phone?: string;
+  mobile_number?: string;
   tenant_id?: string;
-  shop_id?: string; 
+  shop_id?: string;
   role?: string;
 }

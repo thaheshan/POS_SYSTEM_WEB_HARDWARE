@@ -1,7 +1,6 @@
 "use client";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import Footer from "./Footer";
 import { usePathname } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
@@ -29,9 +28,6 @@ export default function MainLayout({
             <main className={`${isPOS ? "p-10 pb-0" : "p-10"} print:p-0`}>
               {children}
             </main>
-            <div className="print:hidden">
-              <Footer />
-            </div>
           </div>
         </div>
       </div>

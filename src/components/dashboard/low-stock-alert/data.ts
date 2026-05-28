@@ -11,6 +11,8 @@ export interface LowStockProduct {
   lastSale: string;
   unitsSold: number;
   unitCost: number;
+  warehouseId?: string;
+  warehouseName?: string;
 }
 
 export const lowStockProducts: LowStockProduct[] = [
