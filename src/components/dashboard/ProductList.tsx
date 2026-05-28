@@ -54,11 +54,11 @@ export default function ProductList() {
               <Icon className={cn("w-5 h-5", color)} strokeWidth={2.5} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-[14px] font-bold text-gray-900 tracking-tight truncate">{product.name || product.product_name}</h4>
-              <p className="text-[13px] text-[#94a3b8] font-medium mt-0.5">{product.totalQty || product.quantity || 0} sold</p>
+              <h4 className="text-[14px] font-bold text-gray-900 tracking-tight truncate">{product.name || (product as any).product_name}</h4>
+              <p className="text-[13px] text-[#94a3b8] font-medium mt-0.5">{product.totalQty || (product as any).quantity || 0} sold</p>
             </div>
             <div className="text-right pl-2">
-              <p className="text-[14px] font-bold text-gray-900 tracking-tight">LKR {(product.totalRevenue || product.revenue || 0).toLocaleString()}</p>
+              <p className="text-[14px] font-bold text-gray-900 tracking-tight">LKR {(product.totalRevenue || (product as any).revenue || 0).toLocaleString()}</p>
             </div>
           </div>
         )}))}

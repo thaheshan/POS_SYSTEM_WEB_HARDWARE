@@ -7,11 +7,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  Defs,
-  LinearGradient
+  ResponsiveContainer
 } from 'recharts';
 import { ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';

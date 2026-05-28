@@ -33,16 +33,16 @@ export default function Header() {
           <h1 className="text-white text-[17px] font-medium tracking-wide">
             POS CHECKOUT SYSTEM
           </h1>
-          {user?.role === 'OWNER' && user?.tenant_id && (
+          {user?.role === 'owner' && (user as any)?.tenant_id && (
             <div className="flex items-center gap-2 mt-1">
               <span className="text-white/70 text-[11px] font-medium uppercase tracking-wider">Shop Code:</span>
               <div className="flex items-center bg-white/10 rounded px-2 py-0.5 border border-white/20 hover:bg-white/15 transition-colors group">
-                <span className="text-white text-xs font-mono tracking-wider font-semibold">
-                  {user.tenant_id.substring(0, 8).toUpperCase()}
+                <span className="text-white font-mono text-[13px] font-bold tracking-widest">
+                  {(user as any)?.tenant_id?.split('-')[0].toUpperCase()}
                 </span>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(user.tenant_id.substring(0, 8).toUpperCase());
+                    navigator.clipboard.writeText((user as any)?.tenant_id);
                     alert('Shop verification code copied to clipboard!');
                   }}
                   className="ml-2 text-white/50 group-hover:text-white transition-colors"

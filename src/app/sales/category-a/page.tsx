@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { useSalesData } from "@/hooks/useSales";
@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import api from "@/api/axiosInstance";
 import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
 
-export default function CategoryAReportPage() {
+function CategoryAReportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const today = new Date();
@@ -389,5 +389,13 @@ export default function CategoryAReportPage() {
         initialMode="receipt"
       />
     </MainLayout>
+  );
+}
+
+export default function CategoryAReportPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <CategoryAReportPageContent />
+    </Suspense>
   );
 }

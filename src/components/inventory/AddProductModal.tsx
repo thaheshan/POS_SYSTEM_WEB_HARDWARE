@@ -363,7 +363,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   <div>
                     <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Profit Margin</label>
                     <div className="px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center">
-                      <span className={`text-[22px] font-black ${parseFloat(profitMargin) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                      <span className={`text-[22px] font-black ${Number(profitMargin) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                         {profitMargin}%
                       </span>
                     </div>

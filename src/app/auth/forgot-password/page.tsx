@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter, useSearchParams } from "next/navigation";
 import Step1EmailRequired from "@/components/auth/passwordReset/Step1EmailRequired";
@@ -41,7 +41,7 @@ const decodeResetTokenEmail = (token: string): string => {
   }
 };
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordPageContent() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,5 +143,13 @@ export default function ForgotPasswordPage() {
         {step === 4 && <Step4PasswordResetResult status="success" />}
       </div>
     </AuthLayout>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <ForgotPasswordPageContent />
+    </Suspense>
   );
 }
