@@ -3,13 +3,44 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid 
 } from 'recharts';
+import { useState, useEffect } from 'react';
+import api from '@/api/axiosInstance';
+import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 interface InventoryChartsProps {
   data: any[];
+  dateRange?: DateRange;
 }
 
-export default function InventoryCharts({ data }: InventoryChartsProps) {
-  
+export default function InventoryCharts({ data, dateRange }: InventoryChartsProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [trendData, setTrendData] = useState<{ name: string; in: number; out: number }[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const fetchTrend = async () => {
+      setTrendLoading(true);
+      try {
+        const params: Record<string, string> = {};
+        if (dateRange?.from) params.start_date = format(dateRange.from, 'yyyy-MM-dd');
+        if (dateRange?.to) params.end_date = format(dateRange.to, 'yyyy-MM-dd');
+        const res = await api.get('/stock/trend', { params });
+        setTrendData(res.data?.data || res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch stock movement trend:', err);
+      } finally {
+        setTrendLoading(false);
+      }
+    };
+
+    fetchTrend();
+  }, [dateRange]);
+
   // 1. Dynamic Pie Chart Data (Status Distribution)
   const statusCounts = data.reduce((acc: any, item: any) => {
     acc[item.status] = (acc[item.status] || 0) + 1;
@@ -45,19 +76,19 @@ export default function InventoryCharts({ data }: InventoryChartsProps) {
              name.includes('Cement') ? '#3b82f6' :
              name.includes('Electric') ? '#1e3a8a' :
              name.includes('Paint') ? '#e11d48' : '#d97706'
-    }))
+     }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6); // Top 6 categories
 
-  // 3. Mocked Movement Trend (Visual consistency)
-  const lineData = [
-    { name: '0', in: 100, out: 80 },
-    { name: '5', in: 110, out: 95 },
-    { name: '10', in: 145, out: 115 },
-    { name: '15', in: 175, out: 135 },
-    { name: '20', in: 220, out: 165 },
-    { name: '25', in: 250, out: 195 },
-    { name: '30', in: 280, out: 225 },
+  // Fallback to default trend if not loaded
+  const lineData = trendData.length > 0 ? trendData : [
+    { name: '0', in: 0, out: 0 },
+    { name: '5', in: 0, out: 0 },
+    { name: '10', in: 0, out: 0 },
+    { name: '15', in: 0, out: 0 },
+    { name: '20', in: 0, out: 0 },
+    { name: '25', in: 0, out: 0 },
+    { name: '30', in: 0, out: 0 },
   ];
 
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }: any) => {
@@ -84,29 +115,31 @@ export default function InventoryCharts({ data }: InventoryChartsProps) {
         <h3 className="text-[15px] font-black text-gray-900 mb-1">Stock Level Distribution</h3>
         <p className="text-[12px] font-bold text-gray-400 mb-6">Products by stock status</p>
         
-        <div className="flex-1 min-h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieDataWithPct}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={renderCustomizedLabel}
-                outerRadius={90}
-                dataKey="value"
-                stroke="none"
-              >
-                {pieDataWithPct.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="flex-1 w-full" style={{ minHeight: 220 }}>
+          {isMounted && (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={pieDataWithPct}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={renderCustomizedLabel}
+                  outerRadius={90}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {pieDataWithPct.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Custom Legend */}
@@ -128,38 +161,44 @@ export default function InventoryCharts({ data }: InventoryChartsProps) {
         <h3 className="text-[15px] font-black text-gray-900 mb-1">Stock Value by Category</h3>
         <p className="text-[12px] font-bold text-gray-400 mb-6">Inventory value (Rs. '000)</p>
         
-        <div className="flex-1 min-h-[220px] -ml-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} margin={{ top: 0, right: 0, left: 10, bottom: 40 }}>
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} 
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                dy={10}
-              />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} />
-              <Tooltip 
-                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={32}>
-                {barData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="flex-1 w-full -ml-4" style={{ minHeight: 220 }}>
+          {isMounted && (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={barData} margin={{ top: 0, right: 0, left: 10, bottom: 40 }}>
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} 
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  dy={10}
+                />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={32}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
       {/* 3. Stock Movement Trend */}
       <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6 flex flex-col hover:shadow-md transition-shadow">
         <h3 className="text-[15px] font-black text-gray-900 mb-1">Stock Movement Trend</h3>
-        <p className="text-[12px] font-bold text-gray-400 mb-4">Last 30 days activity</p>
+        <p className="text-[12px] font-bold text-gray-400 mb-4">
+          {dateRange?.from && dateRange?.to 
+            ? `${format(dateRange.from, 'MMM d, yyyy')} - ${format(dateRange.to, 'MMM d, yyyy')} activity` 
+            : 'All time activity'}
+        </p>
 
         {/* Custom Legend */}
         <div className="flex items-center gap-6 mb-8">
@@ -173,19 +212,21 @@ export default function InventoryCharts({ data }: InventoryChartsProps) {
           </div>
         </div>
         
-        <div className="flex-1 min-h-[200px] -ml-5">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Line type="monotone" dataKey="in" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-              <Line type="monotone" dataKey="out" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="flex-1 w-full -ml-5" style={{ minHeight: 200 }}>
+          {isMounted && (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={lineData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Line type="monotone" dataKey="in" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="out" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

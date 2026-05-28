@@ -38,6 +38,7 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   React.useEffect(() => {
     fetchInventory();
@@ -69,6 +70,7 @@ export default function InventoryPage() {
           skuInfo: item.sku || item.product?.sku || 'N/A',
           category: item.category_name || item.product?.category?.name || 'Uncategorized',
           warehouse: item.warehouse_name || item.warehouse?.name || 'Main Warehouse',
+          image: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
           qty,
           maxLevel: Math.max(minStock, qty, 1),
           minStock,
@@ -156,15 +158,33 @@ export default function InventoryPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    setIsEditModalOpen(false);
-    setSelectedItem(null);
+  const handleSaveEdit = async (updatedData: any) => {
+    try {
+      if (!selectedItem) return;
+      await api.patch(`/products/${selectedItem.id}`, updatedData);
+      setIsEditModalOpen(false);
+      setSelectedItem(null);
+      fetchInventory(); // Refresh inventory data list
+    } catch (error: any) {
+      console.error('Failed to update product details:', error);
+      alert(error?.response?.data?.message || 'Failed to update product. Please try again.');
+    }
   };
 
-  const handleConfirmDelete = () => {
-    setInventoryData(prev => prev.filter(item => item.id !== selectedItem.id));
-    setIsDeleteModalOpen(false);
-    setSelectedItem(null);
+  const handleConfirmDelete = async () => {
+    if (!selectedItem || isDeleting) return;
+    try {
+      setIsDeleting(true);
+      await api.delete(`/products/${selectedItem.id}`);
+      setIsDeleteModalOpen(false);
+      setSelectedItem(null);
+      fetchInventory(); // Refresh from server
+    } catch (error: any) {
+      console.error('Failed to delete product:', error);
+      alert(error?.response?.data?.message || 'Failed to delete product. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -250,7 +270,7 @@ export default function InventoryPage() {
 
         {/* 4. ANALYSIS SECTION */}
         <div className="space-y-10">
-          <InventoryCharts data={filteredData} />
+          <InventoryCharts data={filteredData} dateRange={dateRange} />
           <InventoryAlertsAction />
         </div>
       </div>

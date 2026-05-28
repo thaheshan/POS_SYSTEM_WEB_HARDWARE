@@ -8,6 +8,7 @@ import { DateRange } from "react-day-picker";
 import { ArrowLeft, Download, FileText, FileSpreadsheet, TrendingUp, Briefcase, Wrench, FilePlus, MoreVertical, Trash2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
+import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
 
 export default function CategoryCReportPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function CategoryCReportPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [txnToDelete, setTxnToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const confirmDelete = async () => {
     if (!txnToDelete) return;
@@ -226,6 +228,9 @@ export default function CategoryCReportPage() {
                           </button>
                           {isOpen && (
                             <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 py-1 z-50 w-[175px]" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => { setOpenMenuId(null); setSelectedInvoiceId(txn.rawId || txn.id); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all rounded-xl">
+                                <FileText className="w-4 h-4 text-blue-500" /> View Receipt / PDF
+                              </button>
                               <button onClick={() => { setOpenMenuId(null); setTxnToDelete(txn); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-red-600 hover:bg-red-50 transition-all rounded-xl">
                                 <Trash2 className="w-4 h-4" /> Delete / Void
                               </button>

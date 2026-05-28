@@ -1,7 +1,8 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/api/axiosInstance";
 import {
   Building2,
   Truck,
@@ -26,21 +27,38 @@ import {
 import { useRouter } from "next/navigation";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
-import {
-  MOCK_SUPPLIERS,
-  MOCK_PURCHASE_ACTIVITY,
-} from "@/lib/suppliers-mock-data";
 
 export default function SuppliersPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
+
+  const fetchSuppliers = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/suppliers');
+      const data = res.data?.data || res.data || [];
+      setSuppliers(data);
+    } catch (error) {
+      console.error('Failed to fetch suppliers', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const totalSuppliers = suppliers.length;
+  const activeSuppliers = suppliers.filter(s => s.status === 'Active').length;
+  
   const RADIAN = Math.PI / 180;
 
   const chartData = [
-    { name: "pending", value: 20, gradientId: "pendingGradient" },
-    { name: "paid", value: 45, gradientId: "paidGradient" },
-    { name: "overdue", value: 35, gradientId: "overdueGradient" },
+    { name: "no data", value: 100, gradientId: "noDataGradient" },
   ];
 
   const renderPieLabel = ({
@@ -102,10 +120,10 @@ export default function SuppliersPage() {
               Total Suppliers
             </p>
             <h3 className="text-[30px] font-black tracking-tight text-gray-900 leading-none">
-              48
+              {isLoading ? '...' : totalSuppliers}
             </h3>
             <p className="text-[11px] font-bold text-gray-400 mt-2">
-              +4 in this month
+              Based on active and inactive
             </p>
           </div>
 
@@ -122,10 +140,10 @@ export default function SuppliersPage() {
               Active Suppliers
             </p>
             <h3 className="text-[30px] font-black tracking-tight text-gray-900 leading-none">
-              45
+              {isLoading ? '...' : activeSuppliers}
             </h3>
             <p className="text-[11px] font-bold text-gray-400 mt-2">
-              +2 activated this month
+              Currently active in the system
             </p>
           </div>
 
@@ -142,10 +160,10 @@ export default function SuppliersPage() {
               Total Outstanding Payable
             </p>
             <h3 className="text-[30px] font-black tracking-tight text-gray-900 leading-none">
-              LKR 1,250,000
+              LKR 0
             </h3>
             <p className="text-[11px] font-bold text-gray-400 mt-2">
-              +LKR . 180,000 vs last month
+              (Pending purchasing module)
             </p>
           </div>
 
@@ -162,10 +180,10 @@ export default function SuppliersPage() {
               This Month Purchases
             </p>
             <h3 className="text-[30px] font-black tracking-tight text-gray-900 leading-none">
-              LKR 820,000
+              LKR 0
             </h3>
             <p className="text-[11px] font-bold text-gray-400 mt-2">
-              32 purchase orders this month
+              0 purchase orders this month
             </p>
           </div>
 
@@ -182,10 +200,10 @@ export default function SuppliersPage() {
               Overdue Payments
             </p>
             <h3 className="text-[30px] font-black tracking-tight text-gray-900 leading-none">
-              LKR 180,000
+              LKR 0
             </h3>
             <p className="text-[11px] font-bold text-gray-400 mt-2">
-              3 suppliers overdue
+              0 suppliers overdue
             </p>
           </div>
         </div>
@@ -301,7 +319,15 @@ export default function SuppliersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {MOCK_SUPPLIERS.filter((s) =>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-gray-500">Loading suppliers...</td>
+                  </tr>
+                ) : suppliers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-gray-500">No suppliers found.</td>
+                  </tr>
+                ) : suppliers.filter((s) =>
                   s.name.toLowerCase().includes(searchTerm.toLowerCase()),
                 ).map((sup) => (
                   <tr
@@ -315,7 +341,7 @@ export default function SuppliersPage() {
                       />
                     </td>
                     <td className="py-4 px-4 text-[13px] font-bold text-gray-500 font-mono tracking-tight">
-                      {sup.id}
+                      {sup.supplierCode}
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
@@ -373,7 +399,7 @@ export default function SuppliersPage() {
 
           {/* Pagination */}
           <div className="p-4 border-t border-gray-100 flex items-center justify-between text-[12px] font-bold text-gray-400">
-            <span>Showing 1 to 12 of 1,248 suppliers</span>
+            <span>Showing {suppliers.length > 0 ? 1 : 0} to {suppliers.length} of {totalSuppliers} suppliers</span>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
@@ -445,27 +471,11 @@ export default function SuppliersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {MOCK_PURCHASE_ACTIVITY.slice(0, 4).map((pa) => (
-                    <tr key={pa.id} className="hover:bg-gray-50/50">
-                      <td className="py-4 text-[13px] font-semibold text-gray-600">
-                        {pa.date}
-                      </td>
-                      <td className="py-4 text-[13.5px] font-bold text-gray-900">
-                        {pa.supplier}
-                      </td>
-                      <td className="py-4">
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[11px] font-bold tracking-tight">
-                          {pa.poNo}
-                        </span>
-                      </td>
-                      <td className="py-4 text-[13px] font-bold text-[#1e40af] font-mono tracking-tight">
-                        {pa.invoice}
-                      </td>
-                      <td className="py-4 text-[14px] font-black text-gray-900 font-mono tracking-tighter text-right">
-                        LKR {pa.amount.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-[13px] font-bold text-gray-400">
+                      No recent purchase activity found.
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -482,34 +492,14 @@ export default function SuppliersPage() {
                 <PieChart>
                   <defs>
                     <linearGradient
-                      id="pendingGradient"
+                      id="noDataGradient"
                       x1="0%"
                       y1="0%"
                       x2="100%"
                       y2="100%"
                     >
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#1d4ed8" />
-                    </linearGradient>
-                    <linearGradient
-                      id="paidGradient"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#f59e0b" />
-                      <stop offset="100%" stopColor="#d97706" />
-                    </linearGradient>
-                    <linearGradient
-                      id="overdueGradient"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#059669" />
+                      <stop offset="0%" stopColor="#e5e7eb" />
+                      <stop offset="100%" stopColor="#d1d5db" />
                     </linearGradient>
                   </defs>
                   <Pie
@@ -538,21 +528,9 @@ export default function SuppliersPage() {
             {/* Legend */}
             <div className="flex items-center gap-6 mt-6 w-full justify-center">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#2563eb]" />
+                <div className="w-2 h-2 rounded-full bg-gray-300" />
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  pending
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#d97706]" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  paid
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#059669]" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  overdue
+                  no data available
                 </span>
               </div>
             </div>
