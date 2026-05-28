@@ -93,7 +93,7 @@ const formatDateTime = (dateStr: string) => {
 // ─── component ───────────────────────────────────────────────────────────────
 export default function StaffManagementPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'OWNER';
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Staff');

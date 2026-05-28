@@ -8,4 +8,5 @@ export interface StaffRegisterData {
   confirmPassword?: string;
   shopVerificationCode?: string;
   shopNameVerification?: string;
+  shopPrivateId?: string;
 }

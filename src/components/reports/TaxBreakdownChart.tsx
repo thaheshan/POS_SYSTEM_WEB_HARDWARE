@@ -58,7 +58,7 @@ export default function TaxBreakdownChart({ salesData, loading }: Props) {
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(val: any, name: string, props: any) => `Rs. ${props.payload.realValue?.toLocaleString()}`}
+                formatter={(val: any, name: any, props: any) => `Rs. ${props.payload.realValue?.toLocaleString()}`}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '13px' }}
               />
             </PieChart>
