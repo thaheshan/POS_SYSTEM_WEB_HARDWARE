@@ -46,10 +46,12 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
       return;
     }
 
-    const item = products.find(p => p.productId === formData.productId || p.product?.id === formData.productId);
-    // Since the API expects productId, branchId, and warehouseId we try to pull them from the selected product's stock record
-    const warehouseId = item?.warehouseId || formData.warehouseId;
-    const branchId = item?.branchId || "00000000-0000-0000-0000-000000000000";
+    const item = products.find(p => p.productId === formData.productId || p.product_id === formData.productId || p.product?.id === formData.productId);
+    
+    // Fallbacks to handle snake_case or camelCase from API
+    const warehouseId = item?.warehouseId || item?.warehouse_id || formData.warehouseId;
+    const branchId = item?.branchId || item?.branch_id || "00000000-0000-0000-0000-000000000000";
+
 
     setLoading(true);
     try {
@@ -120,9 +122,12 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
               <option value="">Select a product...</option>
               {products.map(p => {
                 const prod = p.product || p;
+                const id = prod.id || p.product_id || p.productId;
+                const name = prod.product_name || prod.name || p.product_name;
+                const qty = p.available_quantity ?? p.availableQuantity ?? p.quantity;
                 return (
-                  <option key={prod.id || p.productId} value={prod.id || p.productId}>
-                    {prod.product_name || prod.name} ({p.available_quantity || p.availableQuantity} in stock)
+                  <option key={id} value={id}>
+                    {name} ({qty} in stock)
                   </option>
                 );
               })}

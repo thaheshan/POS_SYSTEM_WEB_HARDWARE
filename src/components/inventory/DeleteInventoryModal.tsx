@@ -1,4 +1,4 @@
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Loader2 } from 'lucide-react';
 import React from 'react';
 
 interface DeleteInventoryModalProps {
@@ -6,9 +6,10 @@ interface DeleteInventoryModalProps {
   onClose: () => void;
   onConfirm: () => void;
   item: any;
+  isDeleting?: boolean;
 }
 
-export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item }: DeleteInventoryModalProps) {
+export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item, isDeleting = false }: DeleteInventoryModalProps) {
   if (!isOpen || !item) return null;
 
   return (
@@ -16,14 +17,15 @@ export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item 
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={!isDeleting ? onClose : undefined}
       ></div>
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col items-center text-center">
         <button 
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors p-1"
+          disabled={isDeleting}
+          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors p-1 disabled:opacity-40"
         >
           <X className="w-5 h-5" />
         </button>
@@ -53,15 +55,24 @@ export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item 
         <div className="w-full flex gap-3">
           <button 
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            disabled={isDeleting}
+            className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-40"
           >
             Cancel
           </button>
           <button 
             onClick={onConfirm}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 shadow-[0_4px_14px_0_rgba(239,68,68,0.39)] transition-all"
+            disabled={isDeleting}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 shadow-[0_4px_14px_0_rgba(239,68,68,0.39)] transition-all disabled:opacity-70 flex items-center justify-center gap-2"
           >
-            Delete
+            {isDeleting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </button>
         </div>
       </div>

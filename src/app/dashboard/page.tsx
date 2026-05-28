@@ -24,7 +24,7 @@ import TransactionTable from "@/components/dashboard/TransactionTable";
 import QuickActions from "@/components/dashboard/QuickActions";
 import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
-import { useDashboardStats, useLowStockCount } from '@/hooks/useDashboard';
+import { useDashboardStats, useLowStockCount, usePendingPayments } from '@/hooks/useDashboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   
   const { stats, loading } = useDashboardStats();
   const lowStockCount = useLowStockCount();
+  const { data: pendingPayments, loading: pendingLoading } = usePendingPayments();
 
   return (
     <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
@@ -152,20 +153,30 @@ export default function DashboardPage() {
 
           {/* Alert Banners */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {!isStaff && lowStockCount > 0 && (
+            {!isStaff && (
               <AlertBanner
                 type="stock"
                 title="Low Stock Alert"
-                message={`${lowStockCount} products are running low on stock and need immediate reordering.`}
-                actionText="View Low Stock Items"
-                onActionClick={() => setIsLowStockModalOpen(true)}
+                message={
+                  lowStockCount > 0
+                    ? `${lowStockCount} product${lowStockCount !== 1 ? 's are' : ' is'} running low on stock and need immediate reordering.`
+                    : "All products are sufficiently stocked. No reordering needed right now."
+                }
+                actionText="View Inventory"
+                onActionClick={lowStockCount > 0 ? () => setIsLowStockModalOpen(true) : undefined}
               />
             )}
             {isAdmin && (
               <AlertBanner
                 type="payment"
                 title="Pending Payments"
-                message="You have 8 pending payments totaling LKR 125,450 that require follow-up."
+                message={
+                  pendingLoading
+                    ? "Loading pending payment data..."
+                    : pendingPayments.count > 0
+                    ? `You have ${pendingPayments.count} pending payment${pendingPayments.count !== 1 ? 's' : ''} totaling LKR ${pendingPayments.total.toLocaleString()} that require follow-up.`
+                    : "No pending payments at the moment. All payments are up to date."
+                }
                 actionText="Process Payments"
               />
             )}
