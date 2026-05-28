@@ -139,7 +139,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   invoiceId: string;
-  initialMode?: 'view' | 'edit';
+  initialMode?: 'view' | 'edit' | 'receipt';
 }
 
 // ─── Normalize one item from any backend shape ───────────────────────────────
