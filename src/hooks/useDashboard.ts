@@ -9,6 +9,12 @@ export interface DashboardStats {
   monthlyRevenue: number;
   monthlyTransactions: number;
   totalCustomers: number;
+  // Staff fields
+  staffSales?: number;
+  staffTransactions?: number;
+  staffServiceRevenue?: number;
+  staffServiceEntries?: number;
+  staffActiveOrders?: number;
 }
 
 export interface RecentTransaction {
@@ -51,6 +57,11 @@ export function useDashboardStats() {
           monthlyRevenue: d.monthlyRevenue ?? 0,
           monthlyTransactions: d.monthlyTransactions ?? 0,
           totalCustomers: d.totalCustomers ?? 0,
+          staffSales: d.staffSales ?? 0,
+          staffTransactions: d.staffTransactions ?? 0,
+          staffServiceRevenue: d.staffServiceRevenue ?? 0,
+          staffServiceEntries: d.staffServiceEntries ?? 0,
+          staffActiveOrders: d.staffActiveOrders ?? 0,
         });
       })
       .catch(() => setStats(null))

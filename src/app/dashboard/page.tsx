@@ -83,36 +83,34 @@ export default function DashboardPage() {
             ) : (
               <StatsCard
                 title="Your Service Entries"
-                value="LKR 12,500"
+                value={loading ? "Loading..." : `LKR ${(stats?.staffServiceRevenue || 0).toLocaleString()}`}
                 icon={Wrench}
                 iconBg="bg-amber-50"
                 iconColor="text-amber-600"
-                trend={{ value: "15.2%", isUp: true }}
-                subtext="4 logs today"
-                viewAllHref="/labour-services"
+                subtext={loading ? "..." : `${stats?.staffServiceEntries || 0} logs today`}
+                viewAllHref="/sales/category-c"
               />
             )}
 
             <StatsCard
               title={isStaff ? "Your Sales" : "Low Stock Items"}
-              value={isStaff ? "LKR 42,300" : loading ? "..." : `${lowStockCount} Products`}
+              value={isStaff ? (loading ? "Loading..." : `LKR ${(stats?.staffSales || 0).toLocaleString()}`) : (loading ? "..." : `${lowStockCount} Products`)}
               icon={isStaff ? DollarSign : Package}
               iconBg={isStaff ? "bg-emerald-50" : "bg-green-50"}
               iconColor={isStaff ? "text-emerald-600" : "text-green-600"}
-              trend={isStaff ? { value: "5.4%", isUp: true } : undefined}
-              subtext={isStaff ? "8 transactions" : "Need reordering"}
+              subtext={isStaff ? (loading ? "..." : `${stats?.staffTransactions || 0} transactions`) : "Need reordering"}
               viewAllHref={isStaff ? "/pos" : "/inventory"}
               onClick={!isStaff ? () => setIsLowStockModalOpen(true) : undefined}
             />
 
             <StatsCard
               title={isStaff ? "Active Orders" : "Active Customers"}
-              value={isStaff ? "3 Orders" : loading ? "..." : (stats?.totalCustomers || 0).toLocaleString()}
+              value={isStaff ? (loading ? "Loading..." : `${stats?.staffActiveOrders || 0} Orders`) : (loading ? "..." : (stats?.totalCustomers || 0).toLocaleString())}
               icon={isStaff ? ShoppingCart : Users}
               iconBg="bg-blue-50"
               iconColor="text-blue-600"
               subtext={isStaff ? "Pending processing" : "Registered customers"}
-              viewAllHref={isStaff ? "/pos" : "/customers"}
+              viewAllHref={isStaff ? "/sales" : "/customers"}
             />
 
             {isAdmin && (
@@ -130,23 +128,23 @@ export default function DashboardPage() {
           </div>
 
           {/* Charts Row - Adaptive Based on Role */}
-          <div className="flex flex-col lg:flex-row gap-8">
-            {isAdmin && (
+          {!isStaff && (
+            <div className="flex flex-col lg:flex-row gap-8">
               <div className="lg:w-2/3">
                 <SalesChart title="Revenue Analytics" />
               </div>
-            )}
-            <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
-              <ProductList />
+              <div className="lg:w-1/3">
+                <ProductList />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Transactions and Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <TransactionTable />
             </div>
-            <div>
+            <div className="lg:col-span-1">
               <QuickActions />
             </div>
           </div>
