@@ -1,8 +1,9 @@
 'use client';
 
 import MainLayout from '@/components/layout/MainLayout';
-import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
 import { 
+  Search, 
   Store,
   CreditCard,
   Receipt,
@@ -13,60 +14,176 @@ import {
   Database,
   Lock,
   Settings,
-  ChevronRight
+  History,
+  Check
 } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
-const SETTING_MODULES = [
-  { id: 'profile', label: 'Shop Profile', desc: 'Update your shop info, branding, and location details', icon: Store, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-  { id: 'tax', label: 'Tax Configuration', desc: 'Configure IRD settings, VAT formats, and daily limits', icon: Receipt, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
-  { id: 'billing', label: 'Subscription & Billing', desc: 'Manage your plan, payment methods, and past invoices', icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-  { id: 'printing', label: 'Printing & Receipts', desc: 'Setup POS thermal printers, receipt formats, and rules', icon: Printer, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-  { id: 'roles', label: 'Roles & Permissions', desc: 'Control access levels and staff authorization grids', icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-  { id: 'security', label: 'Security', desc: 'Password policies, two-factor auth, and sessions tracker', icon: Lock, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
-  { id: 'backup', label: 'Backup & Data', desc: 'Configure automatic safe-backups and data exports', icon: Database, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
-  { id: 'integrations', label: 'Integrations', desc: 'Connect third-party logistics and external CRM apps', icon: Blocks, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-100' },
-  { id: 'notifications', label: 'Notifications', desc: 'Alert rules for low stock, urgent sales milestones, etc', icon: Bell, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
-  { id: 'system', label: 'System Preferences', desc: 'Timezones, locale settings, and units of measurement', icon: Settings, color: 'text-gray-600', bg: 'bg-gray-100', border: 'border-gray-200' },
+import ShopProfileSettings from '@/components/settings/ShopProfileSettings';
+import TaxSettings from '@/components/settings/TaxSettings';
+import BillingSettings from '@/components/settings/BillingSettings';
+import PrintingSettings from '@/components/settings/PrintingSettings';
+import RolesSettings from '@/components/settings/RolesSettings';
+import SecuritySettings from '@/components/settings/SecuritySettings';
+import BackupSettings from '@/components/settings/BackupSettings';
+import IntegrationSettings from '@/components/settings/IntegrationSettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
+import SystemPreferencesSettings from '@/components/settings/SystemPreferencesSettings';
+
+const MENU_ITEMS = [
+  { id: 'profile', label: 'Shop Profile', icon: Store },
+  { id: 'tax', label: 'Tax Configuration', icon: Receipt },
+  { id: 'billing', label: 'Subscription & Billing', icon: CreditCard },
+  { id: 'printing', label: 'Printing & Receipts', icon: Printer },
+  { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
+  { id: 'security', label: 'Security', icon: Lock },
+  { id: 'backup', label: 'Backup & Data', icon: Database },
+  { id: 'integrations', label: 'Integrations', icon: Blocks },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'system', label: 'System Preferences', icon: Settings },
 ];
+
+function SettingsHubContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = MENU_ITEMS.some(m => m.id === tabFromUrl) ? tabFromUrl : 'profile';
+  
+  const [activeMenu, setActiveMenu] = useState(initialTab as string);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    if (tabFromUrl && MENU_ITEMS.some(m => m.id === tabFromUrl)) {
+      setActiveMenu(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleMenuClick = (id: string) => {
+    setActiveMenu(id);
+    router.push(`/settings?tab=${id}`, { scroll: false });
+  };
+
+  const renderContent = () => {
+    switch (activeMenu) {
+      case 'profile': return <ShopProfileSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'tax': return <TaxSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'billing': return <BillingSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'printing': return <PrintingSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'roles': return <RolesSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'security': return <SecuritySettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'backup': return <BackupSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'integrations': return <IntegrationSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'notifications': return <NotificationSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      case 'system': return <SystemPreferencesSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+      default: return <ShopProfileSettings setHasUnsavedChanges={setHasUnsavedChanges} />;
+    }
+  };
+
+  return (
+    <>
+      {/* TWO-COLUMN LAYOUT — starts at the very top of the scroll area, no header above */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+
+        {/* ── LEFT SIDEBAR ──
+            sticky top-0: sticks immediately since nothing is above this row.
+            No height calculation needed — auto height fits all menu items naturally.
+        */}
+        <div className="w-full lg:w-[272px] shrink-0">
+          <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-4 sticky top-0">
+
+            {/* Page title embedded at top of sidebar */}
+            <div className="px-2 pt-1 pb-4 mb-2 border-b border-gray-100">
+              <h1 className="text-[18px] font-black text-gray-900 tracking-tight leading-tight">
+                Settings Hub
+              </h1>
+              <p className="text-[11px] font-bold text-gray-400 mt-0.5 leading-snug">
+                System configuration &amp; preferences
+              </p>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text"
+                placeholder="Search settings..."
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Nav items */}
+            <nav className="space-y-0.5">
+              {MENU_ITEMS.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => handleMenuClick(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-[13px] font-bold transition-all ${
+                    activeMenu === item.id 
+                    ? 'bg-[#eff6ff] text-[#1e40af]' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* ── RIGHT CONTENT ──
+            Grows naturally. The outer MainLayout scroll container scrolls this.
+            Sidebar stays pinned at top-0 the entire time.
+        */}
+        <div className="flex-1 min-w-0 pb-28">
+          {/* Page action row above content */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-[22px] font-black text-gray-900 tracking-tight">
+                {MENU_ITEMS.find(m => m.id === activeMenu)?.label}
+              </h2>
+              <p className="text-[13px] font-medium text-gray-500 mt-0.5">
+                Configure your {MENU_ITEMS.find(m => m.id === activeMenu)?.label.toLowerCase()} settings
+              </p>
+            </div>
+            <button className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm shrink-0">
+              <History className="w-4 h-4" /> Activity Log
+            </button>
+          </div>
+
+          {renderContent()}
+        </div>
+      </div>
+
+      {/* FIXED BOTTOM ACTION BAR */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 ml-0 md:ml-[130px] z-40 bg-white rounded-[20px] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border-2 border-orange-200 py-4 px-6 md:px-8 w-[90%] md:w-auto max-w-[800px] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
+            <span className="text-[13px] font-black text-gray-900">You have unsaved changes</span>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <button onClick={() => setHasUnsavedChanges(false)} className="flex-1 md:flex-none border border-gray-200 px-6 py-3 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white">
+              Discard Changes
+            </button>
+            <button onClick={() => setHasUnsavedChanges(false)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-8 py-3 rounded-[12px] text-[13px] font-black transition-colors shadow-sm">
+              <Check className="w-4 h-4" /> Save All Changes
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function SettingsHubPage() {
   return (
     <MainLayout>
-      <div className="max-w-[1600px] mx-auto pb-24">
-        
-        {/* HEADER */}
-        <div className="mb-10 text-center md:text-left">
-           <h1 className="text-[32px] md:text-[38px] font-black text-gray-900 tracking-tighter leading-tight mb-2">Settings Hub</h1>
-           <p className="text-[15px] font-medium text-gray-500 max-w-2xl">Manage your entire system infrastructure. Select a category below to configure your specific core application preferences.</p>
-        </div>
-
-        {/* SETTINGS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-           {SETTING_MODULES.map(mod => (
-              <Link href="/settings/edit" key={mod.id} className="block group">
-                 <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full flex flex-col relative overflow-hidden">
-                    
-                    {/* Hover Decoration */}
-                    <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 ${mod.bg} -mr-10 -mt-10`} />
-
-                    <div className="flex items-start justify-between mb-6 relative">
-                       <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center border ${mod.bg} ${mod.border}`}>
-                          <mod.icon className={`w-6 h-6 ${mod.color}`} strokeWidth={2} />
-                       </div>
-                       <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white text-gray-300 transition-colors">
-                          <ChevronRight className="w-4 h-4" />
-                       </div>
-                    </div>
-                    
-                    <div className="relative mt-auto">
-                       <h3 className="text-[18px] font-black tracking-tight text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">{mod.label}</h3>
-                       <p className="text-[13px] font-medium text-gray-500 leading-relaxed">{mod.desc}</p>
-                    </div>
-                 </div>
-              </Link>
-           ))}
-        </div>
-
+      <div className="max-w-[1600px] mx-auto">
+        <Suspense fallback={<div className="p-10 font-bold text-gray-400">Loading settings...</div>}>
+          <SettingsHubContent />
+        </Suspense>
       </div>
     </MainLayout>
   );

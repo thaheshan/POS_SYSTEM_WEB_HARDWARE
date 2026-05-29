@@ -104,6 +104,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   token: string;
+  tenantId?: string;
 }
 
 export interface ApiResponse<T> {

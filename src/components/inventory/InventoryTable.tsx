@@ -172,7 +172,11 @@ export default function InventoryTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 min-w-[200px]">
                       <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
-                        <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                        )}
                       </div>
                       <div>
                         <div className="font-bold text-gray-900">{item.name}</div>

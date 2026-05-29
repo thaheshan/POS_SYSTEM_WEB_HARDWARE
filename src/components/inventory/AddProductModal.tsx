@@ -115,9 +115,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes, supRes] = await Promise.allSettled([
+      const [catRes] = await Promise.allSettled([
         api.get('/products/categories'),
-        api.get('/suppliers'),
       ]);
       if (catRes.status === 'fulfilled') {
         const catData = catRes.value.data;
@@ -129,11 +128,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           setCategories([]);
         }
       }
-      if (supRes.status === 'fulfilled') {
-        const supData = supRes.value.data;
-        const arr = Array.isArray(supData) ? supData : (supData?.data || supData?.suppliers || []);
-        setSuppliers(Array.isArray(arr) ? arr : []);
-      }
+      // suppliers removed
+      setSuppliers([]);
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
@@ -196,27 +192,21 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     if (!validate()) return;
     setSaving(true);
     try {
-      // Send ONLY the exact fields the NestJS DTO expects.
-      // Extra fields get stripped by ValidationPipe(whitelist:true) and can
-      // cause dto=undefined. FormData is also avoided — backend has no FileInterceptor.
-      const payload: Record<string, any> = {
-        name:              form.name.trim(),
-        sku:               form.sku.trim(),
-        categoryId:        form.categoryId,           // real UUID from /products/categories
-        sellingPrice:      parseFloat(form.sellingPrice) || 0,
-        purchasePrice:     parseFloat(form.costPrice)    || 0,
-        minimumStockLevel: parseInt(form.minimumStock)   || 10,
-        initialStock:      parseInt(form.initialStock)   || 0,
-        taxCategory:       'STANDARD_VAT',
-        taxRate:           parseFloat(form.taxRate)      || 18,
-      };
+      const formData = new FormData();
+      formData.append('name', form.name.trim());
+      formData.append('sku', form.sku.trim());
+      formData.append('categoryId', form.categoryId);
+      formData.append('sellingPrice', (parseFloat(form.sellingPrice) || 0).toString());
+      formData.append('purchasePrice', (parseFloat(form.costPrice) || 0).toString());
+      formData.append('minimumStockLevel', (parseInt(form.minimumStock) || 10).toString());
+      formData.append('initialStock', (parseInt(form.initialStock) || 0).toString());
+      formData.append('taxCategory', 'STANDARD_VAT');
+      formData.append('taxRate', (parseFloat(form.taxRate) || 18).toString());
 
-      // Only attach optional DTO fields if they have non-empty values
-      if (form.description?.trim())  payload.description = form.description.trim();
+      if (form.description?.trim()) formData.append('description', form.description.trim());
+      if (form.imageFile) formData.append('imageFile', form.imageFile);
 
-      // Always POST as JSON — NestJS body-parser cannot handle multipart/form-data
-      // without @UseInterceptors(FileInterceptor) which this endpoint doesn't have.
-      await api.post('/products', payload);
+      await api.post('/products', formData);
 
       onSuccess();
       onClose();
@@ -373,7 +363,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   <div>
                     <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Profit Margin</label>
                     <div className="px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center">
-                      <span className={`text-[22px] font-black ${parseFloat(profitMargin) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                      <span className={`text-[22px] font-black ${Number(profitMargin) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                         {profitMargin}%
                       </span>
                     </div>

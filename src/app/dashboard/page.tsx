@@ -24,7 +24,7 @@ import TransactionTable from "@/components/dashboard/TransactionTable";
 import QuickActions from "@/components/dashboard/QuickActions";
 import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
-import { useDashboardStats, useLowStockCount } from '@/hooks/useDashboard';
+import { useDashboardStats, useLowStockCount, usePendingPayments } from '@/hooks/useDashboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   
   const { stats, loading } = useDashboardStats();
   const lowStockCount = useLowStockCount();
+  const { data: pendingPayments, loading: pendingLoading } = usePendingPayments();
 
   return (
     <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
@@ -82,36 +83,34 @@ export default function DashboardPage() {
             ) : (
               <StatsCard
                 title="Your Service Entries"
-                value="LKR 12,500"
+                value={loading ? "Loading..." : `LKR ${(stats?.staffServiceRevenue || 0).toLocaleString()}`}
                 icon={Wrench}
                 iconBg="bg-amber-50"
                 iconColor="text-amber-600"
-                trend={{ value: "15.2%", isUp: true }}
-                subtext="4 logs today"
-                viewAllHref="/labour-services"
+                subtext={loading ? "..." : `${stats?.staffServiceEntries || 0} logs today`}
+                viewAllHref="/sales/category-c"
               />
             )}
 
             <StatsCard
               title={isStaff ? "Your Sales" : "Low Stock Items"}
-              value={isStaff ? "LKR 42,300" : loading ? "..." : `${lowStockCount} Products`}
+              value={isStaff ? (loading ? "Loading..." : `LKR ${(stats?.staffSales || 0).toLocaleString()}`) : (loading ? "..." : `${lowStockCount} Products`)}
               icon={isStaff ? DollarSign : Package}
               iconBg={isStaff ? "bg-emerald-50" : "bg-green-50"}
               iconColor={isStaff ? "text-emerald-600" : "text-green-600"}
-              trend={isStaff ? { value: "5.4%", isUp: true } : undefined}
-              subtext={isStaff ? "8 transactions" : "Need reordering"}
+              subtext={isStaff ? (loading ? "..." : `${stats?.staffTransactions || 0} transactions`) : "Need reordering"}
               viewAllHref={isStaff ? "/pos" : "/inventory"}
               onClick={!isStaff ? () => setIsLowStockModalOpen(true) : undefined}
             />
 
             <StatsCard
               title={isStaff ? "Active Orders" : "Active Customers"}
-              value={isStaff ? "3 Orders" : loading ? "..." : (stats?.totalCustomers || 0).toLocaleString()}
+              value={isStaff ? (loading ? "Loading..." : `${stats?.staffActiveOrders || 0} Orders`) : (loading ? "..." : (stats?.totalCustomers || 0).toLocaleString())}
               icon={isStaff ? ShoppingCart : Users}
               iconBg="bg-blue-50"
               iconColor="text-blue-600"
               subtext={isStaff ? "Pending processing" : "Registered customers"}
-              viewAllHref={isStaff ? "/pos" : "/customers"}
+              viewAllHref={isStaff ? "/sales" : "/customers"}
             />
 
             {isAdmin && (
@@ -129,43 +128,53 @@ export default function DashboardPage() {
           </div>
 
           {/* Charts Row - Adaptive Based on Role */}
-          <div className="flex flex-col lg:flex-row gap-8">
-            {isAdmin && (
+          {!isStaff && (
+            <div className="flex flex-col lg:flex-row gap-8">
               <div className="lg:w-2/3">
                 <SalesChart title="Revenue Analytics" />
               </div>
-            )}
-            <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
-              <ProductList />
+              <div className="lg:w-1/3">
+                <ProductList />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Transactions and Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <TransactionTable />
             </div>
-            <div>
+            <div className="lg:col-span-1">
               <QuickActions />
             </div>
           </div>
 
           {/* Alert Banners */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {!isStaff && lowStockCount > 0 && (
+            {!isStaff && (
               <AlertBanner
                 type="stock"
                 title="Low Stock Alert"
-                message={`${lowStockCount} products are running low on stock and need immediate reordering.`}
-                actionText="View Low Stock Items"
-                onActionClick={() => setIsLowStockModalOpen(true)}
+                message={
+                  lowStockCount > 0
+                    ? `${lowStockCount} product${lowStockCount !== 1 ? 's are' : ' is'} running low on stock and need immediate reordering.`
+                    : "All products are sufficiently stocked. No reordering needed right now."
+                }
+                actionText="View Inventory"
+                onActionClick={lowStockCount > 0 ? () => setIsLowStockModalOpen(true) : undefined}
               />
             )}
             {isAdmin && (
               <AlertBanner
                 type="payment"
                 title="Pending Payments"
-                message="You have 8 pending payments totaling LKR 125,450 that require follow-up."
+                message={
+                  pendingLoading
+                    ? "Loading pending payment data..."
+                    : pendingPayments.count > 0
+                    ? `You have ${pendingPayments.count} pending payment${pendingPayments.count !== 1 ? 's' : ''} totaling LKR ${pendingPayments.total.toLocaleString()} that require follow-up.`
+                    : "No pending payments at the moment. All payments are up to date."
+                }
                 actionText="Process Payments"
               />
             )}

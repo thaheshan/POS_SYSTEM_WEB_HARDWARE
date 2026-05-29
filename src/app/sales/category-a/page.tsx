@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { useSalesData } from "@/hooks/useSales";
@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
+import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
 
-export default function CategoryAReportPage() {
+function CategoryAReportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const today = new Date();
@@ -32,6 +33,7 @@ export default function CategoryAReportPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [txnToDelete, setTxnToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const catA = data.catA;
   const threshold = 200000;
@@ -255,6 +257,16 @@ export default function CategoryAReportPage() {
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setSelectedInvoiceId(txn.rawId || txn.id);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all rounded-xl"
+                                >
+                                  <FileText className="w-4 h-4 text-blue-500" />
+                                  View Receipt / PDF
+                                </button>
+                                <button
                                   onClick={() => openDeleteConfirm(txn)}
                                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-red-600 hover:bg-red-50 transition-all rounded-xl"
                                 >
@@ -368,6 +380,22 @@ export default function CategoryAReportPage() {
           `}</style>
         </div>
       )}
+
+      {/* ── Transaction Details Modal (Receipt/PDF) ───────────────────────────── */}
+      <TransactionDetailsModal
+        isOpen={!!selectedInvoiceId}
+        onClose={() => setSelectedInvoiceId(null)}
+        invoiceId={selectedInvoiceId as string}
+        initialMode="receipt"
+      />
     </MainLayout>
+  );
+}
+
+export default function CategoryAReportPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <CategoryAReportPageContent />
+    </Suspense>
   );
 }

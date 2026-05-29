@@ -37,7 +37,7 @@ export default function ApprovalWaitingPage() {
         console.log("Polling result:", result);
         
         // Handle potential nested data wrappers just in case
-        const currentStatus = result.status || result.data?.status;
+        const currentStatus = result.status;
 
         if (currentStatus === "APPROVED" || currentStatus === "ACTIVE") {
           // Admin approved → go to request successful screen

@@ -52,15 +52,24 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
   const name =
     candidate.name ??
     candidate.full_name ??
-    [candidate.first_name, candidate.last_name].filter(Boolean).join(" ").trim();
+    [candidate.first_name, candidate.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
 
   // Role may come uppercase from backend; normalize to lowercase string
-  const rawRole = String(candidate.role ?? candidate.user_role ?? "").toLowerCase();
+  const rawRole = String(
+    candidate.role ?? candidate.user_role ?? ""
+  ).toLowerCase();
 
   if (!id || !email || !name || !rawRole) return null;
 
   // Allow known roles including owner
-  if (!["admin", "manager", "cashier", "staff", "owner", "super_admin"].includes(rawRole)) {
+  if (
+    !["admin", "manager", "cashier", "staff", "owner", "super_admin"].includes(
+      rawRole
+    )
+  ) {
     return null;
   }
 
@@ -69,6 +78,7 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
     email: String(email),
     name: String(name),
     role: rawRole as AuthUser["role"],
+    tenantId: candidate.tenant_id ?? candidate.tenantId,
     createdAt:
       typeof candidate.createdAt === "string"
         ? candidate.createdAt
@@ -90,7 +100,8 @@ const unwrapLoginPayload = (payload: unknown): any => {
   // { statusCode: 200, message: "...", data: { access_token, user } }
   // { access_token, user }
   let level1 = root.data && typeof root.data === "object" ? root.data : root;
-  let level2 = level1.data && typeof level1.data === "object" ? level1.data : level1;
+  let level2 =
+    level1.data && typeof level1.data === "object" ? level1.data : level1;
 
   return level2;
 };
@@ -380,15 +391,26 @@ export const loginThunk = createAsyncThunk<
 
     // Unwrap possible double-wrapped responses
     let actualData = rawData;
-    if (actualData?.data && typeof actualData.data === "object" && !actualData.access_token) {
+    if (
+      actualData?.data &&
+      typeof actualData.data === "object" &&
+      !actualData.access_token
+    ) {
       actualData = actualData.data;
     }
-    if (actualData?.data && typeof actualData.data === "object" && !actualData.access_token) {
+    if (
+      actualData?.data &&
+      typeof actualData.data === "object" &&
+      !actualData.access_token
+    ) {
       actualData = actualData.data;
     }
 
     const token: string | null =
-      actualData?.access_token ?? actualData?.token ?? actualData?.accessToken ?? null;
+      actualData?.access_token ??
+      actualData?.token ??
+      actualData?.accessToken ??
+      null;
     const userPayload = actualData?.user ?? null;
 
     console.log(
@@ -399,7 +421,10 @@ export const loginThunk = createAsyncThunk<
     );
 
     if (!token) {
-      console.error("[loginThunk] Could not extract token from response:", rawData);
+      console.error(
+        "[loginThunk] Could not extract token from response:",
+        rawData
+      );
       return rejectWithValue("Invalid login response from server");
     }
 

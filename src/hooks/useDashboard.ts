@@ -9,6 +9,12 @@ export interface DashboardStats {
   monthlyRevenue: number;
   monthlyTransactions: number;
   totalCustomers: number;
+  // Staff fields
+  staffSales?: number;
+  staffTransactions?: number;
+  staffServiceRevenue?: number;
+  staffServiceEntries?: number;
+  staffActiveOrders?: number;
 }
 
 export interface RecentTransaction {
@@ -51,6 +57,11 @@ export function useDashboardStats() {
           monthlyRevenue: d.monthlyRevenue ?? 0,
           monthlyTransactions: d.monthlyTransactions ?? 0,
           totalCustomers: d.totalCustomers ?? 0,
+          staffSales: d.staffSales ?? 0,
+          staffTransactions: d.staffTransactions ?? 0,
+          staffServiceRevenue: d.staffServiceRevenue ?? 0,
+          staffServiceEntries: d.staffServiceEntries ?? 0,
+          staffActiveOrders: d.staffActiveOrders ?? 0,
         });
       })
       .catch(() => setStats(null))
@@ -188,4 +199,58 @@ export function useTopProducts() {
   }, []);
 
   return { products, loading };
+}
+
+// ─── Pending Payments ─────────────────────────────────────────────────────────
+export interface PendingPaymentsData {
+  count: number;
+  total: number;
+}
+
+export function usePendingPayments() {
+  const [data, setData] = useState<PendingPaymentsData>({ count: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try the dedicated dashboard endpoint first; fall back to filtering sales list
+    api
+      .get('/dashboard/pending-payments')
+      .then((res) => {
+        const d = res.data?.data || res.data;
+        setData({
+          count: d.count ?? d.pendingCount ?? 0,
+          total: d.total ?? d.pendingTotal ?? d.totalAmount ?? 0,
+        });
+      })
+      .catch(() => {
+        // Fallback: fetch all sales and filter by PENDING / UNPAID status
+        api
+          .get('/sales', { params: { status: 'PENDING', limit: 500 } })
+          .then((res) => {
+            const raw = res.data;
+            const items: any[] = Array.isArray(raw)
+              ? raw
+              : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw?.items)
+              ? raw.items
+              : [];
+
+            const pending = items.filter((s: any) => {
+              const status = (s.paymentStatus || s.status || '').toUpperCase();
+              return status === 'PENDING' || status === 'UNPAID' || status === 'PARTIAL';
+            });
+
+            const total = pending.reduce((acc: number, s: any) => {
+              return acc + Number(s.totalAmount ?? s.total ?? s.amount ?? 0);
+            }, 0);
+
+            setData({ count: pending.length, total });
+          })
+          .catch(() => setData({ count: 0, total: 0 }));
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { data, loading };
 }

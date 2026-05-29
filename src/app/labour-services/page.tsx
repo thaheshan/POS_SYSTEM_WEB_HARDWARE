@@ -1,7 +1,7 @@
 'use client';
 
 import MainLayout from '@/components/layout/MainLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Wrench, 
   Plus, 
@@ -17,18 +17,55 @@ import {
 import AddLabourModal from '@/components/sales/AddLabourModal';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-
-const MOCK_SERVICES = [
-  { id: 'SRV-1024', type: 'Plumbing', description: 'PVC Pipe installation for bathroom', amount: 4500, date: 'Today, 2:30 PM', status: 'Completed' },
-  { id: 'SRV-1023', type: 'Electrical', description: 'Main switch board repair', amount: 3200, date: 'Today, 10:15 AM', status: 'Completed' },
-  { id: 'SRV-1021', type: 'Carpentry', description: 'Door hinge replacement', amount: 1500, date: 'Yesterday', status: 'Completed' },
-  { id: 'SRV-1018', type: 'Masonry', description: 'Small wall plastering', amount: 8500, date: 'Oct 24, 2023', status: 'Completed' },
-];
+import api from '@/api/axiosInstance';
+import { format } from 'date-fns';
 
 export default function LabourServicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/expenses');
+      
+      let expensesArray = [];
+      if (Array.isArray(res.data)) {
+        expensesArray = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        expensesArray = res.data.data;
+      } else if (res.data?.data?.data && Array.isArray(res.data.data.data)) {
+        expensesArray = res.data.data.data;
+      }
+
+      setExpenses(expensesArray);
+    } catch (err) {
+      console.error('Failed to fetch expenses', err);
+      setExpenses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const handleModalClose = (refresh?: boolean) => {
+    setIsModalOpen(false);
+    if (refresh) {
+      fetchExpenses();
+    }
+  };
+
+  const totalValue = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const filteredExpenses = expenses.filter(e => 
+    (e.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (e.entryType || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <MainLayout>
@@ -60,7 +97,7 @@ export default function LabourServicesPage() {
              </div>
              <div>
                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1.5">Your Total Value</p>
-                <h3 className="text-[22px] font-black text-gray-900 leading-none">Rs. 17,700</h3>
+                <h3 className="text-[22px] font-black text-gray-900 leading-none">Rs. {totalValue.toLocaleString()}</h3>
              </div>
           </div>
           <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm flex items-center gap-5">
@@ -68,8 +105,8 @@ export default function LabourServicesPage() {
                 <Clock className="w-6 h-6 text-blue-600" />
              </div>
              <div>
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1.5">Jobs This Week</p>
-                <h3 className="text-[22px] font-black text-gray-900 leading-none">12 Entries</h3>
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1.5">Total Entries</p>
+                <h3 className="text-[22px] font-black text-gray-900 leading-none">{expenses.length} Entries</h3>
              </div>
           </div>
           <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm flex items-center gap-5">
@@ -116,7 +153,11 @@ export default function LabourServicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {MOCK_SERVICES.map((srv) => (
+                {loading ? (
+                  <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-500">Loading entries...</td></tr>
+                ) : filteredExpenses.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-500">No service entries found.</td></tr>
+                ) : filteredExpenses.map((srv) => (
                   <tr key={srv.id} className="hover:bg-amber-50/20 transition-colors group cursor-pointer">
                     <td className="py-5 px-6">
                       <div className="flex items-center gap-3">
@@ -124,8 +165,8 @@ export default function LabourServicesPage() {
                           <Wrench className="w-4.5 h-4.5" />
                         </div>
                         <div>
-                          <p className="text-[14px] font-black text-gray-900">{srv.type}</p>
-                          <p className="text-[11px] font-bold text-gray-400 font-mono tracking-tighter">{srv.id}</p>
+                          <p className="text-[14px] font-black text-gray-900 capitalize">{srv.entryType}</p>
+                          <p className="text-[11px] font-bold text-gray-400 font-mono tracking-tighter">{srv.id.substring(0, 8).toUpperCase()}</p>
                         </div>
                       </div>
                     </td>
@@ -133,10 +174,10 @@ export default function LabourServicesPage() {
                       <p className="text-[13px] font-bold text-gray-600 line-clamp-1">{srv.description}</p>
                     </td>
                     <td className="py-5 px-6">
-                      <p className="text-[13px] font-bold text-gray-500">{srv.date}</p>
+                      <p className="text-[13px] font-bold text-gray-500">{format(new Date(srv.createdAt), 'MMM dd, h:mm a')}</p>
                     </td>
                     <td className="py-5 px-6 text-right">
-                      <p className="text-[15px] font-black text-gray-900">Rs. {srv.amount.toLocaleString()}</p>
+                      <p className="text-[15px] font-black text-gray-900">Rs. {Number(srv.amount).toLocaleString()}</p>
                     </td>
                     <td className="py-5 px-6">
                       <div className="flex justify-center">
@@ -162,10 +203,12 @@ export default function LabourServicesPage() {
         </div>
       </div>
 
-      <AddLabourModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      {isModalOpen && (
+        <AddLabourModal 
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+        />
+      )}
     </MainLayout>
   );
 }

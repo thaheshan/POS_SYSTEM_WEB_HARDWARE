@@ -23,9 +23,9 @@ import { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
 
 const menuItems = [
-  { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'owner', 'manager'] },
+  { icon: LineChart, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'owner', 'manager', 'staff', 'cashier'] },
   { icon: Printer, label: 'Point of Sale', href: '/pos', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
-  { icon: Boxes, label: 'Inventory', href: '/inventory', roles: ['admin', 'owner', 'manager'] },
+  { icon: Boxes, label: 'Inventory', href: '/inventory', roles: ['admin', 'owner', 'manager', 'staff'] },
   { icon: Users, label: 'Customers', href: '/customers', roles: ['admin', 'owner', 'manager', 'cashier', 'staff'] },
   { icon: Truck, label: 'Suppliers', href: '/suppliers', roles: ['admin', 'owner', 'manager'] },
   { icon: FileText, label: 'Sales', href: '/sales', roles: ['admin', 'owner', 'manager'] },
@@ -33,6 +33,7 @@ const menuItems = [
   { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin', 'owner'] },
   { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'owner', 'manager'] },
   { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'owner'] },
+  { icon: Settings, label: 'Staff Settings', href: '/staff-settings', roles: ['staff', 'cashier'] },
 ];
 
 export default function Sidebar() {
