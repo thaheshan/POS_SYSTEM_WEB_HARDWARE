@@ -7,29 +7,37 @@ export const productApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getProducts: build.query<Product[], void>({
       query: () => "/inventory",
-      providesTags: ["Product"],
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "Inventory" as const, id: "LIST" },
+              ...result.map(({ id }) => ({ type: "Inventory" as const, id })),
+            ]
+          : [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getProductById: build.query<Product, string>({
       query: (id) => `/inventory/${id}`,
       providesTags: (result) =>
-        result ? [{ type: "Product" as const, id: result.id }] : ["Product"],
+        result
+          ? [{ type: "Inventory" as const, id: result.id }]
+          : [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getProductByBarcode: build.query<Product[], string>({
       query: (barcode) => `/inventory?barcode=${encodeURIComponent(barcode)}`,
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getProductsByCategory: build.query<Product[], string>({
       query: (categoryId) =>
         `/inventory?categoryId=${encodeURIComponent(categoryId)}`,
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getLowStockProducts: build.query<Product[], void>({
       query: () => "/inventory?lowStock=true",
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     createProduct: build.mutation<Product, Omit<Product, "id">>({
@@ -38,18 +46,18 @@ export const productApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Product", id: "LIST" }],
+      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
     }),
 
     updateProduct: build.mutation<Product, { id: string } & Partial<Product>>({
       query: ({ id, ...body }) => ({
         url: `/inventory/${id}`,
-        method: "PUT",
+        method: "PATCH",
         body,
       }),
       invalidatesTags: (result, error, { id }) => [
-        { type: "Product", id },
-        { type: "Product", id: "LIST" },
+        { type: "Inventory", id },
+        { type: "Inventory", id: "LIST" },
       ],
     }),
 
@@ -58,7 +66,10 @@ export const productApi = baseApi.injectEndpoints({
         url: `/inventory/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: [{ type: "Product", id: "LIST" }],
+      invalidatesTags: (_result, _error, id) => [
+        { type: "Inventory", id },
+        { type: "Inventory", id: "LIST" },
+      ],
     }),
   }),
 });

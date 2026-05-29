@@ -7,67 +7,69 @@ export const productApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getProducts: build.query<Product[], void>({
       query: () => "/inventory",
-      providesTags: ["Product"],
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "Inventory" as const, id: "LIST" },
+              ...result.map(({ id }) => ({ type: "Inventory" as const, id })),
+            ]
+          : [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
-    // FIX: Use entity-level tags [{ type: "Product", id }] to avoid over-invalidating entire cache
-    // Only the specific product gets invalidated when mutations occur, not all products
     getProductById: build.query<Product, string>({
       query: (id) => `/inventory/${id}`,
       providesTags: (result) =>
-        result ? [{ type: "Product" as const, id: result.id }] : ["Product"],
+        result
+          ? [{ type: "Inventory" as const, id: result.id }]
+          : [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
-    // FIX: Fixed type from Product to Product[] since barcode query returns an array
     getProductByBarcode: build.query<Product[], string>({
       query: (barcode) => `/inventory?barcode=${encodeURIComponent(barcode)}`,
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getProductsByCategory: build.query<Product[], string>({
       query: (categoryId) =>
         `/inventory?categoryId=${encodeURIComponent(categoryId)}`,
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
     getLowStockProducts: build.query<Product[], void>({
       query: () => "/inventory?lowStock=true",
-      providesTags: ["Product"],
+      providesTags: [{ type: "Inventory" as const, id: "LIST" }],
     }),
 
-    // FIX: Improved cache invalidation strategy
-    // Only invalidates the list ("LIST" id), not all individual product caches
     createProduct: build.mutation<Product, Omit<Product, "id">>({
       query: (body) => ({
         url: "/inventory",
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Product", id: "LIST" }],
+      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
     }),
 
-    // FIX: Invalidates both the specific product AND the list for consistency
-    // Ensures UI updates for both single-product queries and list queries
     updateProduct: build.mutation<Product, { id: string } & Partial<Product>>({
       query: ({ id, ...body }) => ({
         url: `/inventory/${id}`,
-        method: "PUT",
+        method: "PATCH",
         body,
       }),
       invalidatesTags: (result, error, { id }) => [
-        { type: "Product", id },
-        { type: "Product", id: "LIST" },
+        { type: "Inventory", id },
+        { type: "Inventory", id: "LIST" },
       ],
     }),
 
-    // FIX: Improved cache invalidation strategy
-    // Only invalidates the list ("LIST" id), not trying to invalidate non-existent specific product
     deleteProduct: build.mutation<void, string>({
       query: (id) => ({
         url: `/inventory/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: [{ type: "Product", id: "LIST" }],
+      invalidatesTags: (_result, _error, id) => [
+        { type: "Inventory", id },
+        { type: "Inventory", id: "LIST" },
+      ],
     }),
   }),
 });
