@@ -6,19 +6,24 @@ import { Monitor, CircleAlert, HelpCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import AuthLayout from "@/components/login/auth/auth-layout";
 
+let pendingAccessConsumed = false;
+
 export default function PendingPage() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    const hasAccess = sessionStorage.getItem("allowPendingAccess") === "true";
 
-    const hasAccess = sessionStorage.getItem("allowPendingAccess");
-
-    if (!hasAccess) {
-      router.replace("/auth/login"); 
-    } else {
+    if (hasAccess && !pendingAccessConsumed) {
+      pendingAccessConsumed = true;
       setIsAuthorized(true);
-      //sessionStorage.removeItem("allowPendingAccess");
+      sessionStorage.removeItem("allowPendingAccess");
+      return;
+    }
+
+    if (!hasAccess && !pendingAccessConsumed) {
+      router.replace("/auth/login");
     }
   }, [router]);
 
@@ -27,7 +32,6 @@ export default function PendingPage() {
   return (
     <AuthLayout>
       <div className="w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-300">
-        
         <div className="flex flex-col items-center text-center mb-8 mt-4">
           <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full shadow-sm mb-6">
             <Monitor className="w-8 h-8 text-blue-600" />
@@ -61,7 +65,7 @@ export default function PendingPage() {
             <ArrowLeft className="size-4" />
             Return to Login
           </Link>
-          
+
           <Link
             href="/support"
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-all"
@@ -70,7 +74,6 @@ export default function PendingPage() {
             Contact Support
           </Link>
         </div>
-
       </div>
     </AuthLayout>
   );
