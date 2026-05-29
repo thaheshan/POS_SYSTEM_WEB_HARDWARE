@@ -4,6 +4,7 @@ export interface User {
   name: string;
   role: "admin" | "cashier" | "manager" | "staff" | "owner";
   phone?: string;
+  tenantId?: string;
   paymentStatus?: string;
   subscriptionPlan?: string;
   createdAt: string;

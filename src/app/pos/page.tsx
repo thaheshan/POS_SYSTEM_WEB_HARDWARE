@@ -14,6 +14,8 @@ import AddLabourModal from '@/components/sales/AddLabourModal';
 import { toast } from 'sonner';
 import api from '@/api/axiosInstance';
 import AddCategoryModal from '@/components/pos/AddCategoryModal';
+import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
+import AddCustomerModal from '@/components/customers/AddCustomerModal';
 
 type CartItem = {
   id: string;
@@ -288,7 +290,8 @@ export default function POSPage() {
 
   // Checkout/sidebar state
   const [activeTab, setActiveTab] = useState<'items' | 'checkout'>('items');
-  const [customerMode, setCustomerMode] = useState<'walkin' | 'new'>('walkin');
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerMin | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
@@ -406,6 +409,21 @@ export default function POSPage() {
           fetchCategories();
         }}
       />
+      {isCustomerModalOpen && (
+        <AddCustomerModal 
+          onClose={() => setIsCustomerModalOpen(false)} 
+          onSuccess={(newCustomer) => {
+            if (newCustomer) {
+              setSelectedCustomer({
+                id: newCustomer.id,
+                name: newCustomer.name,
+                phone: newCustomer.phone,
+                customerType: newCustomer.customerType
+              });
+            }
+          }} 
+        />
+      )}
 
       {/* Qty Popup — outside MainLayout to escape stacking contexts */}
       {pendingProduct && (
@@ -426,13 +444,17 @@ export default function POSPage() {
                 setShowSuccess(true);
                 setTimeout(() => {
                   setCart([]);
+                  setSelectedCustomer(null);
                   setViewState('pos');
                   setShowSuccess(false);
                   setActiveTab('items');
                 }, 2000);
               }}
               items={cart}
-              customerType={customerMode === 'walkin' ? 'Walk-In' : 'New Customer'}
+              customerId={selectedCustomer?.id}
+              customerName={selectedCustomer?.name}
+              customerPhone={selectedCustomer?.phone}
+              customerType={selectedCustomer ? selectedCustomer.customerType : 'Walk-In'}
               paymentMethod={paymentMethod}
               amountTendered={Number(amountPaid)}
               change={Math.max(0, Number(amountPaid) - total)}
@@ -689,14 +711,11 @@ export default function POSPage() {
                       {/* Customer */}
                       <div className="space-y-3">
                         <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] flex items-center gap-2"><Users className="w-3.5 h-3.5" /> Customer</h3>
-                        <div className="relative">
-                          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#059669]" />
-                          <input type="text" placeholder="Search customer name or phone..." className="w-full border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-[13px] font-medium outline-none focus:border-[#059669] transition-all bg-gray-50" />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setCustomerMode('walkin')} className={`flex-1 py-3 rounded-xl text-[12px] font-black uppercase border transition-all ${customerMode === 'walkin' ? 'bg-emerald-50 border-[#059669] text-[#059669]' : 'bg-white border-gray-200 text-gray-400'}`}>Walk-In</button>
-                          <button onClick={() => setCustomerMode('new')} className={`flex-1 py-3 rounded-xl text-[12px] font-black uppercase border transition-all ${customerMode === 'new' ? 'bg-amber-50 border-[#d97706] text-[#d97706]' : 'bg-white border-gray-200 text-gray-400'}`}>+ New</button>
-                        </div>
+                        <CustomerSearch 
+                          selectedCustomer={selectedCustomer}
+                          onSelectCustomer={setSelectedCustomer}
+                          onAddNew={() => setIsCustomerModalOpen(true)}
+                        />
                       </div>
 
                       {/* Payment Method */}

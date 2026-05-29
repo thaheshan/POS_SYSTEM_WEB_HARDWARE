@@ -11,6 +11,9 @@ type PaymentConfirmationProps = {
   onBack: () => void;
   onProcess: () => void;
   items: { id: string, name: string, price: number, qty: number, img: string, warehouseId?: string, branchId?: string }[];
+  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
   customerType: string;
   paymentMethod: string;
   amountTendered: number;
@@ -24,7 +27,7 @@ type PaymentConfirmationProps = {
 
 // ── PDF Invoice Generator ─────────────────────────────────────────────────────
 function downloadInvoicePDF({
-  items, customerType, paymentMethod, amountTendered, change,
+  items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change,
   subtotal, discount, tax, total, notes,
 }: Omit<PaymentConfirmationProps, 'onBack' | 'onProcess'>) {
   const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
@@ -138,8 +141,8 @@ function downloadInvoicePDF({
     </div>
     <div class="meta-box">
       <div class="meta-label">Customer</div>
-      <div class="meta-value">Walk-in Customer</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${customerType}</div>
+      <div class="meta-value">${customerName || 'Walk-in Customer'}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${customerPhone || customerType}</div>
     </div>
     <div class="meta-box">
       <div class="meta-label">Payment Method</div>
@@ -229,6 +232,9 @@ export default function PaymentConfirmation({
   onBack, 
   onProcess, 
   items,
+  customerId,
+  customerName,
+  customerPhone,
   customerType,
   paymentMethod,
   amountTendered,
@@ -275,6 +281,7 @@ export default function PaymentConfirmation({
         change,
         paymentMethod: paymentMethod.toUpperCase(),
         notes,
+        customerId,
       };
       console.log('[POS Checkout] Sending payload:', payload);
       await api.post('/sales/checkout', payload);
@@ -328,7 +335,7 @@ export default function PaymentConfirmation({
               Customer Information
             </h3>
             <button 
-              onClick={() => downloadInvoicePDF({ items, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
+              onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
               className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 bg-[#059669] text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm"
             >
                 <Printer className="w-3.5 h-3.5" /> Print Receipt
@@ -336,11 +343,11 @@ export default function PaymentConfirmation({
             <div className="grid grid-cols-2 gap-y-6">
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Name / ID</p>
-                <p className="text-[14px] font-bold text-gray-900">Walk-in Customer / {customerType}</p>
+                <p className="text-[14px] font-bold text-gray-900">{customerName || 'Walk-in Customer'}</p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                <p className="text-[14px] font-bold text-gray-900">Verified</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Phone</p>
+                <p className="text-[14px] font-bold text-gray-900">{customerPhone || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Type</p>
@@ -496,7 +503,7 @@ export default function PaymentConfirmation({
 
         {/* Download Invoice */}
         <button
-          onClick={() => downloadInvoicePDF({ items, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
+          onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
           className="mt-4 w-full h-11 border border-[#059669] text-[#059669] font-bold text-[13px] rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
         >
           <Printer className="w-4 h-4" /> Download Invoice PDF

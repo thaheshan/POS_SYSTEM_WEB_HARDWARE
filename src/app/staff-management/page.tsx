@@ -21,6 +21,8 @@ import {
   Check,
   X,
   RefreshCcw,
+  Trash2,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/api/axiosInstance';
@@ -95,26 +97,46 @@ export default function StaffManagementPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
+  const [mounted, setMounted] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Staff');
   const [staff, setStaff] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isManageRolesOpen, setIsManageRolesOpen] = useState(false);
+  
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingStaff, setEditingStaff] = useState<any>(null);
+  const [staffToDelete, setStaffToDelete] = useState<any>(null);
+  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [staffRes, pendingRes] = await Promise.all([
+      const [staffRes, pendingRes, rolesRes] = await Promise.all([
         api.get('/staff'),
         api.get('/staff/pending'),
+        api.get('/roles'),
       ]);
-      const staffData = staffRes.data?.data ?? staffRes.data ?? [];
-      const pendingData = pendingRes.data?.data ?? pendingRes.data ?? [];
-      setStaff(Array.isArray(staffData) ? staffData : []);
-      setPending(Array.isArray(pendingData) ? pendingData : []);
-    } catch (err) {
-      console.error('Failed to fetch staff data', err);
+      
+      // The backend returns a double-wrapped response for these endpoints:
+      // staffRes.data = { success: true, data: { success: true, data: [...] } }
+      const unpack = (res: any) => {
+        if (Array.isArray(res.data?.data?.data)) return res.data.data.data;
+        if (Array.isArray(res.data?.data)) return res.data.data;
+        if (Array.isArray(res.data)) return res.data;
+        return [];
+      };
+
+      setStaff(unpack(staffRes));
+      setPending(unpack(pendingRes));
+      setRoles(unpack(rolesRes));
+    } catch (err: any) {
+      console.error('[StaffPage] Failed to fetch:', err?.response?.data ?? err?.message ?? err);
       setStaff([]);
       setPending([]);
     } finally {
@@ -123,8 +145,12 @@ export default function StaffManagementPage() {
   }, []);
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) fetchAll();
+  }, [mounted, fetchAll]);
 
   const handleApprove = async (staffId: string, action: 'approve' | 'reject') => {
     try {
@@ -135,6 +161,22 @@ export default function StaffManagementPage() {
       console.error(`Failed to ${action} staff`, err);
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const confirmDeleteStaff = async () => {
+    if (!staffToDelete) return;
+    
+    try {
+      setDeletingStaffId(staffToDelete.id);
+      await api.delete(`/staff/${staffToDelete.id}`);
+      setStaffToDelete(null);
+      await fetchAll();
+    } catch (err: any) {
+      console.error('Failed to delete staff:', err?.response?.data ?? err?.message);
+      alert(err?.response?.data?.message || 'Failed to delete staff member');
+    } finally {
+      setDeletingStaffId(null);
     }
   };
 
@@ -170,6 +212,21 @@ export default function StaffManagementPage() {
     Cashier: cashierCount,
   };
 
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="max-w-[1600px] mx-auto pb-20 animate-pulse">
+          <div className="h-10 w-64 bg-gray-200 rounded-xl mb-4" />
+          <div className="grid grid-cols-5 gap-4 mb-8">
+            {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-[20px]" />)}
+          </div>
+          <div className="h-64 bg-gray-100 rounded-[20px]" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+
   return (
     <MainLayout>
       <div className="max-w-[1600px] mx-auto pb-20">
@@ -189,13 +246,19 @@ export default function StaffManagementPage() {
             </button>
             {isAdmin && (
               <>
-                <button className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm">
+                <button 
+                  onClick={() => setIsManageRolesOpen(true)}
+                  className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
+                >
                   <Shield className="w-4 h-4 text-gray-400" /> Manage Roles
                 </button>
                 <button className="flex items-center gap-2 border border-[#059669] text-[#059669] px-5 py-2.5 rounded-[12px] text-[13px] font-black hover:bg-[#ecfdf5] transition-colors bg-white shadow-sm">
                   <Mail className="w-4 h-4" /> Invite Staff
                 </button>
-                <button className="flex items-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200">
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="flex items-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200"
+                >
                   <Plus className="w-4 h-4" /> Add Staff
                 </button>
               </>
@@ -363,7 +426,35 @@ export default function StaffManagementPage() {
                           <p className="text-[11px] font-bold text-gray-400 font-mono mt-0.5">{s.id.slice(0, 8).toUpperCase()}</p>
                         </div>
                       </div>
-                      <button className="text-gray-300 hover:text-gray-600"><MoreVertical className="w-4 h-4" /></button>
+                      {isAdmin && (
+                        <div className="relative">
+                          <button 
+                            onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                            className="text-gray-300 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {openMenuId === s.id && (
+                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-10 w-40 animate-in fade-in zoom-in duration-200 origin-top-right">
+                              <button 
+                                onClick={() => { setEditingStaff(s); setOpenMenuId(null); }}
+                                className="w-full text-left px-3 py-2 text-[12px] font-semibold text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2.5 transition-colors"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-gray-400" /> Edit Staff
+                              </button>
+                              <div className="h-px bg-gray-100 my-1 mx-2" />
+                              <button 
+                                onClick={() => { setStaffToDelete(s); setOpenMenuId(null); }}
+                                disabled={deletingStaffId === s.id}
+                                className="w-full text-left px-3 py-2 text-[12px] font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2.5 transition-colors disabled:opacity-50"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> 
+                                {deletingStaffId === s.id ? 'Deleting...' : 'Delete Staff'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 mb-6">
@@ -496,8 +587,506 @@ export default function StaffManagementPage() {
             </tbody>
           </table>
         </div>
-
       </div>
+      <AddStaffModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        onSuccess={fetchAll} 
+        roles={roles}
+      />
+      <EditStaffModal
+        isOpen={!!editingStaff}
+        onClose={() => setEditingStaff(null)}
+        staff={editingStaff}
+        roles={roles}
+        onSuccess={fetchAll}
+      />
+      <DeleteStaffModal
+        isOpen={!!staffToDelete}
+        onClose={() => setStaffToDelete(null)}
+        staff={staffToDelete}
+        onConfirm={confirmDeleteStaff}
+        loading={deletingStaffId === (staffToDelete?.id)}
+      />
+      <ManageRolesModal
+        isOpen={isManageRolesOpen}
+        onClose={() => setIsManageRolesOpen(false)}
+        roles={roles}
+        onSuccess={fetchAll}
+      />
     </MainLayout>
+  );
+}
+
+// ─── Add Staff Modal ────────────────────────────────────────────────────────
+function AddStaffModal({ isOpen, onClose, onSuccess, roles }: { isOpen: boolean; onClose: () => void; onSuccess: () => void; roles: any[] }) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: '',
+    phone: '',
+  });
+
+  // Set default role when roles are loaded
+  useEffect(() => {
+    if (roles?.length > 0 && !formData.role) {
+      setFormData(prev => ({ ...prev, role: roles[0].id }));
+    }
+  }, [roles, formData.role]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
+      
+      // Try to get tenantId from Redux user, or parse from localStorage as fallback
+      let shopId = (user as any)?.tenantId || (user as any)?.tenant_id || '';
+      if (!shopId) {
+        try {
+          const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+          shopId = localUser.tenantId || localUser.tenant_id || '';
+        } catch (e) {}
+      }
+
+      if (!shopId) {
+        setError('Shop ID (tenantId) is missing from your session. Please log out and log back in.');
+        setLoading(false);
+        return;
+      }
+
+      const shopVerificationCode = shopId.substring(0, 8);
+
+      await api.post('/auth/register/staff', {
+        firstName,
+        lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone,
+        shopId,
+        shopVerificationCode,
+        directCreate: true, 
+      });
+      await onSuccess();
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        role: roles?.length > 0 ? roles[0].id : '',
+        phone: '',
+      });
+      onClose();
+    } catch (err: any) {
+      const msg = err.response?.data?.message;
+      if (Array.isArray(msg)) {
+        setError(msg.join(', '));
+      } else {
+        setError(msg || err.message || 'Failed to add staff');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Add New Staff</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-lg">{error}</div>}
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Full Name</label>
+            <input 
+              required
+              type="text" 
+              value={formData.name}
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="John Doe"
+            />
+          </div>
+          
+
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Email Address</label>
+            <input 
+              required
+              type="email" 
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="staff@example.com"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Password</label>
+            <input 
+              required
+              type="password" 
+              value={formData.password}
+              onChange={e => setFormData({...formData, password: e.target.value})}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Role</label>
+              <select 
+                required
+                value={formData.role}
+                onChange={e => setFormData({...formData, role: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="" disabled>Select a role</option>
+                {roles.map((r: any) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Phone</label>
+              <input 
+                type="tel" 
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                placeholder="+1 234 567 8900"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-70"
+            >
+              {loading ? 'Creating...' : 'Create Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Edit Staff Modal ──────────────────────────────────────────────────────────
+function EditStaffModal({ isOpen, onClose, staff, roles, onSuccess }: { isOpen: boolean; onClose: () => void; staff: any; roles: any[]; onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    first_name: staff?.name?.split(' ')[0] || '',
+    last_name: staff?.name?.split(' ').slice(1).join(' ') || '',
+    email: staff?.email || '',
+    phone: staff?.phone !== 'N/A' ? staff?.phone : '',
+    role_id: roles.find(r => r.name === staff?.role)?.id || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (staff) {
+      setFormData({
+        first_name: staff.name?.split(' ')[0] || '',
+        last_name: staff.name?.split(' ').slice(1).join(' ') || '',
+        email: staff.email || '',
+        phone: staff.phone !== 'N/A' ? staff.phone : '',
+        role_id: roles.find(r => r.name === staff.role)?.id || '',
+      });
+    }
+  }, [staff, roles]);
+
+  if (!isOpen || !staff) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.put(`/staff/${staff.id}`, formData);
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update staff');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Edit Staff</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-lg">{error}</div>}
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">First Name</label>
+              <input 
+                required
+                type="text" 
+                value={formData.first_name}
+                onChange={e => setFormData({...formData, first_name: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Last Name</label>
+              <input 
+                required
+                type="text" 
+                value={formData.last_name}
+                onChange={e => setFormData({...formData, last_name: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Email Address</label>
+            <input 
+              required
+              type="email" 
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Role</label>
+              <select 
+                required
+                value={formData.role_id}
+                onChange={e => setFormData({...formData, role_id: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="" disabled>Select a role</option>
+                {roles.map((r: any) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Phone</label>
+              <input 
+                type="tel" 
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-70"
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Staff Modal ────────────────────────────────────────────────────────
+function DeleteStaffModal({ isOpen, onClose, staff, onConfirm, loading }: { isOpen: boolean; onClose: () => void; staff: any; onConfirm: () => void; loading: boolean }) {
+  if (!isOpen || !staff) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-5 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <Trash2 className="w-6 h-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Remove Staff Member</h3>
+          <p className="text-sm text-gray-500 font-medium">
+            Are you sure you want to remove <span className="font-bold text-gray-900">{staff.name || 'this staff member'}</span>? 
+            This action cannot be undone.
+          </p>
+        </div>
+        <div className="px-6 py-4 bg-gray-50 flex gap-3 border-t border-gray-100">
+          <button 
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-sm rounded-xl transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center"
+          >
+            {loading ? 'Removing...' : 'Remove Staff'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Manage Roles Modal ────────────────────────────────────────────────────────
+function ManageRolesModal({ isOpen, onClose, roles, onSuccess }: { isOpen: boolean; onClose: () => void; roles: any[]; onSuccess: () => void }) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [newRoleName, setNewRoleName] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim()) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.post('/roles', {
+        name: newRoleName.trim().toUpperCase(),
+        permissions: {},
+      });
+      setNewRoleName('');
+      await onSuccess();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to create role');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteRole = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this role?')) return;
+    setLoading(true);
+    setError('');
+    try {
+      await api.delete(`/roles/${id}`);
+      await onSuccess();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to delete role');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Manage Roles</h3>
+            <p className="text-sm text-gray-500">Create or remove custom roles</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto">
+          {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-lg">{error}</div>}
+          
+          <form onSubmit={handleCreateRole} className="mb-8 flex gap-3">
+            <input 
+              type="text" 
+              value={newRoleName}
+              onChange={e => setNewRoleName(e.target.value)}
+              className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="e.g. SENIOR_CASHIER"
+              required
+            />
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm disabled:opacity-50"
+            >
+              Add Role
+            </button>
+          </form>
+
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Role Name</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Users Assigned</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {roles.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-gray-500 text-sm">No roles found.</td>
+                  </tr>
+                ) : (
+                  roles.map(r => (
+                    <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900">{r.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{r.userCount || 0}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button 
+                          onClick={() => handleDeleteRole(r.id)}
+                          disabled={loading || r.name === 'OWNER'}
+                          className={`text-sm font-semibold transition-colors ${r.name === 'OWNER' ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
