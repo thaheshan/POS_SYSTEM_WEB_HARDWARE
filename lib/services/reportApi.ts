@@ -28,14 +28,14 @@ export const reportApi = baseApi.injectEndpoints({
         url: "/reports/sales",
         params,
       }),
+      providesTags: () => [{ type: "Report", id: "sales" }],
       keepUnusedDataFor: 60,
     }),
 
     // Inventory analytics are read-only and use the same short cache window.
     getInventoryReport: build.query<InventoryReport, void>({
-      query: () => ({
-        url: "/reports/inventory",
-      }),
+      query: () => "/reports/inventory",
+      providesTags: () => [{ type: "Report", id: "inventory" }],
       keepUnusedDataFor: 60,
     }),
 
@@ -45,25 +45,42 @@ export const reportApi = baseApi.injectEndpoints({
         url: "/reports/tax",
         params,
       }),
+      providesTags: () => [{ type: "Report", id: "tax" }],
       keepUnusedDataFor: 60,
     }),
 
     // Top products power the manager dashboard widgets and best-seller charts.
     getTopProducts: build.query<TopProductReportItem[], TopProductsQueryArg>({
-      query: (params) => ({
+      query: ({ limit = 10 } = {}) => ({
         url: "/reports/products/top",
-        params: params ?? { limit: 10 },
+        params: { limit },
       }),
+      providesTags: () => [{ type: "Report", id: "top-products" }],
       keepUnusedDataFor: 60,
     }),
 
-    // Export returns a blob so the frontend can trigger CSV/PDF downloads directly.
-    exportReport: build.query<Blob, ExportReportQueryArg>({
+    // Export resolves to an object URL string so the cache stays serializable.
+    exportReport: build.query<string, ExportReportQueryArg>({
       query: ({ type, format }) => ({
         url: `/reports/${type}/export`,
         params: { format },
         responseHandler: async (response) => response.blob(),
       }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+      async onCacheEntryAdded(
+        _arg,
+        { cacheDataLoaded, cacheEntryRemoved, getCacheEntry },
+      ) {
+        await cacheDataLoaded;
+
+        const objectUrl = getCacheEntry().data;
+
+        await cacheEntryRemoved;
+
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      },
       keepUnusedDataFor: 0,
     }),
   }),
