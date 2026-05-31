@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, X } from "lucide-react";
+import { ShoppingCart, X } from "lucide-react";
 
 interface CreatePurchaseOrderActionProps {
   selectedCount: number;
@@ -18,7 +18,7 @@ export default function CreatePurchaseOrderAction({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="text-sm font-semibold text-slate-600">
           {selectedCount > 0 ? (
-            <span>{selectedCount} products selected</span>
+            <span>{selectedCount} items selected</span>
           ) : (
             <span>Select products to build a purchase order</span>
           )}
@@ -31,7 +31,7 @@ export default function CreatePurchaseOrderAction({
             disabled={selectedCount === 0}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#1e40af] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 sm:w-auto"
           >
-            <ArrowRight className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4" />
             Create Purchase Orders
           </button>
           <button

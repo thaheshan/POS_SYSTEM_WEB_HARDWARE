@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowUpDown,
   Bolt,
   Hammer,
   Lightbulb,
@@ -78,7 +79,7 @@ export default function LowStockProductsTable({
 }: LowStockProductsTableProps) {
   return (
     <div className="stock-fade-up stock-delay-3 relative flex-1 overflow-hidden bg-white">
-      {/* On phones we show cards so details stay readable without horizontal scrolling. */}
+      {/* Mobile card layout */}
       <div className="h-full overflow-y-auto overscroll-contain [scrollbar-gutter:stable] md:hidden">
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3">
@@ -228,7 +229,7 @@ export default function LowStockProductsTable({
         </div>
       </div>
 
-      {/* From md and up we keep the original dense table layout. */}
+      {/* Desktop table layout */}
       <div className="relative hidden h-full md:block">
         <div className="h-full overflow-y-auto overscroll-contain [scrollbar-gutter:stable] pb-14 pt-1">
           <div className="overflow-x-auto">
@@ -377,6 +378,7 @@ export default function LowStockProductsTable({
           </div>
         </div>
 
+        {/* Sticky footer column headers */}
         <div className="absolute inset-x-0 bottom-0 z-20 overflow-x-auto border-t border-slate-200 bg-slate-50/95 backdrop-blur-sm">
           <div className="grid min-w-[860px] grid-cols-[6%_36%_14%_14%_14%_16%] items-center text-[11px] font-bold text-slate-600">
             <div className="px-6 py-3">
@@ -393,7 +395,12 @@ export default function LowStockProductsTable({
               />
             </div>
             <div className="px-6 py-3">Product</div>
-            <div className="px-6 py-3 text-center">Current Stock</div>
+            <div className="px-6 py-3 text-center">
+              <span className="inline-flex items-center gap-1">
+                Current Stock
+                <ArrowUpDown className="h-3 w-3 text-slate-400" />
+              </span>
+            </div>
             <div className="px-6 py-3 text-center">Reorder Qty</div>
             <div className="px-6 py-3 text-center">Last Sale</div>
             <div className="px-6 py-3 text-right">Actions</div>
