@@ -26,6 +26,14 @@ import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
 import { useDashboardStats, useLowStockCount, usePendingPayments } from '@/hooks/useDashboard';
 
+interface SubscriptionStatus {
+  subscriptionStatus: string;
+  nextPaymentDue: string | null;
+  selfReportedPaid: boolean;
+  paymentStatus: string;
+  daysUntilDue: number | null;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -36,6 +44,46 @@ export default function DashboardPage() {
   const { stats, loading } = useDashboardStats();
   const lowStockCount = useLowStockCount();
   const { data: pendingPayments, loading: pendingLoading } = usePendingPayments();
+
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchSub = async () => {
+      try {
+        const res = await fetch('/api/shop/subscription-status');
+        if (res.ok) {
+          const data = await res.json();
+          setSubStatus(data.data || data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch sub status", err);
+      } finally {
+        setSubLoading(false);
+      }
+    };
+    fetchSub();
+  }, [isAdmin]);
+
+  const handleSelfReportPayment = async () => {
+    try {
+      const res = await fetch('/api/shop/self-report-payment', { method: 'POST' });
+      if (res.ok) {
+        alert("Payment reported successfully! It is now pending admin verification.");
+        // refresh status
+        const fetchRes = await fetch('/api/shop/subscription-status');
+        const data = await fetchRes.json();
+        setSubStatus(data.data || data);
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to report payment");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error reporting payment");
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
@@ -176,6 +224,19 @@ export default function DashboardPage() {
                     : "No pending payments at the moment. All payments are up to date."
                 }
                 actionText="Process Payments"
+              />
+            )}
+            {isAdmin && subStatus && subStatus.daysUntilDue !== null && subStatus.daysUntilDue <= 14 && (
+              <AlertBanner
+                type={subStatus.selfReportedPaid ? "info" : (subStatus.daysUntilDue <= 3 ? "critical" : "warning")}
+                title={subStatus.selfReportedPaid ? "Payment Under Review" : "Subscription Payment Due"}
+                message={
+                  subStatus.selfReportedPaid
+                    ? `You marked this month's payment as PAID. Waiting for admin confirmation. Next payment due: ${new Date(subStatus.nextPaymentDue!).toLocaleDateString()}`
+                    : `Please complete your subscription payment before ${new Date(subStatus.nextPaymentDue!).toLocaleDateString()} to avoid account suspension.`
+                }
+                actionText={subStatus.selfReportedPaid ? "Paid" : "Mark as Paid"}
+                onActionClick={subStatus.selfReportedPaid ? undefined : handleSelfReportPayment}
               />
             )}
           </div>

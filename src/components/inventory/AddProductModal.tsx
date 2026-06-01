@@ -2,10 +2,12 @@
 
 import {
   X, Plus, ChevronDown, Upload, ImageIcon, Package, Tag,
-  DollarSign, BarChart2, Layers, AlertCircle, Check, RefreshCw,
+  DollarSign, BarChart2, Layers, AlertCircle, Check, RefreshCw, Camera,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import api from '@/api/axiosInstance';
+import ImageOptionsModal from './ImageOptionsModal';
+import CameraCaptureModal from './CameraCaptureModal';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -67,6 +69,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const [dragOver, setDragOver]         = useState(false);
   const fileRef                         = useRef<HTMLInputElement>(null);
   const [errors, setErrors]             = useState<Record<string, string>>({});
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [showCamera, setShowCamera]     = useState(false);
 
   const [form, setForm] = useState({
     // Basic Info
@@ -222,9 +226,14 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     }
   };
 
+  const handleCameraCapture = (file: File) => {
+    handleImageFile(file);
+  };
+
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -305,16 +314,26 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => setShowImageOptions(true)}
                   className={`relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-gray-50 hover:border-emerald-300 hover:bg-emerald-50/40'}`}>
                   {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="max-h-40 rounded-xl object-contain" />
+                    <div className="relative group">
+                      <img src={previewUrl} alt="Preview" className="max-h-40 rounded-xl object-contain" />
+                      <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <p className="text-white text-[12px] font-bold">Click to change</p>
+                      </div>
+                    </div>
                   ) : (
                     <>
-                      <div className="w-14 h-14 bg-gray-200 rounded-2xl flex items-center justify-center mb-3">
-                        <Upload className="w-6 h-6 text-gray-400" />
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                          <Upload className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                          <Camera className="w-5 h-5 text-emerald-500" />
+                        </div>
                       </div>
-                      <p className="text-[13px] font-bold text-gray-600">Click to upload or drag and drop</p>
+                      <p className="text-[13px] font-bold text-gray-600">Click to upload or take a photo</p>
                       <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, WEBP up to 5MB · Recommended: 1200×900px</p>
                     </>
                   )}
@@ -322,7 +341,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }} />
                 </div>
                 {previewUrl && (
-                  <p className="text-[11px] text-gray-400 mt-2 text-center">First image will be the primary product image. Drag to reorder.</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-[11px] text-gray-400">Primary product image.</p>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setPreviewUrl(null); set('imageFile', null); }}
+                      className="text-[11px] font-bold text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -604,5 +632,27 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
       </div>
     </div>
+
+    {/* Image source picker */}
+    <ImageOptionsModal
+      isOpen={showImageOptions}
+      onClose={() => setShowImageOptions(false)}
+      onSelectUpload={() => {
+        setShowImageOptions(false);
+        setTimeout(() => fileRef.current?.click(), 100);
+      }}
+      onSelectCamera={() => {
+        setShowImageOptions(false);
+        setTimeout(() => setShowCamera(true), 150);
+      }}
+    />
+
+    {/* Camera capture */}
+    <CameraCaptureModal
+      isOpen={showCamera}
+      onClose={() => setShowCamera(false)}
+      onCapture={handleCameraCapture}
+    />
+    </>
   );
 }
