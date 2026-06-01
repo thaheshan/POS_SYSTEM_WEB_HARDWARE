@@ -5,6 +5,7 @@ export interface User {
   role: "admin" | "cashier" | "manager" | "staff" | "owner";
   phone?: string;
   tenantId?: string;
+  logoUrl?: string | null;
   paymentStatus?: string;
   subscriptionPlan?: string;
   createdAt: string;

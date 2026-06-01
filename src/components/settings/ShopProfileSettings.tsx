@@ -1,10 +1,53 @@
-import { Store, Edit2, Image as ImageIcon } from 'lucide-react';
+import { Store, Edit2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { shopApi } from '@/api/shop';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../../lib/store/authSlice';
 
 interface Props {
   setHasUnsavedChanges: (val: boolean) => void;
 }
 
 export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
+  const { user, token } = useAuth();
+  const dispatch = useDispatch();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File size must be less than 2MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await shopApi.uploadLogo(file, token);
+      
+      // Update local storage and Redux user state
+      const updatedUser = { ...user, logoUrl: response.logo_url };
+      dispatch(setUser(updatedUser));
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      alert("Shop logo uploaded successfully!");
+    } catch (error: any) {
+      alert(error.message || "Failed to upload logo");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
       {/* Card Header */}
@@ -28,8 +71,12 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
       <div className="p-8">
         {/* Logo Section */}
         <div className="bg-gray-50 rounded-[20px] p-6 mb-8 border border-gray-100 flex items-center gap-6">
-          <div className="w-24 h-24 bg-white border border-gray-200 rounded-[16px] flex items-center justify-center shadow-sm shrink-0">
-            <ImageIcon className="w-8 h-8 text-gray-300" />
+          <div className="w-24 h-24 bg-white border border-gray-200 rounded-[16px] overflow-hidden flex items-center justify-center shadow-sm shrink-0">
+            {user?.logoUrl ? (
+              <img src={user.logoUrl} alt="Shop Logo" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon className="w-8 h-8 text-gray-300" />
+            )}
           </div>
           <div>
             <h4 className="text-[14px] font-bold text-gray-900">Shop Logo</h4>
@@ -37,11 +84,20 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
               Recommended: 200x200px PNG or JPG, max 2MB
             </p>
             <div className="flex gap-3">
-              <button className="bg-[#1e40af] text-white px-4 py-2 rounded-lg text-[12px] font-bold transition-colors">
-                Upload New Logo
-              </button>
-              <button className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-[12px] font-bold hover:bg-gray-50 transition-colors">
-                Remove
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/png, image/jpeg, image/jpg" 
+                onChange={handleFileChange}
+              />
+              <button 
+                onClick={handleUploadClick}
+                disabled={isUploading}
+                className="bg-[#1e40af] text-white px-4 py-2 rounded-lg text-[12px] font-bold transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isUploading ? 'Uploading...' : 'Upload New Logo'}
               </button>
             </div>
           </div>
