@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/store";
 import { loginThunk, logout } from "../../../../lib/store/authSlice";
+import { checkStaffStatus, resolveStaffApprovalDecision, resolveStaffApprovalDecisionFromError } from "@/store/slices/staffSlice";
 import FormInput from "./form-input";
 import AuthHeader from "./auth-header";
 
@@ -54,6 +55,51 @@ export default function LoginForm() {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("allowPendingAccess");
         localStorage.removeItem("registrationStatus");
+      }
+
+      // Enforce staff status (is_active / is_verified)
+      try {
+        const statusRes = await dispatch(
+          checkStaffStatus(String(user.id))
+        ).unwrap();
+
+        const decision = resolveStaffApprovalDecision(statusRes);
+
+        if (decision === "approved") {
+          // approved — proceed to dashboard
+        } else if (decision === "pending") {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("allowPendingAccess", "true");
+            localStorage.setItem("pendingStaffId", String(user.id));
+          }
+          router.push("/auth/pending");
+          return;
+        } else if (decision === "rejected") {
+          dispatch(logout());
+          router.push("/auth/request-rejected");
+          return;
+        }
+      } catch (e: any) {
+        const errorStatus = e?.status ?? e?.response?.status;
+        const decision = resolveStaffApprovalDecisionFromError(e);
+
+        if (decision === "pending" || errorStatus === 403) {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("allowPendingAccess", "true");
+            localStorage.setItem("pendingStaffId", String(user.id));
+          }
+          router.push("/auth/pending");
+          return;
+        }
+
+        if (decision === "rejected") {
+          dispatch(logout());
+          router.push("/auth/request-rejected");
+          return;
+        }
+
+        // If the status check failed for another reason, keep the existing flow.
+        console.warn("[LoginForm] staff status check failed, continuing login", e);
       }
 
       const roleKey = String(user.role ?? "").toLowerCase();

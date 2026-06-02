@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/login/auth/auth-layout";
 import { authApi } from "@/api/auth";
+import { staffAPI } from "@/api/endpoints/staff";
+import { resolveStaffApprovalDecision, resolveStaffApprovalDecisionFromError } from "@/store/slices/staffSlice";
 
 const POLL_INTERVAL_MS = 5000; // poll every 5 seconds
 
@@ -22,44 +24,64 @@ export default function ApprovalWaitingPage() {
     return () => clearInterval(dotsTimer);
   }, []);
 
-  // Poll the backend for status changes
   useEffect(() => {
-    const email =
+    const staffId =
       typeof window !== "undefined"
-        ? localStorage.getItem("pendingEmail")
+        ? localStorage.getItem("pendingStaffId")
         : null;
 
-    if (!email) return; // No email stored — can't poll
+    if (!staffId) return;
 
     const poll = async () => {
       try {
-        const result = await authApi.checkStatus(email);
-        console.log("Polling result:", result);
-        
-        // Handle potential nested data wrappers just in case
-        const currentStatus = result.status;
+        const res = await staffAPI.status(staffId);
+        const payload = res?.data || res;
+        const decision = resolveStaffApprovalDecision(payload);
 
-        if (currentStatus === "APPROVED" || currentStatus === "ACTIVE") {
-          // Admin approved → go to request successful screen
-          console.log("Redirecting to request-successful");
+        if (decision === "approved") {
           if (intervalRef.current) clearInterval(intervalRef.current);
           window.location.href = "/auth/request-successful";
-        } else if (currentStatus === "REJECTED") {
-          // Admin rejected → go to rejected screen
-          console.log("Redirecting to request-rejected");
+          return;
+        }
+
+        if (decision === "rejected") {
           if (intervalRef.current) clearInterval(intervalRef.current);
           localStorage.removeItem("registrationStatus");
+          localStorage.removeItem("pendingStaffId");
           localStorage.removeItem("pendingEmail");
           window.location.href = "/auth/request-rejected";
+          return;
         }
-        // PENDING_APPROVAL → keep polling
-      } catch (e) {
-        console.error("Polling error:", e);
-        // Silently ignore network errors — will retry next interval
+
+        // pending or unknown: keep polling
+      } catch (e: any) {
+        const errorStatus = e?.status ?? e?.response?.status;
+        const decision = resolveStaffApprovalDecisionFromError(e);
+
+        if (decision === "rejected") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          localStorage.removeItem("registrationStatus");
+          localStorage.removeItem("pendingStaffId");
+          localStorage.removeItem("pendingEmail");
+          window.location.href = "/auth/request-rejected";
+          return;
+        }
+
+        if (decision === "approved") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          window.location.href = "/auth/request-successful";
+          return;
+        }
+
+        if (errorStatus === 403) {
+          console.warn("[ApprovalWaiting] status still guarded, retrying");
+        } else {
+          console.error("Polling error (staff status):", e);
+        }
       }
     };
 
-    poll(); // immediate first check
+    poll();
     intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
 
     return () => {

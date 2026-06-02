@@ -1,30 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Monitor, CircleAlert, HelpCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import AuthLayout from "@/components/login/auth/auth-layout";
 
-let pendingAccessConsumed = false;
-
 export default function PendingPage() {
   const router = useRouter();
+  const accessCheckedRef = useRef(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    if (accessCheckedRef.current) return;
+    accessCheckedRef.current = true;
+
     const hasAccess = sessionStorage.getItem("allowPendingAccess") === "true";
 
-    if (hasAccess && !pendingAccessConsumed) {
-      pendingAccessConsumed = true;
+    if (hasAccess) {
       setIsAuthorized(true);
       sessionStorage.removeItem("allowPendingAccess");
       return;
     }
 
-    if (!hasAccess && !pendingAccessConsumed) {
-      router.replace("/auth/login");
-    }
+    router.replace("/auth/login");
   }, [router]);
 
   if (!isAuthorized) return null;
@@ -48,8 +47,12 @@ export default function PendingPage() {
           <div className="flex items-center gap-3 mb-4">
             <CircleAlert className="text-orange-500 size-5" />
             <div>
-              <p className="font-semibold text-slate-900 text-sm">Current Status</p>
-              <p className="text-xs text-orange-500 font-medium">Pending Review / Inactive</p>
+              <p className="font-semibold text-slate-900 text-sm">
+                Current Status
+              </p>
+              <p className="text-xs text-orange-500 font-medium">
+                Pending Review / Inactive
+              </p>
             </div>
           </div>
           <p className="text-sm text-slate-600 border-t border-slate-100 pt-4">

@@ -2,6 +2,66 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { staffAPI } from "@/api/endpoints/staff";
 import { StaffMemberResponse, StaffRegistrationPayload } from "@/types/staff";
 
+export interface StaffStatusResponse {
+  is_active?: boolean;
+  is_verified?: boolean;
+  status?: string;
+}
+
+export type StaffApprovalDecision =
+  | "approved"
+  | "pending"
+  | "rejected"
+  | "unknown";
+
+const normalizeStatus = (value: unknown): string =>
+  String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+const resolveDecisionFromPayload = (
+  payload?: Partial<StaffStatusResponse> | null
+): StaffApprovalDecision => {
+  if (!payload) return "unknown";
+
+  const statusStr = normalizeStatus(payload.status);
+  const isApproved = payload.is_active === true && payload.is_verified === true;
+
+  if (isApproved || statusStr === "APPROVED" || statusStr === "ACTIVE") {
+    return "approved";
+  }
+
+  if (statusStr === "PENDING" || statusStr === "PENDING_APPROVAL") {
+    return "pending";
+  }
+
+  if (statusStr === "REJECTED" || statusStr === "DECLINED") {
+    return "rejected";
+  }
+
+  return "unknown";
+};
+
+export const resolveStaffApprovalDecision = (
+  payload?: Partial<StaffStatusResponse> | null
+): StaffApprovalDecision => resolveDecisionFromPayload(payload);
+
+export const resolveStaffApprovalDecisionFromError = (
+  error?: { status?: number; data?: any } | null
+): StaffApprovalDecision => {
+  const decision = resolveDecisionFromPayload(
+    error?.data as Partial<StaffStatusResponse> | null | undefined
+  );
+
+  if (decision !== "unknown") return decision;
+
+  const message = normalizeStatus(error?.data?.message);
+  if (message.includes("PENDING")) return "pending";
+  if (message.includes("REJECT")) return "rejected";
+
+  return error?.status === 403 ? "pending" : "unknown";
+};
+
 export const fetchStaff = createAsyncThunk(
   "staff/fetchAll",
   async (params?: any) => {
@@ -23,12 +83,6 @@ export const registerStaff = createAsyncThunk<
     );
   }
 });
-
-export interface StaffStatusResponse {
-  is_active?: boolean;
-  is_verified?: boolean;
-  status?: string;
-}
 
 export const checkStaffStatus = createAsyncThunk<
   StaffStatusResponse,
@@ -96,18 +150,12 @@ const staffSlice = createSlice({
         state.status = "succeeded";
         state.loading = false;
         state.details = payload;
-
-        const statusStr = (payload.status ?? "").toString().toUpperCase();
-
-        if (payload.is_active === true && payload.is_verified === true) {
-          state.approvalStatus = "approved";
-        } else if (statusStr === "REJECTED") {
-          state.approvalStatus = "rejected";
-        } else if (statusStr === "APPROVED") {
-          state.approvalStatus = "approved";
-        } else {
-          state.approvalStatus = "pending";
-        }
+        state.approvalStatus =
+          resolveStaffApprovalDecision(payload) === "rejected"
+            ? "rejected"
+            : resolveStaffApprovalDecision(payload) === "approved"
+            ? "approved"
+            : "pending";
       })
       .addCase(checkStaffStatus.rejected, (state, action) => {
         state.status = "failed";
@@ -117,15 +165,30 @@ const staffSlice = createSlice({
           | { status?: number; data?: any }
           | undefined;
 
-        if (err?.status === 403) {
-          state.approvalStatus = "rejected";
-          state.error = err.data?.message || "Access denied";
-        } else {
-          state.error =
-            err?.data?.message ||
-            action.error.message ||
-            "Failed to check staff status";
+        const decision = resolveStaffApprovalDecisionFromError(err);
+
+        if (decision === "approved") {
+          state.approvalStatus = "approved";
+          state.error = null;
+          return;
         }
+
+        if (decision === "pending" || err?.status === 403) {
+          state.approvalStatus = "pending";
+          state.error = err?.data?.message || "Approval still pending";
+          return;
+        }
+
+        if (decision === "rejected") {
+          state.approvalStatus = "rejected";
+          state.error = err?.data?.message || "Access denied";
+          return;
+        }
+
+        state.error =
+          err?.data?.message ||
+          action.error.message ||
+          "Failed to check staff status";
       });
   },
 });

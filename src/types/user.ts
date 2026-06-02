@@ -8,6 +8,9 @@ export interface User {
   logoUrl?: string | null;
   paymentStatus?: string;
   subscriptionPlan?: string;
+  status?: string;
+  isVerified?: boolean;
+  isActive?: boolean;
   createdAt: string;
 }
 
