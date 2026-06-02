@@ -95,7 +95,7 @@ export default function LoginForm() {
         return;
       }
 
-      // Rejected flows
+      // Rejected/suspended flows
       if (
         backendStatus === "REJECTED" ||
         normalizedMessage.includes("rejected") ||
@@ -103,12 +103,22 @@ export default function LoginForm() {
         normalizedMessage.includes("contact support") ||
         normalizedMessage.includes("inactive")
       ) {
-        // If backend gives a specific "rejected by administration" message, route to a dedicated page
         if (normalizedMessage.includes("rejected by administration")) {
           router.push("/auth/request-rejected");
           return;
         }
-        setError("Access Denied: Your application was rejected by the shop owner.");
+        setError(
+          "Access Denied: Your application was rejected by the shop owner."
+        );
+        return;
+      }
+
+      if (
+        backendStatus === "ACCOUNT_SUSPENDED" ||
+        normalizedMessage.includes("account_suspended") ||
+        normalizedMessage.includes("suspended")
+      ) {
+        router.push("/suspended");
         return;
       }
 
@@ -120,7 +130,10 @@ export default function LoginForm() {
 
   return (
     <div className="w-full">
-      <AuthHeader title="Welcome Back" subtitle="Sign in to your shop account" />
+      <AuthHeader
+        title="Welcome Back"
+        subtitle="Sign in to your shop account"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
         {error && (

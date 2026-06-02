@@ -19,9 +19,88 @@ import {
   SelectValue,
 } from "@/components/auth/register/ui/select";
 
-const CITIES = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad"];
-const DISTRICTS = ["District 1", "District 2", "District 3", "District 4"];
-const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan"];
+const PROVINCES = [
+  "Western Province",
+  "Central Province",
+  "Southern Province",
+  "Northern Province",
+  "Eastern Province",
+  "North Western Province",
+  "North Central Province",
+  "Uva Province",
+  "Sabaragamuwa Province",
+];
+
+const DISTRICTS = [
+  // Western Province
+  "Colombo", "Gampaha", "Kalutara",
+  // Central Province
+  "Kandy", "Matale", "Nuwara Eliya",
+  // Southern Province
+  "Galle", "Matara", "Hambantota",
+  // Northern Province
+  "Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya",
+  // Eastern Province
+  "Ampara", "Batticaloa", "Trincomalee",
+  // North Western Province
+  "Kurunegala", "Puttalam",
+  // North Central Province
+  "Anuradhapura", "Polonnaruwa",
+  // Uva Province
+  "Badulla", "Monaragala",
+  // Sabaragamuwa Province
+  "Kegalle", "Ratnapura",
+];
+
+const CITIES = [
+  // Western Province - Colombo District
+  "Colombo", "Dehiwala", "Mount Lavinia", "Moratuwa", "Sri Jayawardenepura Kotte",
+  "Kolonnawa", "Kaduwela", "Maharagama", "Kotte", "Nugegoda",
+  "Homagama", "Kesbewa", "Boralesgamuwa", "Thimbirigasyaya", "Ratmalana",
+  // Western Province - Gampaha District
+  "Gampaha", "Negombo", "Wattala", "Ragama", "Ja-Ela",
+  "Kadawatha", "Kiribathgoda", "Kelaniya", "Biyagama", "Mirigama",
+  "Minuwangoda", "Divulapitiya", "Katana",
+  // Western Province - Kalutara District
+  "Kalutara", "Panadura", "Beruwala", "Aluthgama", "Horana",
+  "Bandaragama", "Ingiriya", "Matugama",
+  // Central Province - Kandy District
+  "Kandy", "Peradeniya", "Katugastota", "Gampola", "Nawalapitiya",
+  "Hatton", "Pilimathalawa", "Akurana", "Wattegama",
+  // Central Province - Matale District
+  "Matale", "Dambulla", "Sigiriya", "Rattota", "Ukuwela",
+  // Central Province - Nuwara Eliya District
+  "Nuwara Eliya", "Hatton", "Talawakele", "Maskeliya", "Kotagala",
+  // Southern Province - Galle District
+  "Galle", "Hikkaduwa", "Ambalangoda", "Karapitiya", "Baddegama",
+  "Balapitiya", "Bentota",
+  // Southern Province - Matara District
+  "Matara", "Weligama", "Dikwella", "Hakmana", "Akuressa",
+  "Kamburupitiya", "Mirissa",
+  // Southern Province - Hambantota District
+  "Hambantota", "Tangalle", "Tissamaharama", "Ambalantota", "Beliatta",
+  // Northern Province - Jaffna District
+  "Jaffna", "Nallur", "Chavakachcheri", "Point Pedro", "Manipay",
+  "Kopay", "Uduvil",
+  // Northern Province - Other Districts
+  "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya",
+  // Eastern Province
+  "Trincomalee", "Batticaloa", "Ampara", "Kalmunai", "Akkaraipattu",
+  "Kattankudy", "Valaichchenai",
+  // North Western Province - Kurunegala District
+  "Kurunegala", "Kuliyapitiya", "Nikaweratiya", "Pannala", "Wariyapola",
+  "Mawathagama", "Giriulla",
+  // North Western Province - Puttalam District
+  "Puttalam", "Chilaw", "Wennappuwa", "Nattandiya", "Anamaduwa",
+  // North Central Province
+  "Anuradhapura", "Polonnaruwa", "Kekirawa", "Medawachchiya", "Tambuttegama",
+  // Uva Province
+  "Badulla", "Bandarawela", "Haputale", "Ella", "Monaragala",
+  "Wellawaya", "Bibila",
+  // Sabaragamuwa Province
+  "Ratnapura", "Kegalle", "Balangoda", "Embilipitiya", "Pelmadulla",
+  "Mawanella", "Warakapola",
+];
 
 interface Step1ShopInfoProps {
   onNext: () => void;

@@ -55,11 +55,7 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
   };
 
   const navigateToDetailedView = () => {
-    // Assuming dateRange is available from the parent, we can just push without params
-    // or ideally the parent could pass the dateRange so we append it, but simpler is just navigating
-    // because the user will still see the dedicated page.
-    // Wait, let's use search params if possible. The parent doesn't pass dateRange to Modal.
-    // So we just push to /sales/category-a
+    onClose();
     router.push('/sales/category-a');
   };
 
