@@ -635,10 +635,21 @@ export default function SalesPage() {
                         >
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex flex-col">
-                              <span className="text-[12.5px] font-bold text-gray-900 font-mono tracking-tighter">
-                                {txn.id}
-                              </span>
-                              <span className="text-[11px] font-bold text-gray-400">{txn.date}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold text-gray-900 tracking-tight">
+                                  {txn.staffName}
+                                </span>
+                                {txn.role === 'admin' ? (
+                                  <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
+                                    Shop Owner
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                    Staff
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-bold text-gray-400 mt-0.5">{txn.time}</span>
                             </div>
                             <div className="flex flex-col items-end">
                               <span className="text-[13px] font-black text-amber-600 font-mono tracking-tighter">

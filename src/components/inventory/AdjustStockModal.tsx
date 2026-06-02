@@ -26,11 +26,54 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
     }
   }, [isOpen]);
 
+  const [defaultWarehouseId, setDefaultWarehouseId] = useState<string>('');
+
   const fetchProducts = async () => {
     try {
-      const res = await api.get('/stock');
-      const items = res.data?.data || res.data || [];
-      setProducts(items);
+      const [stockRes, productsRes, whRes] = await Promise.allSettled([
+        api.get('/stock'),
+        api.get('/products'),
+        api.get('/warehouses'),
+      ]);
+
+      const stockItems: any[] = stockRes.status === 'fulfilled'
+        ? (stockRes.value.data?.data || stockRes.value.data || [])
+        : [];
+
+      const allProducts: any[] = productsRes.status === 'fulfilled'
+        ? (productsRes.value.data?.data || productsRes.value.data || [])
+        : [];
+
+      if (whRes.status === 'fulfilled') {
+        const whItems = whRes.value.data?.data || whRes.value.data?.warehouses || whRes.value.data || [];
+        if (whItems.length > 0) {
+          setDefaultWarehouseId(whItems[0].id);
+        }
+      }
+
+      const stockProductIds = new Set(stockItems.map((s: any) => String(s.product_id || s.productId)));
+
+      // Map stock items
+      const mappedStock = stockItems.map((item: any) => ({
+        id: String(item.product_id || item.productId || item.id),
+        name: item.product?.name || item.product_name || 'Unknown',
+        qty: item.available_quantity ?? item.availableQuantity ?? item.quantity ?? 0,
+        warehouseId: item.warehouseId || item.warehouse_id,
+        branchId: item.branchId || item.branch_id,
+      }));
+
+      // Map products without stock
+      const mappedNoStock = allProducts
+        .filter((p: any) => !stockProductIds.has(String(p.id)))
+        .map((p: any) => ({
+          id: String(p.id),
+          name: p.name || 'Unknown',
+          qty: 0,
+          warehouseId: undefined,
+          branchId: undefined,
+        }));
+
+      setProducts([...mappedStock, ...mappedNoStock]);
     } catch (error) {
       console.error('Failed to fetch products for stock adjustment', error);
     }
@@ -46,12 +89,11 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
       return;
     }
 
-    const item = products.find(p => p.productId === formData.productId || p.product_id === formData.productId || p.product?.id === formData.productId);
+    const item = products.find(p => p.id === formData.productId);
     
-    // Fallbacks to handle snake_case or camelCase from API
-    const warehouseId = item?.warehouseId || item?.warehouse_id || formData.warehouseId;
-    const branchId = item?.branchId || item?.branch_id || "00000000-0000-0000-0000-000000000000";
-
+    // Fallbacks: Use item.warehouseId if exists, otherwise fallback to the first active warehouse, or use mock to trigger backend auto-create
+    const warehouseId = item?.warehouseId || defaultWarehouseId || "00000000-0000-0000-0000-000000000000";
+    const branchId = item?.branchId || "00000000-0000-0000-0000-000000000000";
 
     setLoading(true);
     try {
@@ -120,17 +162,11 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
               className="w-full appearance-none px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
             >
               <option value="">Select a product...</option>
-              {products.map(p => {
-                const prod = p.product || p;
-                const id = prod.id || p.product_id || p.productId;
-                const name = prod.product_name || prod.name || p.product_name;
-                const qty = p.available_quantity ?? p.availableQuantity ?? p.quantity;
-                return (
-                  <option key={id} value={id}>
-                    {name} ({qty} in stock)
-                  </option>
-                );
-              })}
+              {products.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.qty} in stock)
+                </option>
+              ))}
             </select>
             <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-[34px] pointer-events-none" />
           </div>

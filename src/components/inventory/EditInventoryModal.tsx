@@ -24,7 +24,8 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
   const [qty, setQty] = useState(0);
   const [minLevel, setMinLevel] = useState(0);
   const [maxLevel, setMaxLevel] = useState(0);
-  const [unitCost, setUnitCost] = useState(0);
+  const [unitCost, setUnitCost] = useState(0);       // Selling price
+  const [costPrice, setCostPrice] = useState(0);     // Purchase / cost price
   const [status, setStatus] = useState('In Stock');
   const [autoReorder, setAutoReorder] = useState(false);
 
@@ -38,7 +39,8 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
     setQty(item.qty || 0);
     setMinLevel(item.minStock || item.minLevel || 0);
     setMaxLevel(item.maxLevel || 1);
-    setUnitCost(item.price || item.cost || 0);
+    setUnitCost(item.sellingPrice || item.price || item.cost || 0);
+    setCostPrice(item.purchasePrice || item.costPrice || 0);
     setStatus(item.status || 'In Stock');
     setAutoReorder(item.autoReorder || false);
     setError(null);
@@ -111,11 +113,7 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
       setError('Please select a category');
       return;
     }
-    if (!warehouseId) {
-      setError('Please select a warehouse');
-      return;
-    }
-
+    // Warehouse validation removed as requested
     setSaving(true);
     setError(null);
     try {
@@ -127,6 +125,7 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
         qty: Number(qty),
         minimumStockLevel: Number(minLevel),
         maximumStockLevel: Number(maxLevel),
+        purchasePrice: Number(costPrice),
         sellingPrice: Number(unitCost),
         status,
         autoReorder,
@@ -233,37 +232,7 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
             </div>
           </div>
 
-          {/* Warehouse & Location */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4 border-b pb-2">Warehouse & Location</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Warehouse <span className="text-red-500">*</span>
-                </label>
-                <select 
-                  value={warehouseId} 
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer bg-white"
-                >
-                  <option value="">Select Warehouse</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-[34px] pointer-events-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last movement</label>
-                <input 
-                  type="text" 
-                  value={item.lastMovement || new Date().toLocaleDateString('en-GB')}
-                  readOnly
-                  className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Warehouse & Location - Hidden as requested */}
 
           {/* Stock Levels */}
           <div>
@@ -344,40 +313,44 @@ export default function EditInventoryModal({ isOpen, onClose, onSave, item }: Ed
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit Price / Cost (LKR) <span className="text-red-500">*</span>
+                  Cost Price (LKR) <span className="text-red-500">*</span>
+                  <span className="ml-1 text-xs text-gray-400">What you pay</span>
+                </label>
+                <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400">
+                  <span className="px-2 py-2 text-xs text-gray-400 bg-gray-50 border-r border-gray-200">Rs.</span>
+                  <input 
+                    type="number" 
+                    value={costPrice} 
+                    onChange={(e) => setCostPrice(Math.max(0, Number(e.target.value)))}
+                    className="w-full px-3 py-2 text-sm focus:outline-none" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selling Price (LKR) <span className="text-red-500">*</span>
+                  <span className="ml-1 text-xs text-gray-400">Customer pays</span>
                 </label>
                 <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+                  <span className="px-2 py-2 text-xs text-gray-400 bg-gray-50 border-r border-gray-200">Rs.</span>
                   <input 
                     type="number" 
                     value={unitCost} 
                     onChange={(e) => setUnitCost(Math.max(0, Number(e.target.value)))}
                     className="w-full px-3 py-2 text-sm focus:outline-none" 
                   />
-                  <div className="flex flex-col border-l border-gray-200">
-                    <button 
-                      type="button"
-                      onClick={() => setUnitCost(prev => prev + 10)}
-                      className="px-2 py-0.5 hover:bg-gray-100 border-b border-gray-200 text-xs text-gray-500"
-                    >
-                      ▲
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setUnitCost(prev => Math.max(0, prev - 10))}
-                      className="px-2 py-0.5 hover:bg-gray-100 text-xs text-gray-500"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total value (LKR)</label>
-                <div className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-600 font-medium text-center">
-                  Rs. {calculatedTotalValue.toLocaleString()}
                 </div>
               </div>
             </div>
+            {/* Profit Margin Preview */}
+            {costPrice > 0 && unitCost > 0 && (
+              <div className={`mt-2 px-3 py-2 rounded-lg text-xs font-semibold ${
+                unitCost >= costPrice ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'
+              }`}>
+                Margin: Rs. {(unitCost - costPrice).toLocaleString()} &nbsp;|&nbsp;
+                {Math.round(((unitCost - costPrice) / costPrice) * 100)}% profit
+              </div>
+            )}
           </div>
 
           {/* Status & Settings */}

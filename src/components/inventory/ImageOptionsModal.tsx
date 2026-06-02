@@ -1,5 +1,8 @@
+'use client';
+
 import { Upload, Camera, X } from 'lucide-react';
 import React from 'react';
+
 
 interface Props {
   isOpen: boolean;
