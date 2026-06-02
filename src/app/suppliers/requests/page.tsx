@@ -86,6 +86,7 @@ function RequestSupplierContent() {
       
       // Map stock to products & compute low stock alerts on frontend!
       let localAlertsCount = 0;
+      let uniqueProducts: any[] = []; // declared here so it's accessible for URL prefill below
       if (stockRes.status === "fulfilled") {
         const stockItems = stockRes.value.data?.data || stockRes.value.data || [];
         
@@ -102,7 +103,7 @@ function RequestSupplierContent() {
         });
         
         // Remove duplicates by product ID in case of multiple warehouses
-        const uniqueProducts = Array.from(new Map(products.map((p: any) => [p.id, p])).values()) as any[];
+        uniqueProducts = Array.from(new Map(products.map((p: any) => [p.id, p])).values()) as any[];
         setAllProducts(uniqueProducts);
 
         // Generate Urgent Alerts
