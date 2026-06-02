@@ -50,7 +50,7 @@ export default function LowStockAlertModal({
     const fetchLowStock = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get('/stock?low_stock=true');
+        const res = await api.get('/stock?low_stock=true&out_of_stock=true');
         const items = res.data?.data || res.data || [];
         const mapped: LowStockProduct[] = items.map((item: any, index: number) => ({
           id: item.product_id || item.id || `ls-${index}`,
@@ -133,7 +133,7 @@ export default function LowStockAlertModal({
 
   const openPurchaseOrders = (products: LowStockProduct[]) => {
     const ids = products.map((product) => product.id).join(",");
-    router.push(`/purchase-orders?items=${encodeURIComponent(ids)}`);
+    router.push(`/suppliers/requests?items=${encodeURIComponent(ids)}`);
     onClose();
   };
 

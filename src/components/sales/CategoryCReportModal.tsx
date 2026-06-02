@@ -3,24 +3,17 @@
 import { useState } from 'react';
 import { X, Download, Trash2, Wrench, Search, FileText, FileSpreadsheet, ChevronDown, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import AddExpenseModal from './AddExpenseModal';
+import AddLabourModal from './AddLabourModal';
+import { format } from 'date-fns';
 
-interface Props { isOpen: boolean; onClose: () => void; onPrintPDF: (timeFilter: string) => void; data: any; }
+interface Props { isOpen: boolean; onClose: (refresh?: boolean) => void; onPrintPDF: (timeFilter: string) => void; data: any; }
 
 const TIME_OPTIONS = ['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 365 Days'];
 
-const MOCK_ENTRIES = [
-  { labour: 'A', id: 'LAB-2453', expenseType: 'Tea',      total: 5000 },
-  { labour: 'B', id: 'LAB-9752', expenseType: 'Salary',   total: 3500 },
-  { labour: 'C', id: 'LAB-1100', expenseType: 'Travel',   total: 1200 },
-];
-
 const EXPENSE_COLORS: Record<string, string> = {
-  Tea:      'bg-amber-50 text-amber-700',
-  Salary:   'bg-emerald-50 text-emerald-700',
-  Overtime: 'bg-blue-50 text-blue-700',
-  Material: 'bg-purple-50 text-purple-700',
-  Travel:   'bg-orange-50 text-orange-700',
+  LABOUR: 'bg-blue-50 text-blue-700',
+  INSTALLATION: 'bg-purple-50 text-purple-700',
+  MISC: 'bg-emerald-50 text-emerald-700',
 };
 
 export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data }: Props) {
@@ -36,9 +29,9 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
   const entries = data.catC?.allTxns || [];
 
   const filtered = entries.filter((e: any) =>
-    e.id.toLowerCase().includes(search.toLowerCase()) ||
-    e.type.toLowerCase().includes(search.toLowerCase()) ||
-    e.desc.toLowerCase().includes(search.toLowerCase())
+    String(e.id).toLowerCase().includes(search.toLowerCase()) ||
+    (e.entryType || '').toLowerCase().includes(search.toLowerCase()) ||
+    (e.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const subtotal = data.catC?.core || 0;
@@ -46,7 +39,13 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
   const handleCSV = () => {
     const rows = [
       ['Date', 'ID', 'Type', 'Description', 'Amount (Rs)'],
-      ...filtered.map((e: any) => [e.date, e.id, e.type, e.desc, e.amount]),
+      ...filtered.map((e: any) => [
+        e.createdAt ? format(new Date(e.createdAt), 'yyyy-MM-dd HH:mm') : '', 
+        e.id, 
+        e.entryType || 'MISC', 
+        e.description || '', 
+        e.amount
+      ]),
       ['', '', '', 'Subtotal', subtotal],
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob([rows], { type: 'text/csv' });
@@ -184,17 +183,19 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
                 {filtered.map((e: any, i: number) => (
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-4 px-4">
-                      <p className="text-[13px] font-bold text-gray-900">{e.id}</p>
-                      <p className="text-[10px] font-bold text-gray-400">{e.date}</p>
+                      <p className="text-[13px] font-bold text-gray-900 font-mono">#{String(e.id).slice(-8).toUpperCase()}</p>
+                      <p className="text-[10px] font-bold text-gray-400">
+                        {e.createdAt ? format(new Date(e.createdAt), 'MMM d, yyyy h:mm a') : '—'}
+                      </p>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-3 py-1.5 rounded-full text-[11px] font-black bg-amber-50 text-amber-700`}>
-                        {e.type}
+                      <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${EXPENSE_COLORS[e.entryType?.toUpperCase() || 'MISC'] || EXPENSE_COLORS.MISC}`}>
+                        {e.entryType || 'MISC'}
                       </span>
-                      <p className="text-[10px] font-bold text-gray-500 mt-1">{e.desc}</p>
+                      <p className="text-[11px] font-bold text-gray-500 mt-1 truncate max-w-[200px]">{e.description || '—'}</p>
                     </td>
                     <td className="py-4 px-4 text-right text-[13px] font-black text-amber-600 font-mono">
-                      Rs. {e.amount}
+                      Rs. {Number(e.amount).toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -220,16 +221,16 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
 
         {/* FOOTER */}
         <div className="flex gap-3 p-6 pt-4 border-t border-gray-100 flex-shrink-0">
-          <button onClick={onClose} className="flex-1 py-3.5 border-2 border-gray-200 rounded-2xl text-[14px] font-black text-gray-600 hover:bg-gray-50 transition-all">
+          <button onClick={() => onClose(false)} className="flex-1 py-3.5 border-2 border-gray-200 rounded-2xl text-[14px] font-black text-gray-600 hover:bg-gray-50 transition-all">
             Cancel
           </button>
-          <button onClick={() => { onClose(); router.push('/sales/category-c'); }} className="flex-1 py-3.5 bg-[#a16207] hover:bg-amber-800 rounded-2xl text-[14px] font-black text-white shadow-lg shadow-amber-100 transition-all active:scale-95">
+          <button onClick={() => { onClose(false); router.push('/sales/category-c'); }} className="flex-1 py-3.5 bg-[#a16207] hover:bg-amber-800 rounded-2xl text-[14px] font-black text-white shadow-lg shadow-amber-100 transition-all active:scale-95">
             View All
           </button>
         </div>
       </div>
 
-      <AddExpenseModal isOpen={showAddExpense} onClose={() => setShowAddExpense(false)} />
+      <AddLabourModal isOpen={showAddExpense} onClose={(refresh) => { setShowAddExpense(false); if (refresh) onClose(true); }} />
     </div>
   );
 }
