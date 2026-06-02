@@ -165,7 +165,19 @@ const staffSlice = createSlice({
           | { status?: number; data?: any }
           | undefined;
 
-        const decision = resolveStaffApprovalDecisionFromError(err);
+        // If the backend provided a body with an explicit status, prefer it.
+        const bodyPayload = err?.data ?? undefined;
+        const bodyDecision = resolveStaffApprovalDecision(bodyPayload as any);
+
+        if (bodyDecision !== "unknown") {
+          state.approvalStatus = bodyDecision;
+          state.details = bodyPayload ?? null;
+          state.error = bodyPayload?.message ?? null;
+          return;
+        }
+
+        // Fallback: inspect error message or HTTP status conservatively.
+        const decision = resolveStaffApprovalDecisionFromError(err ?? null);
 
         if (decision === "approved") {
           state.approvalStatus = "approved";
@@ -173,6 +185,7 @@ const staffSlice = createSlice({
           return;
         }
 
+        // Treat 403 with no explicit body as 'pending' (guarded endpoint), not an automatic rejection
         if (decision === "pending" || err?.status === 403) {
           state.approvalStatus = "pending";
           state.error = err?.data?.message || "Approval still pending";
@@ -185,10 +198,7 @@ const staffSlice = createSlice({
           return;
         }
 
-        state.error =
-          err?.data?.message ||
-          action.error.message ||
-          "Failed to check staff status";
+        state.error = err?.data?.message || action.error.message || "Failed to check staff status";
       });
   },
 });
