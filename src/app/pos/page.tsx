@@ -238,7 +238,7 @@ export default function POSPage() {
       ]);
 
       const stockItems: any[] = stockRes.status === 'fulfilled'
-        ? (stockRes.value.data?.data || stockRes.value.data || stockRes.value.items || [])
+        ? (stockRes.value.data?.data || stockRes.value.data || [])
         : [];
 
       const allProducts: any[] = productsRes.status === 'fulfilled'

@@ -67,7 +67,7 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center print:hidden">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onClose()} />
       <div className="relative bg-white w-full max-w-[560px] rounded-[28px] shadow-2xl overflow-hidden mx-4 max-h-[90vh] flex flex-col">
 
         {/* AMBER GRADIENT HEADER */}
@@ -76,7 +76,7 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-5">
               <Wrench className="w-6 h-6 text-white" />
             </div>
-            <button onClick={onClose} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all">
+            <button onClick={() => onClose()} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all">
               <X className="w-5 h-5" />
             </button>
           </div>
