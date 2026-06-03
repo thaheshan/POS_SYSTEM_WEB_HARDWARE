@@ -22,16 +22,49 @@ export function Header() {
         sectionId: "testimonials",
       },
       { label: "FAQ", href: "#faq", sectionId: "faq" },
-      { label: "CTA", href: "#cta", sectionId: "cta" },
+      { label: "Contact", href: "#contact", sectionId: "contact" },
     ],
     [],
   );
 
   useEffect(() => {
     const sectionIds = navLinks.map((link) => link.sectionId);
-    const sections = sectionIds
-      .map((id) => document.getElementById(id))
-      .filter((section): section is HTMLElement => Boolean(section));
+
+    const getActiveSectionId = () => {
+      const headerOffset = 96;
+      const probePoint = window.scrollY + headerOffset;
+
+      const sections = sectionIds
+        .map((id) => document.getElementById(id))
+        .filter((section): section is HTMLElement => Boolean(section))
+        .sort(
+          (first, second) =>
+            first.getBoundingClientRect().top -
+            second.getBoundingClientRect().top,
+        );
+
+      let currentSectionId = sectionIds[0];
+
+      for (const section of sections) {
+        const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+        if (probePoint >= sectionTop) {
+          currentSectionId = section.id;
+        } else {
+          break;
+        }
+      }
+
+      return currentSectionId;
+    };
+
+    let rafId = 0;
+
+    const updateActiveSection = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(() => {
+        setActiveSection(getActiveSectionId());
+      });
+    };
 
     const updateFromHash = () => {
       const hash = window.location.hash.replace("#", "");
@@ -42,30 +75,16 @@ export function Header() {
 
     updateFromHash();
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-
-        if (visibleEntries.length > 0) {
-          setActiveSection(visibleEntries[0].target.id);
-        }
-      },
-      {
-        root: null,
-        rootMargin: "-35% 0px -55% 0px",
-        threshold: [0.15, 0.3, 0.6],
-      },
-    );
-
-    sections.forEach((section) => observer.observe(section));
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
     window.addEventListener("hashchange", updateFromHash);
+    window.addEventListener("resize", updateActiveSection);
 
     return () => {
-      sections.forEach((section) => observer.unobserve(section));
-      observer.disconnect();
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", updateActiveSection);
       window.removeEventListener("hashchange", updateFromHash);
+      window.removeEventListener("resize", updateActiveSection);
     };
   }, [navLinks]);
 
