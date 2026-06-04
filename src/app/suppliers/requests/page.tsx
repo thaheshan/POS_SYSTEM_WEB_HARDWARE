@@ -13,6 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import api from "@/api/axiosInstance";
 import { toast } from "react-hot-toast";
 
@@ -41,7 +43,8 @@ interface Alert {
   isRed: boolean;
 }
 
-export default function RequestSupplierPage() {
+function RequestSupplierContent() {
+  const searchParams = useSearchParams();
   const [stats, setStats] = useState({
     totalRequests: 0,
     pendingRequests: 0,
@@ -83,6 +86,7 @@ export default function RequestSupplierPage() {
       
       // Map stock to products & compute low stock alerts on frontend!
       let localAlertsCount = 0;
+      let uniqueProducts: any[] = []; // declared here so it's accessible for URL prefill below
       if (stockRes.status === "fulfilled") {
         const stockItems = stockRes.value.data?.data || stockRes.value.data || [];
         
@@ -99,7 +103,7 @@ export default function RequestSupplierPage() {
         });
         
         // Remove duplicates by product ID in case of multiple warehouses
-        const uniqueProducts = Array.from(new Map(products.map((p: any) => [p.id, p])).values()) as any[];
+        uniqueProducts = Array.from(new Map(products.map((p: any) => [p.id, p])).values()) as any[];
         setAllProducts(uniqueProducts);
 
         // Generate Urgent Alerts
@@ -146,6 +150,34 @@ export default function RequestSupplierPage() {
         completedOrders: completed,
         lowStockItems: localAlertsCount,
       });
+
+      // Handle URL prefill from low stock modal
+      const prefillItems = searchParams?.get("items");
+      if (prefillItems && uniqueProducts.length > 0) {
+        const itemIds = prefillItems.split(",");
+        const newRequestItems: RequestItem[] = [];
+        itemIds.forEach((id) => {
+          const product = uniqueProducts.find((p) => p.id === id);
+          if (product) {
+            const suggestQty = product.minStock > 0 ? product.minStock * 2 : 10;
+            newRequestItems.push({
+              id: Date.now().toString() + Math.random(),
+              productId: product.id,
+              qty: suggestQty,
+              stock: product.stock,
+              isLow: product.stock <= product.minStock,
+            });
+          }
+        });
+        if (newRequestItems.length > 0) {
+          setRequestItems(newRequestItems);
+          
+          // Clear URL parameter so it doesn't run again if refreshed locally
+          if (typeof window !== 'undefined') {
+             window.history.replaceState({}, '', '/suppliers/requests');
+          }
+        }
+      }
 
     } catch (error) {
       console.error("Failed to load request data", error);
@@ -651,5 +683,13 @@ export default function RequestSupplierPage() {
         </div>
       </div>
     </MainLayout>
+  );
+}
+
+export default function RequestSupplierPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>}>
+      <RequestSupplierContent />
+    </Suspense>
   );
 }

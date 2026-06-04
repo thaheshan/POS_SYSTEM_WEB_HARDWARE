@@ -149,12 +149,10 @@ export default function InventoryTable({
               </th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">SKU</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Category</th>
-              <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Warehouse</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Qty</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Unit Cost</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Total Value</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-center">Status</th>
-              <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-center">Movement</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-center">Reorder</th>
               <th className="px-4 py-4"></th>
             </tr>
@@ -186,7 +184,6 @@ export default function InventoryTable({
                   </td>
                   <td className="px-4 py-4 text-emerald-600 font-bold whitespace-nowrap">{item.sku}</td>
                   <td className="px-4 py-4 text-gray-600 font-medium whitespace-nowrap">{item.category}</td>
-                  <td className="px-4 py-4 text-gray-600 font-medium whitespace-nowrap">{item.warehouse}</td>
                   <td className="px-4 py-4 text-right">
                     <div className="flex flex-col items-end gap-1">
                       <span className="font-bold text-gray-900">{item.qty}</span>
@@ -203,7 +200,6 @@ export default function InventoryTable({
                   <td className="px-4 py-4 text-center whitespace-nowrap">
                     {getStatusBadge(item.status)}
                   </td>
-                  <td className="px-4 py-4 text-center font-medium text-gray-400 whitespace-nowrap">{item.lastMovement}</td>
                   <td className="px-4 py-4 text-center">
                     {getReorderIcon(item.reorder)}
                   </td>
@@ -221,7 +217,7 @@ export default function InventoryTable({
               ))
             ) : (
               <tr>
-                <td colSpan={14} className="px-6 py-14 text-center">
+                <td colSpan={10} className="px-6 py-14 text-center">
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <Search className="w-8 h-8 opacity-20" />
                     <p className="text-[13px] font-bold">No products found matching your filters.</p>

@@ -231,20 +231,24 @@ export default function POSPage() {
   const fetchProducts = async () => {
     try {
       setFetchError(null);
-      const res = await api.get('/stock');
-      console.log('[POS] /stock raw response:', res.data);
+      
+      const [stockRes, productsRes] = await Promise.allSettled([
+        api.get('/stock'),
+        api.get('/products'),
+      ]);
 
-      const items = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data?.items)
-        ? res.data.items
+      const stockItems: any[] = stockRes.status === 'fulfilled'
+        ? (stockRes.value.data?.data || stockRes.value.data || [])
         : [];
 
-      console.log('[POS] items count:', items.length);
+      const allProducts: any[] = productsRes.status === 'fulfilled'
+        ? (productsRes.value.data?.data || productsRes.value.data || [])
+        : [];
 
-      const mappedProducts: Product[] = items.map((item: any, index: number) => {
+      const stockProductIds = new Set(stockItems.map((s: any) => String(s.product_id || s.productId)));
+
+      // Map products that have stock records
+      const mappedStockProducts: Product[] = stockItems.map((item: any, index: number) => {
         const name = item.product?.name || item.product_name || 'Unknown';
         const nameLower = name.toLowerCase();
         
@@ -259,13 +263,15 @@ export default function POSPage() {
           measurementUnit = 'kg';
         }
 
+        const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
+
         return {
           id: String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`),
           name: name,
           sku: item.product?.sku || item.sku || 'N/A',
           price: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
-          stock: Number(item.available_quantity || item.availableQuantity || item.quantity || 0),
-          status: Number(item.available_quantity || item.availableQuantity || item.quantity || 0) > 10 ? 'In Stock' : 'Low Stock',
+          stock: qty,
+          status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
           category: item.product?.category?.name || item.category_name || 'All',
           img: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
           warehouseId: item.warehouseId || item.warehouse_id,
@@ -275,7 +281,41 @@ export default function POSPage() {
         };
       });
 
-      setProductsList(mappedProducts);
+      // Map products that do NOT have a stock record yet
+      const mappedNoStockProducts: Product[] = allProducts
+        .filter((p: any) => !stockProductIds.has(String(p.id)))
+        .map((p: any) => {
+          const name = p.name || 'Unknown';
+          const nameLower = name.toLowerCase();
+          
+          let sellType: 'fixed' | 'loose' = 'fixed';
+          let measurementUnit = 'unit';
+          
+          if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
+            sellType = 'loose';
+            measurementUnit = 'm';
+          } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
+            sellType = 'loose';
+            measurementUnit = 'kg';
+          }
+
+          return {
+            id: String(p.id),
+            name: name,
+            sku: p.sku || 'N/A',
+            price: Number(p.sellingPrice || 0),
+            stock: 0,
+            status: 'Out of Stock',
+            category: p.category?.name || 'All',
+            img: p.images?.[0]?.imageUrl || null,
+            warehouseId: undefined,
+            branchId: undefined,
+            sellType,
+            measurementUnit
+          };
+        });
+
+      setProductsList([...mappedStockProducts, ...mappedNoStockProducts]);
     } catch (err: any) {
       console.error('[POS] Failed to fetch products:', err);
       setFetchError(err.message || 'Failed to connect to API');
@@ -366,8 +406,8 @@ export default function POSPage() {
   const discountAmount = discountType === 'percentage'
     ? (subtotal * (discountValue / 100))
     : discountValue;
-  const tax = (subtotal - discountAmount) * 0.15;
-  const total = subtotal - discountAmount + tax;
+  const tax = 0;
+  const total = subtotal - discountAmount;
 
   const hasLowStockItems = useMemo(() => {
     return cart.some(item => {
@@ -557,7 +597,7 @@ export default function POSPage() {
                         >
                           <div className="h-[280px] w-full bg-gray-100 relative overflow-hidden">
                             {product.img ? (
-                              <img src={product.img} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                              <img src={product.img} alt={product.name} className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110" />
                             ) : (
                               <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 transition-transform duration-500 group-hover:scale-110">
                                 <Package className="w-16 h-16 text-gray-300 mb-2" />
@@ -764,29 +804,26 @@ export default function POSPage() {
                     </div>
 
                     {/* Discount */}
-                    <div>
-                      <button onClick={() => setIsDiscountOpen(!isDiscountOpen)} className="w-full flex items-center justify-between py-3 border-t border-gray-100 group">
-                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] group-hover:text-[#059669] transition-colors">Apply Discount</span>
-                        <ChevronDown className={`w-4 h-4 text-gray-300 transition-transform ${isDiscountOpen ? 'rotate-180' : ''}`} />
-                      </button>
-                      {isDiscountOpen && (
-                        <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-3">
-                          <div className="flex gap-2">
-                            <button onClick={() => setDiscountType('percentage')} className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase ${discountType === 'percentage' ? 'bg-[#059669] text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>% Percent</button>
-                            <button onClick={() => setDiscountType('fixed')} className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase ${discountType === 'fixed' ? 'bg-[#059669] text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>Amount</button>
-                          </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              placeholder="Enter value"
-                              value={discountValue || ''}
-                              onChange={(e) => setDiscountValue(Number(e.target.value))}
-                              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-[13px] font-bold outline-none focus:border-[#059669]"
-                            />
-                            <button onClick={() => setIsDiscountOpen(false)} className="bg-[#059669] text-white px-4 rounded-lg text-[11px] font-black uppercase shrink-0">Done</button>
-                          </div>
+                    <div className="space-y-3 pt-3 border-t border-gray-100">
+                      <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em]">Apply Discount</h3>
+                      <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-3">
+                        <div className="flex gap-2">
+                          <button onClick={() => setDiscountType('percentage')} className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase ${discountType === 'percentage' ? 'bg-[#059669] text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>% Percent</button>
+                          <button onClick={() => setDiscountType('fixed')} className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase ${discountType === 'fixed' ? 'bg-[#059669] text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>Amount</button>
                         </div>
-                      )}
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            placeholder="Enter value"
+                            value={discountValue || ''}
+                            onChange={(e) => setDiscountValue(Number(e.target.value))}
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-[13px] font-bold outline-none focus:border-[#059669]"
+                          />
+                          {discountValue > 0 && (
+                            <button onClick={() => setDiscountValue(0)} className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-4 rounded-lg text-[11px] font-black uppercase shrink-0 transition-colors">Clear</button>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Notes */}
@@ -819,7 +856,6 @@ export default function POSPage() {
                 <div className="px-4 py-3 bg-emerald-50/50 flex items-center justify-between border-y border-emerald-100">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#059669] opacity-60">Total Payable</p>
-                    <p className="text-[11px] font-bold text-emerald-700">incl. 15% Tax</p>
                   </div>
                   <span className="text-[26px] font-black tracking-tighter text-[#059669]">Rs. {total.toLocaleString()}</span>
                 </div>

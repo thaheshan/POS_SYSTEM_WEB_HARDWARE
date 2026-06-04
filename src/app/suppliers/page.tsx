@@ -83,7 +83,7 @@ export default function SuppliersPage() {
             : null;
             
       if (data) {
-        setStats(prev => ({
+        setStats((prev: any) => ({
           ...prev,
           totalOutstandingPayable: data.totalOutstandingPayable ?? prev.totalOutstandingPayable,
           thisMonthPurchases: data.thisMonthPurchases ?? prev.thisMonthPurchases,
@@ -145,7 +145,7 @@ export default function SuppliersPage() {
         }
       });
 
-      setStats(prev => ({
+      setStats((prev: any) => ({
         ...prev,
         totalOutstandingPayable: outstandingPayable,
         thisMonthPurchases: monthPurchases,

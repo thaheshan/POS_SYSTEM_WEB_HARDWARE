@@ -24,8 +24,10 @@ import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import * as Popover from '@radix-ui/react-popover';
 import { Calendar as CalendarIcon, FileDown } from 'lucide-react';
 import InventoryReportView from '@/components/inventory/InventoryReportView';
+import { useRouter } from 'next/navigation';
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -40,17 +42,49 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [prefillItems, setPrefillItems] = useState<string[]>([]);
+
   React.useEffect(() => {
     fetchInventory();
+    
+    // Check for purchase order prefill from dashboard
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('po') === 'true') {
+        const items = params.get('items');
+        if (items) {
+          setPrefillItems(items.split(','));
+        }
+        setIsPurchaseOrderModalOpen(true);
+        // Clean up URL without reloading
+        window.history.replaceState({}, '', '/inventory');
+      }
+    }
   }, []);
 
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/stock');
-      const items = res.data?.data || res.data || [];
-      // Map flat StockOverviewResponse fields from backend to component-expected shape
-      const mapped = items.map((item: any) => {
+
+      // Fetch both stock records and all products in parallel
+      const [stockRes, productsRes] = await Promise.allSettled([
+        api.get('/stock'),
+        api.get('/products'),
+      ]);
+
+      const stockItems: any[] = stockRes.status === 'fulfilled'
+        ? (stockRes.value.data?.data || stockRes.value.data || [])
+        : [];
+
+      const allProducts: any[] = productsRes.status === 'fulfilled'
+        ? (productsRes.value.data?.data || productsRes.value.data || [])
+        : [];
+
+      // Build a set of productIds that already have stock records
+      const stockProductIds = new Set(stockItems.map((s: any) => s.product_id || s.productId));
+
+      // Map stock records to display shape
+      const mappedStock = stockItems.map((item: any) => {
         const qty = item.available_quantity ?? item.quantity ?? 0;
         const minStock = item.minimum_stock_level ?? 0;
         const cost = item.selling_price ?? item.product?.sellingPrice ?? 0;
@@ -64,37 +98,71 @@ export default function InventoryPage() {
 
         return {
           id: item.product_id || item.id,
-          // Fields for InventoryTable
           name: item.product_name || item.product?.name || 'Unknown',
           sku: item.sku || item.product?.sku || 'N/A',
           skuInfo: item.sku || item.product?.sku || 'N/A',
           category: item.category_name || item.product?.category?.name || 'Uncategorized',
           warehouse: item.warehouse_name || item.warehouse?.name || 'Main Warehouse',
-          image: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
+          image: item.image_url || item.product?.image_url || item.image || null,
           qty,
           maxLevel: Math.max(minStock, qty, 1),
           minStock,
           unit: 'units',
           status,
-          unitCost: `Rs. ${cost.toLocaleString()}`,
-          totalValue: `Rs. ${totalVal.toLocaleString()}`,
+          unitCost: `Rs. ${Number(cost).toLocaleString()}`,
+          totalValue: `Rs. ${Number(totalVal).toLocaleString()}`,
           lastMovement: new Date().toLocaleDateString('en-GB'),
           reorder: qty <= 0 ? 'critical' : item.low_stock ? 'warning' : 'good',
-          // Extra fields for KPI cards
           quantity: qty,
           price: cost,
           cost,
+          purchasePrice: item.product?.purchasePrice ?? item.purchase_price ?? 0,
+          sellingPrice: item.product?.sellingPrice ?? item.selling_price ?? 0,
           warehouseId: item.warehouse_id,
           productId: item.product_id,
         };
       });
-      setInventoryData(mapped);
+
+      // Map products that have NO stock record yet
+      const mappedNoStock = allProducts
+        .filter((p: any) => !stockProductIds.has(p.id))
+        .map((p: any) => {
+          const cost = Number(p.sellingPrice) || 0;
+          return {
+            id: p.id,
+            name: p.name || 'Unknown',
+            sku: p.sku || 'N/A',
+            skuInfo: p.sku || 'N/A',
+            category: p.category?.name || 'Uncategorized',
+            warehouse: '—',
+            image: p.images?.[0]?.imageUrl || null,
+            qty: 0,
+            maxLevel: Number(p.minimumStockLevel) || 1,
+            minStock: Number(p.minimumStockLevel) || 0,
+            unit: 'units',
+            status: 'Out of Stock',
+            unitCost: `Rs. ${cost.toLocaleString()}`,
+            totalValue: 'Rs. 0',
+            lastMovement: new Date(p.createdAt).toLocaleDateString('en-GB'),
+            reorder: 'critical',
+            quantity: 0,
+            price: cost,
+            cost,
+            purchasePrice: Number(p.purchasePrice) || 0,
+            sellingPrice: cost,
+            warehouseId: null,
+            productId: p.id,
+          };
+        });
+
+      setInventoryData([...mappedStock, ...mappedNoStock]);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -342,11 +410,16 @@ export default function InventoryPage() {
 
       <PurchaseOrderModal
         isOpen={isPurchaseOrderModalOpen}
-        onClose={() => setIsPurchaseOrderModalOpen(false)}
+        onClose={() => {
+          setIsPurchaseOrderModalOpen(false);
+          setPrefillItems([]);
+        }}
         onSuccess={() => {
           setIsPurchaseOrderModalOpen(false);
+          setPrefillItems([]);
           fetchInventory();
         }}
+        prefillProductIds={prefillItems}
       />
 
       <ImportExportModal

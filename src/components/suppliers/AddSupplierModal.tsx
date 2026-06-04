@@ -134,9 +134,10 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
         toast.success("Supplier created successfully");
       }
       onClose(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save supplier", error);
-      toast.error("Failed to save supplier");
+      const msg = error.response?.data?.message || "Failed to save supplier";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
