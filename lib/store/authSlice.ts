@@ -54,7 +54,11 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
     return null;
   }
 
-  const role = candidate.role.toLowerCase();
+  const rawRole = typeof candidate.role === 'string' 
+    ? candidate.role 
+    : (candidate.role?.name || 'staff');
+
+  const role = rawRole.toLowerCase();
   if (!["admin", "manager", "cashier", "staff", "owner"].includes(role)) {
     return null;
   }

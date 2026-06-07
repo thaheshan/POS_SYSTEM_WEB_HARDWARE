@@ -1,10 +1,7 @@
 import { ShieldCheck, Info } from 'lucide-react';
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
 
-export default function RolesSettings({ setHasUnsavedChanges }: Props) {
+export default function RolesSettings() {
   const roles = [
     { name: 'Owner', desc: 'Full system access including billing', badge: 'Admin' },
     { name: 'Manager', desc: 'Manage inventory, staff, and view reports', badge: 'High' },

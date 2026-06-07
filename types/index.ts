@@ -120,3 +120,41 @@ export interface TaxBreakdown {
   vatRate: number;
   nbtRate: number;
 }
+
+export interface Category {
+  id: string;
+  tenantId?: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface StoreSettings {
+  shopName: string;
+  businessRegistration: string;
+  businessPhone: string;
+  businessEmail: string;
+  shopAddress: string;
+  city: string;
+  district: string;
+  province: string;
+  logoUrl?: string | null;
+  dailyTaxThreshold?: number;
+  taxIdNumber?: string;
+  vatRegNumber?: string;
+  
+  vatRate?: number;
+  nbtRate?: number;
+  
+  currency?: string;
+  receiptTemplate?: string;
+  printerConfiguration?: string;
+
+  printLogoOnReceipt?: boolean;
+  customFooterText?: string;
+  autoPrintOnCheckout?: boolean;
+
+  language?: string;
+  timezone?: string;
+  dateFormat?: string
+}
