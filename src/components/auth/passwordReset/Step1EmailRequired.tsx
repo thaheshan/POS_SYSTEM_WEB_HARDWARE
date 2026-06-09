@@ -41,10 +41,12 @@ export default function Step1EmailRequired({
     <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
         <div className="flex justify-center mb-6">
-          <KeyRound
-            strokeWidth={2.5}
-            className="w-12 h-12 text-blue-600 rotate-[45deg]"
-          />
+          <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
+            <KeyRound
+              strokeWidth={2.5}
+              className="w-12 h-12 text-blue-600 rotate-[45deg]"
+            />
+          </Link>
         </div>
 
         <h2 className="text-3xl font-bold text-gray-900 mb-3">

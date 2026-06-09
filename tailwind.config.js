@@ -8,6 +8,15 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '320px',
+        'mobile-m': '375px',
+        'mobile-l': '425px',
+        'tablet': '768px',
+        'laptop': '1024px',
+        'laptopL': '1440px',
+        '4k': '2560px',
+      },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',

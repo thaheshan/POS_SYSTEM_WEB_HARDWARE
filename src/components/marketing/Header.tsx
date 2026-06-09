@@ -88,7 +88,7 @@ export function Header() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden xl:flex items-center gap-4 lg:gap-6">
           {navLinks.map((link) => (
             <a
               key={link.label}
@@ -109,7 +109,7 @@ export function Header() {
         </div>
 
         {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-2.5">
+        <div className="hidden xl:flex items-center gap-2.5">
           <Button
             asChild
             variant="outline"
@@ -127,7 +127,7 @@ export function Header() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden rounded-md p-2 text-[#374151]"
+          className="xl:hidden rounded-md p-2 text-[#374151]"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
         >
@@ -137,7 +137,7 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="xl:hidden border-t border-gray-200 bg-white">
           <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-3 px-4 py-4 lg:px-6">
             {navLinks.map((link) => (
               <a
