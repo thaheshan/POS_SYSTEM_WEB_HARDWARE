@@ -15,7 +15,8 @@ import {
   Store,
   ChevronDown,
   MoreVertical,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,7 +37,7 @@ const menuItems = [
   { icon: Settings, label: 'Staff Settings', href: '/staff-settings', roles: ['staff', 'cashier'] },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
   const [lowStockCount, setLowStockCount] = useState<number | null>(null);
@@ -62,19 +63,41 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="w-[260px] bg-gradient-to-b from-[#1E429F] to-[#1A56DB] text-white h-screen fixed left-0 top-0 flex flex-col z-50 overflow-hidden shadow-2xl">
-      {/* Branding */}
-      <div className="px-5 pt-8 pb-6 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.3)] border border-white/20">
-             <Store className="w-5 h-5 text-[#1E429F]" strokeWidth={2.5} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-[15px] font-bold tracking-wide leading-tight uppercase text-white">FUTURA HARDWARE</h1>
-            <p className="text-[11px] text-white/70 font-normal mt-0.5">Management System</p>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
+          onClick={onClose}
+        />
+      )}
+      
+      <aside className={cn(
+        "w-[260px] bg-gradient-to-b from-[#1E429F] to-[#1A56DB] text-white h-screen fixed left-0 top-0 flex flex-col z-50 overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        {/* Branding */}
+        <div className="px-5 pt-6 pb-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.3)] border border-white/20">
+                 <Store className="w-5 h-5 text-[#1E429F]" strokeWidth={2.5} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-[15px] font-bold tracking-wide leading-tight uppercase text-white">FUTURA HARDWARE</h1>
+                <p className="text-[11px] text-white/70 font-normal mt-0.5">Management System</p>
+              </div>
+            </div>
+            {/* Close button — only visible on mobile/tablet */}
+            <button
+              onClick={onClose}
+              className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0"
+              aria-label="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
-      </div>
 
       {/* Branch Selector */}
       <div className="px-5 mt-5 mb-5">
@@ -145,5 +168,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

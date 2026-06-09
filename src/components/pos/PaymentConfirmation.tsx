@@ -296,15 +296,15 @@ export default function PaymentConfirmation({
   };
 
   return (
-    <div className="flex-1 bg-white flex h-full">
+    <div className="flex-1 bg-white flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
       {/* LEFT COLUMN: Details */}
-      <div className="flex-1 overflow-y-auto p-10 bg-gray-50/30">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-10 bg-gray-50/30">
         
         {/* Header */}
-        <div className="flex items-start gap-6 mb-10">
+        <div className="flex items-start gap-4 sm:gap-6 mb-8 lg:mb-10">
           <button 
             onClick={onBack}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-[13px] hover:bg-gray-50 transition-colors shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-[13px] hover:bg-gray-50 transition-colors shadow-sm shrink-0"
           >
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -314,33 +314,35 @@ export default function PaymentConfirmation({
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Confirm Payment</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Confirm Payment</h1>
                 <p className="text-[13px] font-medium text-gray-500 mt-1">Review and confirm payment details</p>
               </div>
             </div>
-            <p className="text-[12px] font-medium text-gray-400 mt-4 flex items-center gap-1.5 ml-14">
+            <p className="text-[12px] font-medium text-gray-400 mt-4 flex items-center gap-1.5 sm:ml-14">
                <Clock className="w-3.5 h-3.5" /> Estimated time: 2-3 min
             </p>
           </div>
         </div>
 
-        <div className="space-y-6 max-w-3xl ml-14">
+        <div className="space-y-6 max-w-3xl sm:ml-14">
           
           {/* Customer Info */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative">
-            <h3 className="text-[14px] font-black tracking-tight text-gray-900 mb-5 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-md bg-emerald-50 text-[#059669] flex items-center justify-center border border-emerald-100">
-                <User className="w-3.5 h-3.5" />
-              </span>
-              Customer Information
-            </h3>
-            <button 
-              onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
-              className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 bg-[#059669] text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm"
-            >
-                <Printer className="w-3.5 h-3.5" /> Print Receipt
-            </button>
-            <div className="grid grid-cols-2 gap-y-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 border-b border-gray-50 pb-4">
+              <h3 className="text-[14px] font-black tracking-tight text-gray-900 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-emerald-50 text-[#059669] flex items-center justify-center border border-emerald-100">
+                  <User className="w-3.5 h-3.5" />
+                </span>
+                Customer Information
+              </h3>
+              <button 
+                onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#059669] text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm self-start sm:self-auto"
+              >
+                  <Printer className="w-3.5 h-3.5" /> Print Receipt
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Name / ID</p>
                 <p className="text-[14px] font-bold text-gray-900">{customerName || 'Walk-in Customer'}</p>
@@ -351,9 +353,11 @@ export default function PaymentConfirmation({
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Type</p>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
-                  {customerType}
-                </span>
+                <div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                    {customerType}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -368,7 +372,7 @@ export default function PaymentConfirmation({
             </h3>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
               {items.map((item) => (
-                <div key={item.id} className="bg-gray-50/50 rounded-xl p-4 flex items-center justify-between border border-gray-100">
+                <div key={item.id} className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100">
                   <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden shrink-0">
                         <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
@@ -378,7 +382,7 @@ export default function PaymentConfirmation({
                         <p className="text-[11px] font-semibold text-gray-500 uppercase">Unit Price: Rs. {item.price.toLocaleString()}</p>
                       </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">
                       <p className="text-[12px] font-bold text-gray-500">Qty: {item.qty}</p>
                       <p className="text-[14px] font-black text-gray-900">Rs. {(item.price * item.qty).toLocaleString()}</p>
                   </div>
@@ -472,9 +476,9 @@ export default function PaymentConfirmation({
       </div>
 
       {/* RIGHT COLUMN: Transaction Summary Panel */}
-      <div className="w-[380px] bg-white border-l border-gray-200 flex flex-col p-6 shadow-xl relative z-10">
+      <div className="w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col p-6 shadow-xl relative z-10 shrink-0">
         
-        <div className="bg-[#059669] rounded-2xl p-6 text-white shadow-md mb-auto mt-6">
+        <div className="bg-[#059669] rounded-2xl p-6 text-white shadow-md mb-6 mt-4 lg:mb-auto lg:mt-6">
            <h3 className="text-[15px] font-black tracking-tight mb-6">Transaction Summary</h3>
            <div className="space-y-4 mb-6 text-[12px] font-bold text-emerald-100">
              <div className="flex justify-between">

@@ -43,7 +43,7 @@ export default function TransactionTable() {
       </div>
 
       <div className="overflow-x-auto flex-1 h-full">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
           <thead>
             <tr className="text-[13px] font-bold text-[#64748b] border-b border-gray-100">
               <th className="pb-4 pt-2 font-semibold">Invoice</th>
