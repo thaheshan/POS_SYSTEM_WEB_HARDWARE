@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegistration } from "@/lib/register/registration-context";
@@ -144,9 +145,11 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
-              <Store className="w-8 h-8 text-blue-600" />
-            </div>
+            <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
+              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
+                <Store className="w-8 h-8 text-blue-600" />
+              </div>
+            </Link>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             Register Your Shop
