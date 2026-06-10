@@ -8,12 +8,10 @@ import {
   Brush 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-import { useTopProducts } from '@/hooks/useDashboard';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useGetTopProductsQuery } from '@/lib/services/reportApi';
 
 export default function ProductList() {
-  const { products, loading } = useTopProducts();
+  const { data: products = [], isLoading } = useGetTopProductsQuery({ limit: 10 });
   const getIconAndColors = (index: number) => {
     const configs = [
       { icon: Wrench, color: 'text-blue-500', bg: 'bg-blue-50' },
@@ -32,7 +30,7 @@ export default function ProductList() {
       </div>
 
       <div className="space-y-4 flex-1">
-        {loading ? (
+        {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4 p-2 -mx-2">
                     <div className="w-12 h-12 rounded-[14px] bg-gray-100 animate-pulse"></div>
@@ -49,16 +47,16 @@ export default function ProductList() {
             products.map((product, index) => {
                 const { icon: Icon, color, bg } = getIconAndColors(index);
                 return (
-          <div key={product.id || index} className="flex items-center gap-4 group cursor-pointer p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
+          <div key={product.productId || product.id || index} className="flex items-center gap-4 group cursor-pointer p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
             <div className={cn("w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0", bg)}>
               <Icon className={cn("w-5 h-5", color)} strokeWidth={2.5} />
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-[14px] font-bold text-gray-900 tracking-tight truncate">{product.name || (product as any).product_name}</h4>
-              <p className="text-[13px] text-[#94a3b8] font-medium mt-0.5">{product.totalQty || (product as any).quantity || 0} sold</p>
+              <p className="text-[13px] text-[#94a3b8] font-medium mt-0.5">{product.quantitySold || product.totalQty || (product as any).quantity || 0} sold</p>
             </div>
             <div className="text-right pl-2">
-              <p className="text-[14px] font-bold text-gray-900 tracking-tight">LKR {(product.totalRevenue || (product as any).revenue || 0).toLocaleString()}</p>
+              <p className="text-[14px] font-bold text-gray-900 tracking-tight">LKR {(product.revenue || product.totalRevenue || (product as any).revenue || 0).toLocaleString()}</p>
             </div>
           </div>
         )}))}

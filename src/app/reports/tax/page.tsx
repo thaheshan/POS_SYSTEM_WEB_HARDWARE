@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Download, ChevronLeft, ShieldCheck, FileSpreadsheet, FileText } from 'lucide-react';
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useGetTaxReportQuery, useLazyExportReportQuery } from '@/lib/services/reportApi';
 
 const mockTaxData = [
   { id: 'TX-0418-A', type: 'Category A', amount: 165000, vat: 29700, date: '2026-04-18' },
@@ -14,22 +16,58 @@ const mockTaxData = [
 ];
 
 export default function TaxReportsPage() {
-  const handleExportCSV = () => {
-    const rows = [
-      ['Date', 'Log ID', 'Category', 'Base Amount', 'VAT Amount', 'Total Amount'],
-      ...mockTaxData.map(t => [t.date, t.id, t.type, t.amount, t.vat, t.amount + t.vat])
-    ].map(e => e.join(",")).join("\n");
-    const blob = new Blob([rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'tax_compliance_ledger.csv';
-    a.click();
+  const [dateRange] = useState({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+  });
+
+  const { data: taxReport, isLoading } = useGetTaxReportQuery(dateRange);
+  const [triggerExport] = useLazyExportReportQuery();
+
+  const handleExportCSV = async () => {
+    try {
+      const blob = await triggerExport({ type: 'tax', format: 'csv' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tax_compliance_ledger_${dateRange.startDate}_to_${dateRange.endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      // Fallback
+      const rows = [
+        ['Date', 'Log ID', 'Category', 'Base Amount', 'VAT Amount', 'Total Amount'],
+        ...mockTaxData.map(t => [t.date, t.id, t.type, t.amount, t.vat, t.amount + t.vat])
+      ].map(e => e.join(",")).join("\n");
+      const blob = new Blob([rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tax_compliance_ledger.csv';
+      a.click();
+    }
   };
 
-  const handleExportPDF = () => {
-    window.print();
+  const handleExportPDF = async () => {
+    try {
+      const blob = await triggerExport({ type: 'tax', format: 'pdf' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tax_compliance_ledger_${dateRange.startDate}_to_${dateRange.endDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      window.print();
+    }
   };
+
 
   return (
     <MainLayout>
@@ -79,19 +117,27 @@ export default function TaxReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 print:hidden">
            <div className="bg-white border-t-4 border-[#2563eb] rounded-[16px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">YTD Taxable (Cat A)</span>
-              <span className="text-[24px] font-black tracking-tight text-[#2563eb]">Rs. 2,839,824</span>
+              <span className="text-[24px] font-black tracking-tight text-[#2563eb]">
+                {isLoading ? '...' : taxReport ? `Rs. ${taxReport.taxableSales.toLocaleString()}` : 'Rs. 2,839,824'}
+              </span>
            </div>
            <div className="bg-white border-t-4 border-[#9333ea] rounded-[16px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">YTD VAT Collected</span>
-              <span className="text-[24px] font-black tracking-tight text-[#9333ea]">Rs. 511,168</span>
+              <span className="text-[24px] font-black tracking-tight text-[#9333ea]">
+                {isLoading ? '...' : taxReport ? `Rs. ${taxReport.vatCollected.toLocaleString()}` : 'Rs. 511,168'}
+              </span>
+           </div>
+           <div className="bg-white border-t-4 border-[#eab308] rounded-[16px] p-6 shadow-sm">
+              <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">YTD NBT Collected</span>
+              <span className="text-[24px] font-black tracking-tight text-[#eab308]">
+                {isLoading ? '...' : taxReport ? `Rs. ${taxReport.nbtCollected.toLocaleString()}` : 'Rs. 56,796'}
+              </span>
            </div>
            <div className="bg-white border-t-4 border-[#059669] rounded-[16px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">YTD Non-Tax (Cat B)</span>
-              <span className="text-[24px] font-black tracking-tight text-[#059669]">Rs. 1,335,012</span>
-           </div>
-           <div className="bg-white border-t-4 border-[#dc2626] rounded-[16px] p-6 shadow-sm">
-              <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">YTD Labour (Cat C)</span>
-              <span className="text-[24px] font-black tracking-tight text-[#dc2626]">Rs. 697,614</span>
+              <span className="text-[24px] font-black tracking-tight text-[#059669]">
+                {isLoading ? '...' : taxReport ? `Rs. ${taxReport.nonTaxableSales.toLocaleString()}` : 'Rs. 1,335,012'}
+              </span>
            </div>
         </div>
 

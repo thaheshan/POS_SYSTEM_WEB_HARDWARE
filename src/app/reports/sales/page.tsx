@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Download, ChevronLeft, Search, Filter, FileSpreadsheet, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useGetSalesReportQuery, useLazyExportReportQuery } from '@/lib/services/reportApi';
 
 const mockSales = [
   { id: 'INV-2026-001234', date: '2026-04-18', time: '10:24 AM', product: 'Holcim Cement 50kg', cashier: 'John Silva', amount: 5450, status: 'Completed' },
@@ -17,22 +18,56 @@ const mockSales = [
 
 export default function SalesReportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange] = useState({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+  });
 
-  const handleExportCSV = () => {
-    const rows = [
-      ['Invoice ID', 'Date', 'Time', 'Product', 'Cashier', 'Amount', 'Status'],
-      ...mockSales.map(s => [s.id, s.date, s.time, `"${s.product}"`, s.cashier, s.amount, s.status])
-    ].map(e => e.join(",")).join("\n");
-    const blob = new Blob([rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sales_report.csv';
-    a.click();
+  const { data: salesReport, isLoading } = useGetSalesReportQuery(dateRange);
+  const [triggerExport] = useLazyExportReportQuery();
+
+  const handleExportCSV = async () => {
+    try {
+      const blob = await triggerExport({ type: 'sales', format: 'csv' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sales_report_${dateRange.startDate}_to_${dateRange.endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      // Fallback
+      const rows = [
+        ['Invoice ID', 'Date', 'Time', 'Product', 'Cashier', 'Amount', 'Status'],
+        ...mockSales.map(s => [s.id, s.date, s.time, `"${s.product}"`, s.cashier, s.amount, s.status])
+      ].map(e => e.join(",")).join("\n");
+      const blob = new Blob([rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sales_report.csv';
+      a.click();
+    }
   };
 
-  const handleExportPDF = () => {
-    window.print();
+  const handleExportPDF = async () => {
+    try {
+      const blob = await triggerExport({ type: 'sales', format: 'pdf' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sales_report_${dateRange.startDate}_to_${dateRange.endDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      window.print();
+    }
   };
 
   return (
@@ -79,15 +114,21 @@ export default function SalesReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 print:hidden">
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Total Sales Vol</span>
-              <span className="text-[28px] font-black tracking-tight">Rs. 845,900</span>
+              <span className="text-[28px] font-black tracking-tight">
+                {isLoading ? '...' : salesReport ? `Rs. ${salesReport.revenue.toLocaleString()}` : 'Rs. 845,900'}
+              </span>
            </div>
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Items Sold</span>
-              <span className="text-[28px] font-black tracking-tight">3,492</span>
+              <span className="text-[28px] font-black tracking-tight">
+                {isLoading ? '...' : salesReport ? salesReport.salesCount.toLocaleString() : '3,492'}
+              </span>
            </div>
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Avg Ticket</span>
-              <span className="text-[28px] font-black tracking-tight text-blue-600">Rs. 2,420</span>
+              <span className="text-[28px] font-black tracking-tight text-blue-600">
+                {isLoading ? '...' : salesReport ? `Rs. ${Math.round(salesReport.revenue / salesReport.salesCount).toLocaleString()}` : 'Rs. 2,420'}
+              </span>
            </div>
         </div>
 
