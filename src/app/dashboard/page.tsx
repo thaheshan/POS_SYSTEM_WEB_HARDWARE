@@ -14,6 +14,9 @@ import {
   FileText,
   ShoppingCart,
   Wrench,
+  Copy,
+  Check,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -25,6 +28,7 @@ import QuickActions from "@/components/dashboard/QuickActions";
 import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
 import { useDashboardStats, useLowStockCount, usePendingPayments } from '@/hooks/useDashboard';
+import toast from "react-hot-toast";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -36,6 +40,66 @@ export default function DashboardPage() {
   const { stats, loading } = useDashboardStats();
   const lowStockCount = useLowStockCount();
   const { data: pendingPayments, loading: pendingLoading } = usePendingPayments();
+
+  const [shopOwnerId, setShopOwnerId] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    // Generate or fetch Shop Owner ID
+    const getOrGenerateId = () => {
+      const savedId = localStorage.getItem("shopOwnerId");
+      const savedShopName = localStorage.getItem("shopName_saved") || "";
+      const currentShopName = localStorage.getItem("shopName") || "ABC Hardware Store";
+
+      if (savedId && savedShopName === currentShopName) {
+        setShopOwnerId(savedId);
+      } else {
+        const cleanName = currentShopName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        const newId = `${cleanName}${randomNum}`;
+        localStorage.setItem("shopOwnerId", newId);
+        localStorage.setItem("shopName_saved", currentShopName);
+        setShopOwnerId(newId);
+      }
+    };
+
+    getOrGenerateId();
+
+    // Listen to custom updates (e.g. from ShopProfileSettings saving changes)
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setShopOwnerId(customEvent.detail);
+      } else {
+        getOrGenerateId();
+      }
+    };
+
+    window.addEventListener("shop-owner-id-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("shop-owner-id-updated", handleUpdate);
+    };
+  }, []);
+
+  const handleCopyId = async () => {
+    if (!shopOwnerId) return;
+    try {
+      await navigator.clipboard.writeText(shopOwnerId);
+      setCopied(true);
+      toast.success("Shop Owner ID copied successfully", {
+        id: "shop-owner-id-copy-toast",
+        style: {
+          fontWeight: "bold",
+          fontSize: "13px",
+          borderRadius: "12px",
+        }
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+      toast.error("Failed to copy Shop Owner ID");
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
@@ -54,6 +118,35 @@ export default function DashboardPage() {
                   ? `Welcome back, ${user?.name || "Member"}! Reviewing operational data.`
                   : `Welcome back, ${user?.name || "Member"}! Here are your service and sales stats.`}
               </p>
+              
+              {/* Shop Owner ID section */}
+              {isAdmin && shopOwnerId && (
+                <div className="mt-4 flex items-center gap-3 bg-white border border-gray-100 rounded-[14px] p-3 shadow-sm max-w-[340px] hover:shadow-md transition-all">
+                  <div className="w-9 h-9 rounded-[10px] bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                    <Store className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
+                      Shop Owner ID
+                    </p>
+                    <span className="font-mono text-[14px] font-black text-gray-800 tracking-wider">
+                      {shopOwnerId}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleCopyId}
+                    className={cn(
+                      "p-2 rounded-[8px] transition-all active:scale-95 border",
+                      copied
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : "hover:bg-gray-50 text-gray-400 hover:text-gray-600 border-transparent hover:border-gray-100"
+                    )}
+                    title="Copy Shop Owner ID"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              )}
             </div>
             <Link 
               href="/pos"

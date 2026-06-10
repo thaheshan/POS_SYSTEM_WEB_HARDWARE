@@ -10,14 +10,40 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!form.name || !form.phone) { setError('Name and phone are required.'); return; }
+    setError('');
+
+    if (!form.name.trim()) {
+      setError('Customer Name is required.');
+      return;
+    }
+
+    if (!form.phone.trim()) {
+      setError('Mobile Number is required.');
+      return;
+    }
+
+    const cleanPhone = form.phone.replace(/[^0-9]/g, '');
+    const validPhoneRegex = /^[0-9+\-\s()]+$/;
+    if (!validPhoneRegex.test(form.phone) || cleanPhone.length < 9) {
+      setError('Please enter a valid Mobile Number (at least 9 digits).');
+      return;
+    }
+
+    if (form.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email)) {
+        setError('Please enter a valid Email Address.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const response = await api.post('/customers', { 
-        name: form.name, 
-        phone: form.phone, 
-        email: form.email || undefined, 
-        address: form.address || undefined, 
+        name: form.name.trim(), 
+        phone: form.phone.trim(), 
+        email: form.email.trim() || undefined, 
+        address: form.address.trim() || undefined, 
         customerType: form.customerType 
       });
       // Try to pass the newly created customer back to the caller

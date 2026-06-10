@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { usePathname } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { Toaster } from "react-hot-toast";
 
 export default function MainLayout({
   children,
@@ -31,6 +32,7 @@ export default function MainLayout({
           </div>
         </div>
       </div>
+      <Toaster position="top-right" reverseOrder={false} />
     </ProtectedRoute>
   );
 }
