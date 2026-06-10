@@ -1,70 +1,72 @@
-/* 
- - Added RTK Query endpoints for inventory (list, create, update, delete).
- - Purpose: enable live CRUD for the inventory page and provide hooks the UI uses.
-*/
-
-import { baseApi } from "@/store/baseApi";
-import { ENDPOINTS } from "@/lib/constants/api";
-import type { ApiResponse, Product } from "@/types";
-
-type InventoryPayload = Omit<Product, "id">;
-
-function unwrapResponse<T>(response: ApiResponse<T> | T): T {
-  if (response && typeof response === "object" && "data" in response) {
-    return (response as ApiResponse<T>).data;
-  }
-
-  return response as T;
-}
+import { baseApi } from '@/store/baseApi';
+import { Inventory } from '@/types';
 
 export const inventoryApi = baseApi.injectEndpoints({
-  endpoints: (builder) => ({
-    getInventory: builder.query<Product[], void>({
-      query: () => ENDPOINTS.INVENTORY.BASE,
-      transformResponse: (response: ApiResponse<Product[]> | Product[]) =>
-        unwrapResponse(response),
-      providesTags: (result) =>
-        result
-          ? [
-              { type: "Inventory" as const, id: "LIST" },
-              ...result.map((item) => ({
-                type: "Inventory" as const,
-                id: item.id,
-              })),
-            ]
-          : [{ type: "Inventory" as const, id: "LIST" }],
+  endpoints: (build) => ({
+    getInventoryItems: build.query<Inventory[], void>({
+      query: () => '/inventory',
+      providesTags: ['Inventory'],
     }),
-    createInventoryItem: builder.mutation<Product, InventoryPayload>({
+
+    getInventoryItemById: build.query<Inventory, string>({
+      query: (id) => `/inventory/${id}`,
+      providesTags: ['Inventory'],
+    }),
+
+    getInventoryItemByBarcode: build.query<Inventory, string>({
+      query: (barcode) => `/inventory?barcode=${barcode}`,
+    }),
+
+    getInventoryItemsByCategory: build.query<Inventory[], string>({
+      query: (categoryId) => `/inventory?categoryId=${categoryId}`,
+      providesTags: ['Inventory'],
+    }),
+
+    getLowStockInventoryItems: build.query<Inventory[], void>({
+      query: () => '/inventory?lowStock=true',
+      providesTags: ['Inventory'],
+    }),
+
+    createInventoryItem: build.mutation<
+      Inventory,
+      Omit<Inventory, 'id'>
+    >({
       query: (body) => ({
-        url: ENDPOINTS.INVENTORY.BASE,
-        method: "POST",
+        url: '/inventory',
+        method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
+      invalidatesTags: ['Inventory'],
     }),
-    updateInventoryItem: builder.mutation<
-      Product,
-      { id: string; data: Partial<InventoryPayload> }
+
+    updateInventoryItem: build.mutation<
+      Inventory,
+      { id: string } & Partial<Inventory>
     >({
-      query: ({ id, data }) => ({
-        url: ENDPOINTS.INVENTORY.BY_ID(id),
-        method: "PUT",
-        body: data,
+      query: ({ id, ...body }) => ({
+        url: `/inventory/${id}`,
+        method: 'PATCH',
+        body,
       }),
-      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
+      invalidatesTags: ['Inventory'],
     }),
-    deleteInventoryItem: builder.mutation<{ success?: boolean }, string>({
+
+    deleteInventoryItem: build.mutation<void, string>({
       query: (id) => ({
-        url: ENDPOINTS.INVENTORY.BY_ID(id),
-        method: "DELETE",
+        url: `/inventory/${id}`,
+        method: 'DELETE',
       }),
-      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
+      invalidatesTags: ['Inventory'],
     }),
   }),
 });
 
 export const {
-  useGetInventoryQuery,
+  useGetInventoryItemsQuery,
+  useGetInventoryItemByIdQuery,
+  useGetInventoryItemByBarcodeQuery,
+  useGetInventoryItemsByCategoryQuery,
+  useGetLowStockInventoryItemsQuery,
   useCreateInventoryItemMutation,
   useUpdateInventoryItemMutation,
   useDeleteInventoryItemMutation,

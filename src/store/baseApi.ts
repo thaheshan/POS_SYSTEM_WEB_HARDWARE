@@ -1,6 +1,16 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '@/store';
 import { BASE_URL, TOKEN_KEY } from '@/lib/constants/api';
+import type { ApiResponse } from '@/types';
+
+export function unwrapResponse<T>(response: ApiResponse<T> | T): T {
+  if (response && typeof response === 'object' && 'data' in response) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+}
+
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
