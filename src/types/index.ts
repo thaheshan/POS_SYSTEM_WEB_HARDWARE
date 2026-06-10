@@ -98,6 +98,17 @@ export interface Staff {
   createdAt: string;
 }
 
+export interface StaffManagement {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+
 export interface AuthUser {
   id: string;
   name: string;
