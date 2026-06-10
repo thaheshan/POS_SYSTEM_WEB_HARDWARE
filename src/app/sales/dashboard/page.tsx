@@ -180,21 +180,21 @@ export default function SalesDashboardPage() {
       <div className="max-w-[1400px] mx-auto py-8 space-y-6">
 
         {/* TOP ACTIONS */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[24px] font-black text-gray-900 tracking-tight">Sales Dashboard</h1>
             <p className="text-[13px] font-bold text-gray-400">Manage transactions and monitor performance</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/sales/analytics')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-emerald-100 rounded-xl text-[13px] font-black text-emerald-700 shadow-sm hover:bg-emerald-50 transition-all shrink-0"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-emerald-100 rounded-xl text-[13px] font-black text-emerald-700 shadow-sm hover:bg-emerald-50 transition-all"
             >
               <BarChart3 className="w-4 h-4" /> View Analytics
             </button>
             <button
               onClick={() => router.push('/inventory')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-gray-600 shadow-sm hover:bg-gray-50 transition-all shrink-0"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-gray-600 shadow-sm hover:bg-gray-50 transition-all"
             >
               <Package className="w-4 h-4" /> Check Inventory
             </button>
@@ -202,7 +202,7 @@ export default function SalesDashboardPage() {
         </div>
 
         {/* STAT CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-4 gap-6">
           {[
             { icon: ShoppingBag, color: 'emerald', label: "Today's Sales", val: 'Rs. 125,450', sub: 'From yesterday', badge: '+15.2%', up: true },
             { icon: CreditCard, color: 'amber', label: 'Transactions', val: '145', sub: 'Today so far', badge: '+12 new', up: true },
@@ -281,48 +281,42 @@ export default function SalesDashboardPage() {
           )}
 
           {/* TABLE HEADER WITH SEARCH + FILTER */}
-          <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <h3 className="text-[14px] font-black text-gray-900">Today's Transactions</h3>
               <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{filteredTransactions.length} total</span>
               {/* Active filter chips */}
               {hasActiveFilter && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   {appliedType !== 'All' && <span className="flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">{appliedType} <button onClick={clearFilters}><X className="w-2.5 h-2.5" /></button></span>}
                   {appliedStatus !== 'All' && <span className="flex items-center gap-1 text-[11px] font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full">{appliedStatus} <button onClick={clearFilters}><X className="w-2.5 h-2.5" /></button></span>}
                 </div>
               )}
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-2">
               {/* Search Input */}
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-emerald-400 focus-within:bg-white transition-all w-full sm:w-[260px] h-[42px] shadow-sm">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-emerald-400 focus-within:bg-white transition-all">
                 <Search className="w-4 h-4 text-gray-400 shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   placeholder="Search invoice, customer..."
-                  className="text-[12.5px] font-semibold outline-none border-none bg-transparent w-full placeholder:text-gray-400 text-gray-800"
+                  className="text-[12.5px] font-medium outline-none border-none bg-transparent w-[190px] placeholder:text-gray-400"
                 />
                 {searchQuery && (
-                  <button onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-gray-400 hover:text-gray-600 transition p-0.5">
+                  <button onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-gray-400 hover:text-gray-600 transition">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
               {/* Filter Button – toggles between Filter and Clear */}
               {hasActiveFilter ? (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl text-[12.5px] font-black transition-all h-[42px] shadow-sm shrink-0 active:scale-95"
-                >
+                <button onClick={clearFilters} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[12.5px] font-black hover:bg-red-100 transition-all">
                   <X className="w-3.5 h-3.5" /> Clear Filter
                 </button>
               ) : (
-                <button
-                  onClick={openFilterModal}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-[12.5px] font-black transition-all h-[42px] shadow-sm shrink-0 active:scale-95"
-                >
+                <button onClick={openFilterModal} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12.5px] font-black hover:bg-gray-50 transition-all">
                   <Filter className="w-3.5 h-3.5" /> Filter
                 </button>
               )}
@@ -411,7 +405,7 @@ export default function SalesDashboardPage() {
         </div>
 
         {/* ROW 1 CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
+        <div className="grid grid-cols-[350px_1fr] gap-6">
           {/* SVG Pie Chart — Dynamic */}
           <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -673,7 +667,7 @@ export default function SalesDashboardPage() {
         {/* ROW 3: KPIs */}
         <div className="mt-2">
           <h3 className="text-[16px] font-black text-gray-800 mb-5">Performance Metrics & KPIs</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-4 gap-5">
             {[
               { title: 'Conversion Rate', val: '68.5%', change: '+0.2%', inc: true, target: '70%', fill: '68%' },
               { title: 'Avg Transaction Time', val: '3m 24s', change: '-13s', inc: true, target: '3 min', fill: '60%' },

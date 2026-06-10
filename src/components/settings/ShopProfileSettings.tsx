@@ -1,60 +1,10 @@
 import { Store, Edit2, Image as ImageIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
 
 interface Props {
   setHasUnsavedChanges: (val: boolean) => void;
 }
 
 export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
-  const [shopName, setShopName] = useState('ABC Hardware Store');
-  const [tempShopName, setTempShopName] = useState('ABC Hardware Store');
-
-  // Hydrate from localStorage on client side mount
-  useEffect(() => {
-    const savedName = localStorage.getItem('shopName') || 'ABC Hardware Store';
-    setShopName(savedName);
-    setTempShopName(savedName);
-  }, []);
-
-  // Listen to save/discard events from the settings parent container
-  useEffect(() => {
-    const handleSave = () => {
-      localStorage.setItem('shopName', tempShopName);
-      setShopName(tempShopName);
-      
-      // Also generate/update the Shop Owner ID accordingly to sync with the new shop name
-      const cleanName = tempShopName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      const savedId = localStorage.getItem('shopOwnerId');
-      const savedIdPrefix = localStorage.getItem('shopName_saved') || '';
-      
-      if (!savedId || savedIdPrefix !== tempShopName) {
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        const newId = `${cleanName}${randomNum}`;
-        localStorage.setItem('shopOwnerId', newId);
-        localStorage.setItem('shopName_saved', tempShopName);
-        window.dispatchEvent(new CustomEvent('shop-owner-id-updated', { detail: newId }));
-      }
-    };
-
-    const handleDiscard = () => {
-      setTempShopName(shopName);
-    };
-
-    window.addEventListener('save-settings', handleSave);
-    window.addEventListener('discard-settings', handleDiscard);
-
-    return () => {
-      window.removeEventListener('save-settings', handleSave);
-      window.removeEventListener('discard-settings', handleDiscard);
-    };
-  }, [tempShopName, shopName]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setTempShopName(val);
-    setHasUnsavedChanges(true);
-  };
-
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
       {/* Card Header */}
@@ -105,8 +55,8 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
             </label>
             <input
               type="text"
-              value={tempShopName}
-              onChange={handleInputChange}
+              defaultValue="ABC Hardware Store"
+              onChange={() => setHasUnsavedChanges(true)}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             />
           </div>

@@ -164,22 +164,10 @@ function SettingsHubContent() {
             <span className="text-[13px] font-black text-gray-900">You have unsaved changes</span>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <button 
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('discard-settings'));
-                setHasUnsavedChanges(false);
-              }} 
-              className="flex-1 md:flex-none border border-gray-200 px-6 py-3 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
-            >
+            <button onClick={() => setHasUnsavedChanges(false)} className="flex-1 md:flex-none border border-gray-200 px-6 py-3 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white">
               Discard Changes
             </button>
-            <button 
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('save-settings'));
-                setHasUnsavedChanges(false);
-              }} 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-8 py-3 rounded-[12px] text-[13px] font-black transition-colors shadow-sm"
-            >
+            <button onClick={() => setHasUnsavedChanges(false)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-8 py-3 rounded-[12px] text-[13px] font-black transition-colors shadow-sm">
               <Check className="w-4 h-4" /> Save All Changes
             </button>
           </div>

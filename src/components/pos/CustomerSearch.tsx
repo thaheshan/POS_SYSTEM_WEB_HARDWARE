@@ -62,8 +62,7 @@ export default function CustomerSearch({ selectedCustomer, onSelectCustomer, onA
 
   const filtered = customers.filter(c => 
     c.name.toLowerCase().includes(query.toLowerCase()) || 
-    c.phone.includes(query) ||
-    c.id.toLowerCase().includes(query.toLowerCase())
+    c.phone.includes(query)
   );
 
   return (
@@ -74,10 +73,7 @@ export default function CustomerSearch({ selectedCustomer, onSelectCustomer, onA
           type="text"
           placeholder="Search customer name or phone..."
           value={query}
-          onFocus={() => {
-            setIsOpen(true);
-            fetchCustomers();
-          }}
+          onFocus={() => setIsOpen(true)}
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(true);
@@ -105,10 +101,7 @@ export default function CustomerSearch({ selectedCustomer, onSelectCustomer, onA
                       className={`w-full text-left p-3 rounded-lg flex items-center justify-between hover:bg-emerald-50 transition-colors ${selectedCustomer?.id === c.id ? 'bg-emerald-50' : ''}`}
                     >
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13px] font-black text-gray-900">{c.name}</p>
-                          <span className="text-[10px] font-medium text-gray-400 font-mono">ID: {c.id.substring(0, 8).toUpperCase()}</span>
-                        </div>
+                        <p className="text-[13px] font-black text-gray-900">{c.name}</p>
                         <p className="text-[11px] font-bold text-gray-500">{c.phone}</p>
                       </div>
                       {selectedCustomer?.id === c.id && <CheckCircle2 className="w-4 h-4 text-[#059669]" />}
@@ -132,7 +125,7 @@ export default function CustomerSearch({ selectedCustomer, onSelectCustomer, onA
             </div>
             <div>
               <p className="text-[12px] font-black text-gray-900 leading-none mb-0.5">{selectedCustomer.name}</p>
-              <p className="text-[10px] font-bold text-gray-500 leading-none">{selectedCustomer.phone} • ID: {selectedCustomer.id.substring(0, 8).toUpperCase()}</p>
+              <p className="text-[10px] font-bold text-gray-500 leading-none">{selectedCustomer.phone}</p>
             </div>
           </div>
           <button 
