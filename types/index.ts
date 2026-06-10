@@ -28,6 +28,9 @@ export interface InventoryItem {
   lastUpdated: string;
 }
 
+export type Inventory = InventoryItem;
+
+
 export interface SaleItem {
   productId: string;
   product: Product;
