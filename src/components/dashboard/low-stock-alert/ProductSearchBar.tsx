@@ -26,7 +26,7 @@ export default function ProductSearchBar({
           <input
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search products by name or SKU"
+            placeholder="Search products..."
             className="w-full bg-transparent text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400"
           />
         </label>
@@ -38,7 +38,7 @@ export default function ProductSearchBar({
           />
 
           <div className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-blue-100 px-4 text-[13px] font-bold text-blue-700 shadow-sm sm:w-auto">
-            {itemsCount} items
+            {itemsCount} Items
           </div>
         </div>
       </div>
