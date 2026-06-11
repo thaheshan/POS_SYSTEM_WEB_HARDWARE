@@ -32,7 +32,7 @@ export default function SignupTypeSelector() {
       {/* Back Button */}
       <button
         onClick={handleBackClick}
-        className="mb-5 inline-flex items-center gap-2 text-sm sm:text-base text-gray-700 hover:text-gray-900 transition-colors font-medium"
+        className="fixed top-24 left-4 sm:top-32 sm:left-8 inline-flex items-center gap-2 text-sm sm:text-base text-gray-700 hover:text-gray-900 transition-colors font-medium z-50"
       >
         <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         Back to Login

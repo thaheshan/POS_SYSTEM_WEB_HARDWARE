@@ -74,8 +74,8 @@ export function Header() {
       <nav className="mx-auto flex w-full max-w-[1240px] items-center justify-between px-4 py-2.5 lg:px-6">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#025d47]">
-            <Store size={20} className="text-white" strokeWidth={2.5} />
+          <div className="flex items-center justify-center">
+            <img src="/images/futura_hardware_logo_green.png" alt="Futura Hardware Logo" className="h-12 sm:h-14 object-contain" />
           </div>
           <div className="leading-tight">
             <p className="text-[20px] font-extrabold uppercase tracking-[-0.02em] text-[#025d47]">

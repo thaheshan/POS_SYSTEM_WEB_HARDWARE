@@ -11,7 +11,7 @@ import {
 } from "@/lib/register/validation-schemas";
 import { Input } from "@/components/auth/register/ui/input";
 import { Button } from "@/components/auth/register/ui/button";
-import { Store, ArrowRight, Loader2 } from "lucide-react";
+import { Store, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -140,17 +140,24 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white">
-      <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="w-full min-h-screen bg-white relative">
+      {/* Top Left Navigation */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-8 flex flex-col gap-3 z-50">
+        <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
+          <img src="/images/futura_hardware_logo_blacky.png" alt="Futura Hardware Logo" className="h-16 sm:h-20 object-contain" />
+        </Link>
+        <Link
+          href="/auth/login"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Login
+        </Link>
+      </div>
+
+      <div className="mx-auto max-w-2xl px-6 py-12 pt-32 sm:pt-28">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-4">
-            <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
-                <Store className="w-8 h-8 text-blue-600" />
-              </div>
-            </Link>
-          </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             Register Your Shop
           </h1>
