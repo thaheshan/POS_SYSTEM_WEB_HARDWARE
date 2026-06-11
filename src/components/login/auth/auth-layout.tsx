@@ -13,8 +13,13 @@ export default function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
-      {/* Header with Language Switcher */}
-      <header className="flex justify-end items-center px-4 py-3 sm:px-6 sm:py-4 md:px-8">
+      {/* Header with Logo and Language Switcher */}
+      <header className="flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 md:px-8">
+        <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
+          <div className="flex items-center justify-center">
+            <img src="/images/futura_hardware_logo_blacky.png" alt="Futura Hardware Logo" className="h-16 sm:h-20 object-contain" />
+          </div>
+        </Link>
         {showLanguageSwitcher && (
           <button
             className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-gray-700 hover:text-gray-900"
