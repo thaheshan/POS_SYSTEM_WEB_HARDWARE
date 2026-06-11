@@ -1,11 +1,12 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { Settings, LogOut, Copy } from 'lucide-react';
+import { Copy, Menu } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import NotificationDropdown from './NotificationDropdown';
+import ProfileDropdown from './ProfileDropdown';
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, logout, isAuthenticated } = useAuth();
   const [time, setTime] = useState<string>('');
 
@@ -26,66 +27,68 @@ export default function Header() {
 
   return (
     <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">
-      <div className="flex justify-between items-center h-full px-10">
+      <div className="flex justify-between items-center h-full px-4 md:px-10">
         
-        {/* Left: System Title & Shop Code */}
-        <div className="w-[300px] flex flex-col justify-center">
-          <h1 className="text-white text-[17px] font-medium tracking-wide">
-            POS CHECKOUT SYSTEM
-          </h1>
-          {user?.role === 'owner' && (user as any)?.tenant_id && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-white/70 text-[11px] font-medium uppercase tracking-wider">Shop Code:</span>
-              <div className="flex items-center bg-white/10 rounded px-2 py-0.5 border border-white/20 hover:bg-white/15 transition-colors group">
-                <span className="text-white font-mono text-[13px] font-bold tracking-widest">
-                  {(user as any)?.tenant_id?.split('-')[0].toUpperCase()}
-                </span>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText((user as any)?.tenant_id);
-                    alert('Shop verification code copied to clipboard!');
-                  }}
-                  className="ml-2 text-white/50 group-hover:text-white transition-colors"
-                  title="Copy Verification Code"
-                >
-                  <Copy size={12} />
-                </button>
-              </div>
+        {/* Left: Hamburger & System Title */}
+        <div className="flex items-center gap-3 w-auto md:w-[300px]">
+          {/* Hamburger Menu Icon (Mobile/Tablet only) */}
+          <button 
+            onClick={onMenuClick}
+            className="lg:hidden p-2 -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+          
+          <div className="flex flex-col justify-center">
+            <h1 className="text-white text-[15px] md:text-[17px] font-medium tracking-wide hidden sm:block">
+              POS CHECKOUT SYSTEM
+            </h1>
+            <h1 className="text-white text-[15px] font-medium tracking-wide sm:hidden">
+              POS SYSTEM
+            </h1>
+            {user?.role?.toLowerCase() === 'owner' && ((user as any)?.tenantId || (user as any)?.tenant_id) && (
+            <div
+              className="flex items-center gap-1.5 mt-1 cursor-pointer group w-fit"
+              onClick={() => {
+                const id = (user as any)?.tenantId || (user as any)?.tenant_id;
+                const code = id?.split('-')[0].toUpperCase();
+                navigator.clipboard.writeText(code);
+                alert(`Shop code '${code}' copied! Share this with your staff for registration.`);
+              }}
+              title="Click to copy Shop Verification Code"
+            >
+              <span className="text-white/60 text-[11px] font-medium tracking-wider">SHOP CODE:</span>
+              <span className="text-white font-mono text-[13px] font-black tracking-widest bg-white/15 border border-white/25 rounded px-1.5 py-0.5">
+                {((user as any)?.tenantId || (user as any)?.tenant_id)?.split('-')[0].toUpperCase()}
+              </span>
+              <Copy size={11} className="text-white/50 group-hover:text-white transition-colors" />
             </div>
           )}
+          </div>
         </div>
         
         {/* Center: Digital Clock */}
         <div className="flex-1 flex justify-center items-center">
-          <div className="font-mono text-[26px] font-light text-white tracking-[0.15em] opacity-90">
+          <div className="hidden sm:block font-mono text-[20px] md:text-[26px] font-light text-white tracking-[0.15em] opacity-90">
             {time || '00:00:00'}
           </div>
         </div>
         
         {/* Right: User Info & Actions */}
-        <div className="w-[300px] flex items-center justify-end gap-5">
-          <div className="flex flex-col min-w-0 items-end">
-            <span className="text-[14px] font-bold truncate text-white leading-tight">
+        <div className="flex items-center justify-end gap-3 md:gap-5 w-auto lg:w-[300px] min-w-0">
+          <div className="hidden xl:flex flex-col min-w-0 items-end max-w-[180px]">
+            <span className="text-[14px] font-bold truncate text-white leading-tight w-full text-right">
               {user?.name || (isAuthenticated ? 'Connecting...' : 'Guest User')}
             </span>
-            <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize">
-              {user?.role ? `${user.role} Member Profile` : 'Restricted Mode'}
+            <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize truncate w-full text-right">
+              {user?.role ? `${user.role.toLowerCase()} Member Profile` : 'Restricted Mode'}
             </span>
           </div>
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <NotificationDropdown />
-            <button className="w-[40px] h-[40px] bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/10">
-              <Settings className="w-[19px] h-[19px] text-white" strokeWidth={2.5} />
-            </button>
-            <button 
-              onClick={logout}
-              className="w-[40px] h-[40px] bg-red-500/80 hover:bg-red-600 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 border border-white/20 group"
-              title="Logout"
-            >
-              <LogOut className="w-[19px] h-[19px] text-white group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
-            </button>
+            <ProfileDropdown />
           </div>
         </div>
       </div>

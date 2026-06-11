@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegistration } from "@/lib/register/registration-context";
@@ -10,7 +11,7 @@ import {
 } from "@/lib/register/validation-schemas";
 import { Input } from "@/components/auth/register/ui/input";
 import { Button } from "@/components/auth/register/ui/button";
-import { Store, ArrowRight, Loader2 } from "lucide-react";
+import { Store, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,9 +20,88 @@ import {
   SelectValue,
 } from "@/components/auth/register/ui/select";
 
-const CITIES = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad"];
-const DISTRICTS = ["District 1", "District 2", "District 3", "District 4"];
-const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan"];
+const PROVINCES = [
+  "Western Province",
+  "Central Province",
+  "Southern Province",
+  "Northern Province",
+  "Eastern Province",
+  "North Western Province",
+  "North Central Province",
+  "Uva Province",
+  "Sabaragamuwa Province",
+];
+
+const DISTRICTS = [
+  // Western Province
+  "Colombo", "Gampaha", "Kalutara",
+  // Central Province
+  "Kandy", "Matale", "Nuwara Eliya",
+  // Southern Province
+  "Galle", "Matara", "Hambantota",
+  // Northern Province
+  "Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya",
+  // Eastern Province
+  "Ampara", "Batticaloa", "Trincomalee",
+  // North Western Province
+  "Kurunegala", "Puttalam",
+  // North Central Province
+  "Anuradhapura", "Polonnaruwa",
+  // Uva Province
+  "Badulla", "Monaragala",
+  // Sabaragamuwa Province
+  "Kegalle", "Ratnapura",
+];
+
+const CITIES = [
+  // Western Province - Colombo District
+  "Colombo", "Dehiwala", "Mount Lavinia", "Moratuwa", "Sri Jayawardenepura Kotte",
+  "Kolonnawa", "Kaduwela", "Maharagama", "Kotte", "Nugegoda",
+  "Homagama", "Kesbewa", "Boralesgamuwa", "Thimbirigasyaya", "Ratmalana",
+  // Western Province - Gampaha District
+  "Gampaha", "Negombo", "Wattala", "Ragama", "Ja-Ela",
+  "Kadawatha", "Kiribathgoda", "Kelaniya", "Biyagama", "Mirigama",
+  "Minuwangoda", "Divulapitiya", "Katana",
+  // Western Province - Kalutara District
+  "Kalutara", "Panadura", "Beruwala", "Aluthgama", "Horana",
+  "Bandaragama", "Ingiriya", "Matugama",
+  // Central Province - Kandy District
+  "Kandy", "Peradeniya", "Katugastota", "Gampola", "Nawalapitiya",
+  "Hatton", "Pilimathalawa", "Akurana", "Wattegama",
+  // Central Province - Matale District
+  "Matale", "Dambulla", "Sigiriya", "Rattota", "Ukuwela",
+  // Central Province - Nuwara Eliya District
+  "Nuwara Eliya", "Hatton", "Talawakele", "Maskeliya", "Kotagala",
+  // Southern Province - Galle District
+  "Galle", "Hikkaduwa", "Ambalangoda", "Karapitiya", "Baddegama",
+  "Balapitiya", "Bentota",
+  // Southern Province - Matara District
+  "Matara", "Weligama", "Dikwella", "Hakmana", "Akuressa",
+  "Kamburupitiya", "Mirissa",
+  // Southern Province - Hambantota District
+  "Hambantota", "Tangalle", "Tissamaharama", "Ambalantota", "Beliatta",
+  // Northern Province - Jaffna District
+  "Jaffna", "Nallur", "Chavakachcheri", "Point Pedro", "Manipay",
+  "Kopay", "Uduvil",
+  // Northern Province - Other Districts
+  "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya",
+  // Eastern Province
+  "Trincomalee", "Batticaloa", "Ampara", "Kalmunai", "Akkaraipattu",
+  "Kattankudy", "Valaichchenai",
+  // North Western Province - Kurunegala District
+  "Kurunegala", "Kuliyapitiya", "Nikaweratiya", "Pannala", "Wariyapola",
+  "Mawathagama", "Giriulla",
+  // North Western Province - Puttalam District
+  "Puttalam", "Chilaw", "Wennappuwa", "Nattandiya", "Anamaduwa",
+  // North Central Province
+  "Anuradhapura", "Polonnaruwa", "Kekirawa", "Medawachchiya", "Tambuttegama",
+  // Uva Province
+  "Badulla", "Bandarawela", "Haputale", "Ella", "Monaragala",
+  "Wellawaya", "Bibila",
+  // Sabaragamuwa Province
+  "Ratnapura", "Kegalle", "Balangoda", "Embilipitiya", "Pelmadulla",
+  "Mawanella", "Warakapola",
+];
 
 interface Step1ShopInfoProps {
   onNext: () => void;
@@ -60,15 +140,24 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white">
-      <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="w-full min-h-screen bg-white relative">
+      {/* Top Left Navigation */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-8 flex flex-col gap-3 z-50">
+        <Link href="/" className="cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Go back to Home">
+          <img src="/images/futura_hardware_logo_blacky.png" alt="Futura Hardware Logo" className="h-16 sm:h-20 object-contain" />
+        </Link>
+        <Link
+          href="/auth/login"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Login
+        </Link>
+      </div>
+
+      <div className="mx-auto max-w-2xl px-6 py-12 pt-32 sm:pt-28">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
-              <Store className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             Register Your Shop
           </h1>

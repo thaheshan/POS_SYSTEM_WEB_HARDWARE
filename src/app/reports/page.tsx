@@ -133,7 +133,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <ReportStatCard 
              title="Total Revenue"
-             value={loading ? '...' : `Rs. ${(data.catA.core + data.catB.core + data.catC.core).toLocaleString()}`}
+             value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Coins className="w-5 h-5 text-white" /></div>}
              variant="blue"
              trend="+18.5%"
@@ -141,10 +141,10 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="Gross Profit"
-             value={loading ? '...' : `Rs. ${(Math.round((data.catA.core + data.catB.core + data.catC.core) * 0.256)).toLocaleString()}`}
+             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
-             marginText="25.6%"
+             marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
           />
           <ReportStatCard 
              title="Transactions"

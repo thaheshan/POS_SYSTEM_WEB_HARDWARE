@@ -40,13 +40,6 @@ export default function Step1EmailRequired({
   return (
     <div className="w-full min-h-[80vh] bg-transparent flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full text-center">
-        <div className="flex justify-center mb-6">
-          <KeyRound
-            strokeWidth={2.5}
-            className="w-12 h-12 text-blue-600 rotate-[45deg]"
-          />
-        </div>
-
         <h2 className="text-3xl font-bold text-gray-900 mb-3">
           Forgot your password?
         </h2>

@@ -156,7 +156,7 @@ export function useLowStockCount() {
 
   useEffect(() => {
     api
-      .get('/stock/low-stock')
+      .get('/stock?low_stock=true&out_of_stock=true')
       .then((res) => {
         const items = res.data?.data || res.data || [];
         setCount(Array.isArray(items) ? items.length : 0);

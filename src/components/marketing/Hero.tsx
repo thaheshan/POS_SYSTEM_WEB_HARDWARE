@@ -16,20 +16,20 @@ export function Hero() {
       }}
     >
       <div className="container mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+        <div className="grid xl:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
           {/* Left Content */}
-          <div className="text-center lg:text-left">
+          <div className="text-center xl:text-left">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-6">
               Revolutionary POS System for Hardware Stores
             </h1>
-            <p className="text-base md:text-lg text-emerald-100 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+            <p className="text-base md:text-lg text-emerald-100 mb-8 leading-relaxed max-w-xl mx-auto xl:mx-0">
               Streamline your inventory, sales, and customer management all in
               one powerful platform built specifically for hardware retailers.
             </p>
 
             {/* Feature List */}
-            <ul className="space-y-3 mb-8 max-w-lg mx-auto lg:mx-0">
-              <li className="flex items-center gap-3 justify-center lg:justify-start">
+            <ul className="space-y-3 mb-8 max-w-lg mx-auto xl:mx-0">
+              <li className="flex items-center gap-3 justify-center xl:justify-start">
                 <CheckCircle2
                   size={20}
                   className="text-emerald-200 flex-shrink-0"
@@ -38,7 +38,7 @@ export function Hero() {
                   Real-time inventory tracking and management
                 </span>
               </li>
-              <li className="flex items-center gap-3 justify-center lg:justify-start">
+              <li className="flex items-center gap-3 justify-center xl:justify-start">
                 <CheckCircle2
                   size={20}
                   className="text-emerald-200 flex-shrink-0"
@@ -47,7 +47,7 @@ export function Hero() {
                   Advanced analytics and reporting tools
                 </span>
               </li>
-              <li className="flex items-center gap-3 justify-center lg:justify-start">
+              <li className="flex items-center gap-3 justify-center xl:justify-start">
                 <CheckCircle2
                   size={20}
                   className="text-emerald-200 flex-shrink-0"
@@ -56,7 +56,7 @@ export function Hero() {
                   Multi-location support and cloud-based sync
                 </span>
               </li>
-              <li className="flex items-center gap-3 justify-center lg:justify-start">
+              <li className="flex items-center gap-3 justify-center xl:justify-start">
                 <CheckCircle2
                   size={20}
                   className="text-emerald-200 flex-shrink-0"
@@ -68,7 +68,7 @@ export function Hero() {
             </ul>
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center xl:justify-start mb-10">
               <Button asChild className="bg-white text-emerald-800 hover:bg-emerald-50 font-semibold text-base px-7 py-5 shadow-md rounded-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
                 <Link href="/auth/register/role">Start Free Trial</Link>
               </Button>
@@ -82,7 +82,7 @@ export function Hero() {
             </div>
 
             {/* Trust Badges */}
-            <div className="flex flex-wrap items-center gap-5 text-sm text-emerald-100 justify-center lg:justify-start font-medium">
+            <div className="flex flex-wrap items-center gap-5 text-sm text-emerald-100 justify-center xl:justify-start font-medium">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={16} className="text-emerald-200" />
                 <span>Trusted by 50+ stores</span>
@@ -99,7 +99,7 @@ export function Hero() {
           </div>
 
           {/* Right Content — Dashboard Screenshot */}
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <div className="relative rounded-2xl overflow-hidden transition-all duration-500 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-900/50">
               <Image
                 src="/images/img.png"

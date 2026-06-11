@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { StaffRegisterData } from "@/types/staff";
 import {
   BriefcaseBusiness,
@@ -13,6 +14,7 @@ import {
   User,
   UserPlus,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { STAFF_ROLES } from "@/utils/StaffRegisterData";
 
@@ -87,11 +89,16 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
 
   return (
     <div className="w-full flex flex-col items-center">
+      <Link
+        href="/auth/login"
+        className="fixed top-24 left-4 sm:top-32 sm:left-8 inline-flex items-center gap-2 text-sm sm:text-base text-gray-700 hover:text-gray-900 transition-colors font-medium z-50"
+      >
+        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+        Back to Login
+      </Link>
+
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-10 mt-10">
-        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6">
-          <UserPlus className="w-7 h-7 text-white" />
-        </div>
         <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
           Create Staff Account
         </h1>

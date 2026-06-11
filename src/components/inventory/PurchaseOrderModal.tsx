@@ -9,6 +9,7 @@ interface PurchaseOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  prefillProductIds?: string[];
 }
 
 interface Product {
@@ -26,7 +27,7 @@ interface OrderLine {
   warehouseId: string;
 }
 
-export default function PurchaseOrderModal({ isOpen, onClose, onSuccess }: PurchaseOrderModalProps) {
+export default function PurchaseOrderModal({ isOpen, onClose, onSuccess, prefillProductIds }: PurchaseOrderModalProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,14 +58,41 @@ export default function PurchaseOrderModal({ isOpen, onClose, onSuccess }: Purch
         api.get('/warehouses').catch(() => ({ data: [] })),
       ]);
       const rawProds = prodRes.data?.data || prodRes.data || [];
-      setProducts(rawProds.map((p: any) => ({
+      const prods = rawProds.map((p: any) => ({
         id: p.id,
         name: p.product_name || p.name || 'Unknown',
         sku: p.sku || 'N/A',
-      })));
+      }));
+      setProducts(prods);
 
       const rawWh = whRes.data?.data || whRes.data || [];
       setWarehouses(rawWh.map((w: any) => ({ id: w.id, name: w.name })));
+
+      // Prefill if requested
+      if (prefillProductIds && prefillProductIds.length > 0) {
+        const prefilledLines: OrderLine[] = [];
+        const prefilledSearches: string[] = [];
+        
+        prefillProductIds.forEach(id => {
+          const prod = prods.find((p: any) => p.id === id);
+          if (prod) {
+            prefilledLines.push({
+              productId: prod.id,
+              productName: prod.name,
+              sku: prod.sku,
+              quantity: '',
+              unitCost: '',
+              warehouseId: ''
+            });
+            prefilledSearches.push(prod.name);
+          }
+        });
+
+        if (prefilledLines.length > 0) {
+          setLines(prefilledLines);
+          setSearch(prefilledSearches);
+        }
+      }
     } catch {
       // Silently fail; user can still type
     } finally {
