@@ -13,13 +13,23 @@ import {
   Coins,
   ShieldCheck,
   ChevronDown,
-  X
+  X,
+  FileSpreadsheet,
+  AlertCircle
 } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import { useSalesData } from '@/hooks/useSales';
+
+import { 
+  useGetSalesReportQuery,
+  useGetInventoryReportQuery,
+  useGetTaxReportQuery,
+  useGetTopProductsQuery
+} from '@/store/reportApi';
 
 // Modals from previous implementation
 import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
@@ -36,15 +46,113 @@ import AllTransactionsTable from '@/components/reports/AllTransactionsTable';
 
 export default function ReportsPage() {
   const router = useRouter();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-     from: new Date(),
-     to: new Date()
+
+  // Step 2: Add Date Range State
+  const [dateRange, setDateRange] = useState({
+    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
   });
+
   const [reportModal, setReportModal]     = useState<null | 'A' | 'B' | 'C'>(null);
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
-  const { data, loading } = useSalesData(dateRange);
+  // Convert string dateRange to DateRange object for picker, legacy hook, and print views
+  const dateRangeForPicker: DateRange | undefined = {
+    from: parseISO(dateRange.startDate),
+    to: parseISO(dateRange.endDate)
+  };
+
+  const { data: legacyData, loading: legacyLoading } = useSalesData(dateRangeForPicker);
+
+  // Step 3: Connect Analytics Queries
+  const {
+    data: salesReport,
+    isLoading: isSalesLoading,
+    isFetching: isSalesFetching,
+    error: salesError
+  } = useGetSalesReportQuery(dateRange);
+
+  const {
+    data: inventoryReport,
+    isLoading: isInventoryLoading,
+    isFetching: isInventoryFetching,
+    error: inventoryError
+  } = useGetInventoryReportQuery(dateRange);
+
+  const {
+    data: taxReport,
+    isLoading: isTaxLoading,
+    isFetching: isTaxFetching,
+    error: taxError
+  } = useGetTaxReportQuery(dateRange);
+
+  const {
+    data: topProducts,
+    isLoading: isTopProductsLoading,
+    isFetching: isTopProductsFetching,
+    error: topProductsError
+  } = useGetTopProductsQuery(dateRange);
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range?.from) {
+      const startStr = format(range.from, 'yyyy-MM-dd');
+      const endStr = range.to ? format(range.to, 'yyyy-MM-dd') : startStr;
+      setDateRange({ startDate: startStr, endDate: endStr });
+    }
+  };
+
+  // Step 9: Report Export
+  const handleExport = (type: string, formatStr: string) => {
+    const url =
+      `/api/reports/${type}/export` +
+      `?format=${formatStr}` +
+      `&startDate=${dateRange.startDate}` +
+      `&endDate=${dateRange.endDate}`;
+
+    window.open(url, "_blank");
+  };
+
+  const isSalesSectionLoading = isSalesLoading || isSalesFetching;
+  const isTaxSectionLoading = isTaxLoading || isTaxFetching;
+
+  // Map API values dynamically to the TaxBreakdownChart
+  const mappedSalesData = {
+    catA: {
+      core: taxReport?.vatAmount ? Math.round(taxReport.vatAmount / 0.18) : (legacyData?.catA?.core || 0),
+      vat: taxReport?.vatAmount ?? (legacyData?.catA?.vat || 0),
+      txns: legacyData?.catA?.txns || 0,
+      recentTxns: legacyData?.catA?.recentTxns || [],
+      allTxns: legacyData?.catA?.allTxns || [],
+    },
+    catB: {
+      core: taxReport?.nbtAmount ? Math.round(taxReport.nbtAmount / 0.02) : (legacyData?.catB?.core || 0),
+      overflow: taxReport?.nbtAmount ? Math.round(taxReport.nbtAmount / 0.02) : (legacyData?.catB?.overflow || 0),
+      baseNonTax: legacyData?.catB?.baseNonTax || 0,
+      txns: legacyData?.catB?.txns || 0,
+      recentTxns: legacyData?.catB?.recentTxns || [],
+      allTxns: legacyData?.catB?.allTxns || [],
+      topProducts: legacyData?.catB?.topProducts || [],
+    },
+    catC: {
+      core: taxReport?.netRevenue ? Math.round(taxReport.netRevenue) : (legacyData?.catC?.core || 0),
+      labour: legacyData?.catC?.labour || 0,
+      install: legacyData?.catC?.install || 0,
+      misc: legacyData?.catC?.misc || 0,
+      entries: legacyData?.catC?.entries || 0,
+      recentEntries: legacyData?.catC?.recentEntries || [],
+      allTxns: legacyData?.catC?.allTxns || [],
+      breakdown: legacyData?.catC?.breakdown || [],
+    },
+    summary: {
+      totalSales: salesReport?.totalRevenue ?? (legacyData?.summary?.totalSales || 0),
+      totalPurchases: legacyData?.summary?.totalPurchases || 0,
+      totalExpenses: legacyData?.summary?.totalExpenses || 0,
+      netProfit: salesReport?.netProfit ?? salesReport?.grossProfit ?? (legacyData?.summary?.netProfit || 0),
+    }
+  };
+
+  const hasError = salesError || taxError || inventoryError || topProductsError;
 
   return (
     <MainLayout>
@@ -68,7 +176,7 @@ export default function ReportsPage() {
                    <div className="flex items-center gap-2.5">
                      <Calendar className="w-4 h-4 text-gray-500" />
                      <span className="text-[13px] font-bold text-gray-700">
-                       {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'Select Date...'}
+                       {dateRangeForPicker?.from ? format(dateRangeForPicker.from, 'MMM d, yyyy') : 'Select Date...'}
                      </span>
                    </div>
                    <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -89,19 +197,19 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex-1 py-2">
                         <SalesDatePicker
-                           dateRange={dateRange}
-                           onSelect={setDateRange}
+                           dateRange={dateRangeForPicker}
+                           onSelect={handleDateRangeChange}
                         />
                       </div>
                       <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between pl-1">
                          <div className="flex flex-col gap-1">
                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest text-left">Selected Range</span>
                             <div className="text-[13px] font-black text-blue-700 flex items-center gap-2">
-                               {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : '---'}
-                               {dateRange?.to && (
+                               {dateRangeForPicker?.from ? format(dateRangeForPicker.from, 'MMM d, yyyy') : '---'}
+                               {dateRangeForPicker?.to && (
                                   <>
                                      <span className="text-gray-300 font-light">—</span>
-                                     {format(dateRange.to, 'MMM d, yyyy')}
+                                     {format(dateRangeForPicker.to, 'MMM d, yyyy')}
                                   </>
                                )}
                             </div>
@@ -115,25 +223,47 @@ export default function ReportsPage() {
                    </div>
                 </Popover.Content>
               </Popover.Portal>
-            </Popover.Root>
+             </Popover.Root>
 
-            <button className="flex items-center gap-2 bg-white border border-gray-200 rounded-[12px] px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-700">
-              <Clock className="w-4 h-4 text-gray-400" />
-              Scheduled
-            </button>
+             <button className="flex items-center gap-2 bg-white border border-gray-200 rounded-[12px] px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-700">
+               <Clock className="w-4 h-4 text-gray-400" />
+               Scheduled
+             </button>
 
-            <button className="flex items-center gap-2 bg-[#1e40af] text-white rounded-[12px] px-6 py-2.5 shadow-sm hover:bg-blue-800 transition-colors text-[13px] font-black tracking-wide">
-              <Download className="w-4 h-4" />
-              Export All
-            </button>
+             <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="flex items-center gap-2 bg-[#1e40af] text-white rounded-[12px] px-6 py-2.5 shadow-sm hover:bg-blue-800 transition-colors text-[13px] font-black tracking-wide">
+                  <Download className="w-4 h-4" />
+                  Export All
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content align="end" className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 min-w-[180px] z-[100] animate-in fade-in zoom-in-95 print:hidden">
+                  <DropdownMenu.Item onClick={() => handleExport('sales', 'pdf')} className="flex items-center gap-3 px-3 py-2.5 text-[12.5px] font-bold text-gray-700 cursor-pointer hover:bg-gray-50 outline-none rounded-lg transition-colors">
+                    <FileText className="w-4 h-4 text-red-500" /> Download PDF
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onClick={() => handleExport('sales', 'csv')} className="flex items-center gap-3 px-3 py-2.5 text-[12.5px] font-bold text-gray-700 cursor-pointer hover:bg-gray-50 outline-none rounded-lg transition-colors">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Download CSV
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+             </DropdownMenu.Root>
           </div>
         </div>
+
+        {/* Step 11: Error States */}
+        {hasError && (
+          <div className="bg-red-50 border border-red-200 rounded-[20px] p-6 mb-8 flex items-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="text-[13px] font-bold">Failed to load live reports data. Displaying legacy data as fallback.</span>
+          </div>
+        )}
 
         {/* 4 TOP KPI CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <ReportStatCard 
              title="Total Revenue"
-             value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString()}`}
+             value={isSalesSectionLoading ? '...' : `Rs. ${(salesReport?.totalRevenue ?? legacyData.summary.totalSales ?? 0).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Coins className="w-5 h-5 text-white" /></div>}
              variant="blue"
              trend="+18.5%"
@@ -141,14 +271,14 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="Gross Profit"
-             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString()}`}
+             value={isSalesSectionLoading ? '...' : `Rs. ${(salesReport?.netProfit ?? salesReport?.grossProfit ?? legacyData.summary.netProfit ?? 0).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
-             marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
+             marginText={`${(salesReport?.totalRevenue ?? legacyData.summary.totalSales) > 0 ? Math.round(((salesReport?.netProfit ?? salesReport?.grossProfit ?? legacyData.summary.netProfit ?? 0) / (salesReport?.totalRevenue ?? legacyData.summary.totalSales)) * 100) : 0}% margin`}
           />
           <ReportStatCard 
              title="Transactions"
-             value={loading ? '...' : (data.catA.txns + data.catB.txns).toLocaleString()}
+             value={isSalesSectionLoading ? '...' : (salesReport?.totalTransactions ?? (legacyData.catA.txns + legacyData.catB.txns)).toLocaleString()}
              icon={<div className="w-9 h-9 rounded-xl bg-[#fef08a] flex items-center justify-center"><FileText className="w-5 h-5 text-[#854d0e]" /></div>}
              variant="white"
              trend="+8.2%"
@@ -156,7 +286,7 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="VAT Collected"
-             value={loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
+             value={isTaxSectionLoading ? '...' : `Rs. ${(taxReport?.vatAmount ?? legacyData.catA.vat ?? 0).toLocaleString()}`}
              icon={<div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center"><FileText className="w-5 h-5 text-[#9333ea]" /></div>}
              variant="white"
              badge="IRD Compliant"
@@ -212,12 +342,12 @@ export default function ReportsPage() {
         {/* CHARTS SECTOR */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0 mb-8">
           <RevenueTrendChart />
-          <TaxBreakdownChart salesData={data} loading={loading} />
+          <TaxBreakdownChart salesData={mappedSalesData} loading={isTaxSectionLoading || legacyLoading} />
         </div>
 
         {/* ALL TRANSACTIONS LEDGER */}
         <div className="relative z-0">
-          <AllTransactionsTable dateRange={dateRange} />
+          <AllTransactionsTable dateRange={dateRangeForPicker} />
         </div>
       </div>
 
@@ -226,27 +356,27 @@ export default function ReportsPage() {
          isOpen={reportModal === 'A'}
          onClose={() => setReportModal(null)}
          onPrintPDF={(timeFilter) => { setPrintCategory('A'); setPrintTimeFilter(timeFilter); setTimeout(() => { window.print(); setPrintCategory(null); }, 100); }}
-         data={data}
+         data={mappedSalesData}
       />
       <CategoryBReportModal
          isOpen={reportModal === 'B'}
          onClose={() => setReportModal(null)}
          onPrintPDF={(timeFilter) => { setPrintCategory('B'); setPrintTimeFilter(timeFilter); setTimeout(() => { window.print(); setPrintCategory(null); }, 100); }}
-         data={data}
+         data={mappedSalesData}
       />
       <CategoryCReportModal
          isOpen={reportModal === 'C'}
          onClose={() => setReportModal(null)}
          onPrintPDF={(timeFilter) => { setPrintCategory('C'); setPrintTimeFilter(timeFilter); setTimeout(() => { window.print(); setPrintCategory(null); }, 100); }}
-         data={data}
+         data={mappedSalesData}
       />
 
       {/* PER-CATEGORY PRINT VIEW */}
       <CategoryPrintView
          category={printCategory}
-         dateRange={dateRange}
+         dateRange={dateRangeForPicker}
          timeFilter={printTimeFilter}
-         data={data}
+         data={mappedSalesData}
       />
     </MainLayout>
   );
