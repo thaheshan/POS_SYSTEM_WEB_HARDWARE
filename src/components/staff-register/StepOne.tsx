@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { StaffRegisterData } from "@/types/staff";
+import { shopApi } from "@/api/shop";
 import {
   BriefcaseBusiness,
   Check,
@@ -12,7 +13,6 @@ import {
   Search,
   Store,
   User,
-  UserPlus,
   Loader2,
   ArrowLeft,
 } from "lucide-react";
@@ -28,7 +28,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const [shopSearch, setShopSearch] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  
+
   const [shops, setShops] = useState<{ id: string; name: string }[]>([]);
   const [loadingShops, setLoadingShops] = useState(true);
 
@@ -38,8 +38,8 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   useEffect(() => {
     const loadShops = async () => {
       try {
-        const { authApi } = await import('@/api/auth');
-        const activeShops = await authApi.getActiveShops();
+        setLoadingShops(true);
+        const activeShops = await shopApi.getActiveShops();
         setShops(activeShops);
       } catch (error) {
         console.error("Failed to load active shops", error);
@@ -52,6 +52,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
 
   const selectedShop = shops.find((s) => s.id === data.shopId);
   const selectedRole = STAFF_ROLES.find((r) => r.id === data.role);
+
   const filteredShops = shops.filter((shop) =>
     shop.name.toLowerCase().includes(shopSearch.toLowerCase())
   );
@@ -160,8 +161,14 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                     />
                   </div>
                 </div>
+
                 <ul className="max-h-[220px] overflow-y-auto py-1">
-                  {filteredShops.length > 0 ? (
+                  {loadingShops ? (
+                    <li className="px-4 py-4 text-sm text-slate-400 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      Loading active shops...
+                    </li>
+                  ) : filteredShops.length > 0 ? (
                     filteredShops.map((shop) => (
                       <li key={shop.id}>
                         <button
@@ -185,7 +192,7 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
                       </li>
                     ))
                   ) : (
-                    <li className="px-4 py-3 text-sm text-slate-400 text-center">
+                    <li className="px-4 py-3 text-sm text-slate-400 text-center italic">
                       No shops found
                     </li>
                   )}
@@ -328,7 +335,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
         >
-          
           Next
         </button>
       </form>
@@ -336,12 +342,12 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
       {/* Sign In Link */}
       <div className="flex flex-col items-center mt-10 gap-1">
         <p className="text-sm text-slate-500">Already have an account?</p>
-        <a
+        <Link
           href="/auth/login"
           className="text-sm text-blue-600 font-semibold hover:underline"
         >
           Sign In to Your Account
-        </a>
+        </Link>
       </div>
 
       {/* Footer */}

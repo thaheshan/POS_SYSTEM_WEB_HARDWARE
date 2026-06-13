@@ -11,23 +11,36 @@ import {
   Store,
   User,
   X,
+  Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import React, { useState } from "react";
 import { StaffRegisterData } from "@/types/staff";
 import Link from "next/link";
+import { shopApi } from "@/api/shop";
 
 interface StepTwoProps {
   data: StaffRegisterData;
   updateFields: (fields: Partial<StaffRegisterData>) => void;
   onNext: () => void;
   onBack: () => void;
-  selectedShopId: string; // first 8 chars used for verification
+  selectedShopId: string;
 }
 
-const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) => {
+const StepTwo = ({
+  data,
+  updateFields,
+  onNext,
+  onBack,
+  selectedShopId,
+}: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
 
   const hasMinLength = (data.password ?? "").length >= 8;
   const hasUppercase = /[A-Z]/.test(data.password ?? "");
@@ -40,23 +53,45 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
     (data.confirmPassword ?? "").length > 0 &&
     data.password === data.confirmPassword;
 
-  // Verify the code: must match first 8 characters of the selected shop id
-  const expectedCode = selectedShopId ? selectedShopId.substring(0, 8) : "";
-  const verificationCode = data.shopVerificationCode ?? "";
-  const isCodeCorrect =
-    expectedCode.length > 0 &&
-    verificationCode.toLowerCase() === expectedCode.toLowerCase();
-  const isCodeEmpty = verificationCode.length === 0;
-  const isCodeWrong = !isCodeEmpty && !isCodeCorrect;
+  const isCodeValidFormat = data.shopVerificationCode?.length === 8;
+  const isCodeEmpty = (data.shopVerificationCode ?? "").length === 0;
+
+  const handleVerify = async () => {
+    if (!isCodeValidFormat) return;
+
+    setIsVerifying(true);
+    setVerifyError("");
+    setIsVerified(false);
+
+    try {
+      await shopApi.verifyShopAssociation(
+        selectedShopId,
+        data.shopVerificationCode
+      );
+      setIsVerified(true);
+    } catch (error: any) {
+      setVerifyError(error.message || "Invalid Shop Private ID");
+      setIsVerified(false);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const canGoNext =
-    isCodeCorrect &&
-    isPasswordStrong &&
-    passwordsMatch &&
-    agreedToTerms;
+    isVerified && isPasswordStrong && passwordsMatch && agreedToTerms;
 
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Back Button */}
+      <button
+        type="button"
+        onClick={onBack}
+        className="fixed top-24 left-4 sm:top-32 sm:left-8 inline-flex items-center gap-2 text-sm sm:text-base text-slate-700 hover:text-slate-900 transition-colors font-medium z-50"
+      >
+        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+        Back
+      </button>
+
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-10 mt-10">
         <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-bl from-[#1E429F] to-[#1A56DB] rounded-xl shadow-md shadow-blue-500/20 mb-6">
@@ -130,8 +165,8 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <p className="text-blue-800 text-sm leading-relaxed">
               Ask your <span className="font-semibold">shop owner</span> for the{" "}
-              <span className="font-semibold">Shop Verification Code</span>. They
-              can find it displayed at the top of their dashboard.
+              <span className="font-semibold">Shop Verification Code</span>.
+              They can find it displayed at the top of their dashboard.
             </p>
           </div>
 
@@ -139,37 +174,67 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Shop Verification Code <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
-              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
-              <input
-                type="text"
-                value={data.shopVerificationCode ?? ""}
-                onChange={(e) =>
-                  updateFields({ shopVerificationCode: e.target.value })
-                }
-                placeholder="e.g. 30d5c1b6"
-                maxLength={8}
-                className={`w-full pl-12 pr-12 py-3 border rounded-xl focus:outline-none transition-all font-mono tracking-widest text-base ${
-                  isCodeWrong
-                    ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-100"
-                    : isCodeCorrect
-                    ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
-                    : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
-                }`}
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                {isCodeCorrect && (
-                  <CheckCircle className="size-5 text-green-500" />
-                )}
-                {isCodeWrong && <X className="size-5 text-red-500" />}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                <input
+                  type="text"
+                  disabled={isVerified}
+                  value={data.shopVerificationCode ?? ""}
+                  onChange={(e) => {
+                    updateFields({
+                      shopVerificationCode: e.target.value.toUpperCase(),
+                    });
+                    setIsVerified(false);
+                    setVerifyError("");
+                  }}
+                  placeholder="e.g. 30D5C1B6"
+                  maxLength={8}
+                  className={`w-full pl-12 pr-12 py-3 border rounded-xl focus:outline-none transition-all font-mono tracking-widest text-base disabled:bg-slate-50 disabled:text-slate-400 ${
+                    verifyError
+                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-100"
+                      : isVerified
+                      ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
+                      : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                  }`}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {isVerified && (
+                    <CheckCircle className="size-5 text-green-500" />
+                  )}
+                  {verifyError && <X className="size-5 text-red-500" />}
+                </div>
               </div>
+
+              {/* Added explicitly separate verification button */}
+              <button
+                type="button"
+                onClick={handleVerify}
+                disabled={!isCodeValidFormat || isVerifying || isVerified}
+                className={`px-6 py-3 rounded-xl font-bold transition-all min-w-[100px] flex items-center justify-center ${
+                  isVerified
+                    ? "bg-green-600 text-white"
+                    : isCodeValidFormat && !isVerifying
+                    ? "bg-slate-900 hover:bg-slate-800 text-white shadow-lg active:scale-[0.98]"
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                {isVerifying ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : isVerified ? (
+                  "Verified"
+                ) : (
+                  "Verify"
+                )}
+              </button>
             </div>
-            {isCodeWrong && (
+
+            {verifyError && (
               <p className="text-xs text-red-500 mt-1.5 font-medium">
-                Incorrect code. Please check with your shop owner.
+                {verifyError}
               </p>
             )}
-            {isCodeCorrect && (
+            {isVerified && (
               <p className="text-xs text-green-600 mt-1.5 font-medium">
                 ✓ Shop verified successfully!
               </p>
@@ -221,9 +286,13 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             ].map((rule) => (
               <li key={rule.label} className="flex items-center gap-2 text-sm">
                 <CheckCircle
-                  className={`size-4 ${rule.met ? "text-green-500" : "text-slate-300"}`}
+                  className={`size-4 ${
+                    rule.met ? "text-green-500" : "text-slate-300"
+                  }`}
                 />
-                <span className={rule.met ? "text-slate-700" : "text-slate-400"}>
+                <span
+                  className={rule.met ? "text-slate-700" : "text-slate-400"}
+                >
                   {rule.label}
                 </span>
               </li>
@@ -247,7 +316,9 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             <input
               type={showConfirm ? "text" : "password"}
               value={data.confirmPassword}
-              onChange={(e) => updateFields({ confirmPassword: e.target.value })}
+              onChange={(e) =>
+                updateFields({ confirmPassword: e.target.value })
+              }
               placeholder="Re-enter your password"
               className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl outline-none transition-all ${
                 (data.confirmPassword ?? "").length > 0 && !passwordsMatch
@@ -339,4 +410,4 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
   );
 };
 
-export default StepTwo;
+export default StepTwo;

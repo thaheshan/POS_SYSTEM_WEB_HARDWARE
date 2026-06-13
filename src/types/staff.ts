@@ -6,7 +6,7 @@ export interface StaffRegisterData {
   role: string;
   password?: string;
   confirmPassword?: string;
-  shopVerificationCode?: string;
+  shopVerificationCode: string;
   shopNameVerification?: string;
   shopPrivateId?: string;
 }
