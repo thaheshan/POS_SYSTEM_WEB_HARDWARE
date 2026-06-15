@@ -98,14 +98,8 @@ export interface Staff {
   createdAt: string;
 }
 
-export interface StaffManagement {
-  id: string;
-  name: string;
-  email: string;
+export interface StaffManagement extends Omit<Staff, 'role'> {
   role: string;
-  phone?: string;
-  isActive: boolean;
-  createdAt: string;
 }
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import MainLayout from '@/components/layout/MainLayout';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users,
   ShieldCheck,
@@ -26,6 +26,16 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/api/axiosInstance';
+import {
+  useGetStaffManagementQuery,
+  useGetPendingStaffQuery,
+  useGetRolesQuery,
+  useDeleteStaffManagementMutation,
+  useApproveStaffMutation,
+  useUpdateStaffManagementMutation,
+  useCreateRoleMutation,
+  useDeleteRoleMutation,
+} from '@/lib/services/staffManagementApi';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const roleLabel: Record<string, string> = {
@@ -101,11 +111,6 @@ export default function StaffManagementPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Staff');
-  const [staff, setStaff] = useState<any[]>([]);
-  const [pending, setPending] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [roles, setRoles] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isManageRolesOpen, setIsManageRolesOpen] = useState(false);
   
@@ -114,49 +119,29 @@ export default function StaffManagementPage() {
   const [staffToDelete, setStaffToDelete] = useState<any>(null);
   const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [staffRes, pendingRes, rolesRes] = await Promise.all([
-        api.get('/staff'),
-        api.get('/staff/pending'),
-        api.get('/roles'),
-      ]);
-      
-      // The backend returns a double-wrapped response for these endpoints:
-      // staffRes.data = { success: true, data: { success: true, data: [...] } }
-      const unpack = (res: any) => {
-        if (Array.isArray(res.data?.data?.data)) return res.data.data.data;
-        if (Array.isArray(res.data?.data)) return res.data.data;
-        if (Array.isArray(res.data)) return res.data;
-        return [];
-      };
+  const { data: staff = [], isLoading: isStaffLoading, refetch: refetchStaff } = useGetStaffManagementQuery(undefined, { skip: !mounted });
+  const { data: pending = [], isLoading: isPendingLoading, refetch: refetchPending } = useGetPendingStaffQuery(undefined, { skip: !mounted });
+  const { data: roles = [], isLoading: isRolesLoading, refetch: refetchRoles } = useGetRolesQuery(undefined, { skip: !mounted });
 
-      setStaff(unpack(staffRes));
-      setPending(unpack(pendingRes));
-      setRoles(unpack(rolesRes));
-    } catch (err: any) {
-      console.error('[StaffPage] Failed to fetch:', err?.response?.data ?? err?.message ?? err);
-      setStaff([]);
-      setPending([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [approveStaff] = useApproveStaffMutation();
+  const [deleteStaff] = useDeleteStaffManagementMutation();
+
+  const isLoading = isStaffLoading || isPendingLoading || isRolesLoading;
+
+  const handleRefresh = () => {
+    refetchStaff();
+    refetchPending();
+    refetchRoles();
+  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (mounted) fetchAll();
-  }, [mounted, fetchAll]);
-
   const handleApprove = async (staffId: string, action: 'approve' | 'reject') => {
     try {
       setApprovingId(staffId);
-      await api.post('/staff/approve', { staff_id: staffId, action });
-      await fetchAll(); // refresh data
+      await approveStaff({ staffId, action }).unwrap();
     } catch (err) {
       console.error(`Failed to ${action} staff`, err);
     } finally {
@@ -169,9 +154,8 @@ export default function StaffManagementPage() {
     
     try {
       setDeletingStaffId(staffToDelete.id);
-      await api.delete(`/staff/${staffToDelete.id}`);
+      await deleteStaff(staffToDelete.id).unwrap();
       setStaffToDelete(null);
-      await fetchAll();
     } catch (err: any) {
       console.error('Failed to delete staff:', err?.response?.data ?? err?.message);
       alert(err?.response?.data?.message || 'Failed to delete staff member');
@@ -239,7 +223,7 @@ export default function StaffManagementPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={fetchAll}
+              onClick={handleRefresh}
               className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
             >
               <RefreshCcw className="w-4 h-4 text-gray-400" /> Refresh
@@ -591,7 +575,7 @@ export default function StaffManagementPage() {
       <AddStaffModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
-        onSuccess={fetchAll} 
+        onSuccess={handleRefresh} 
         roles={roles}
       />
       <EditStaffModal
@@ -599,7 +583,7 @@ export default function StaffManagementPage() {
         onClose={() => setEditingStaff(null)}
         staff={editingStaff}
         roles={roles}
-        onSuccess={fetchAll}
+        onSuccess={handleRefresh}
       />
       <DeleteStaffModal
         isOpen={!!staffToDelete}
@@ -612,7 +596,7 @@ export default function StaffManagementPage() {
         isOpen={isManageRolesOpen}
         onClose={() => setIsManageRolesOpen(false)}
         roles={roles}
-        onSuccess={fetchAll}
+        onSuccess={handleRefresh}
       />
     </MainLayout>
   );
@@ -801,6 +785,7 @@ function AddStaffModal({ isOpen, onClose, onSuccess, roles }: { isOpen: boolean;
 
 // ─── Edit Staff Modal ──────────────────────────────────────────────────────────
 function EditStaffModal({ isOpen, onClose, staff, roles, onSuccess }: { isOpen: boolean; onClose: () => void; staff: any; roles: any[]; onSuccess: () => void }) {
+  const [updateStaff] = useUpdateStaffManagementMutation();
   const [formData, setFormData] = useState({
     first_name: staff?.name?.split(' ')[0] || '',
     last_name: staff?.name?.split(' ').slice(1).join(' ') || '',
@@ -831,11 +816,11 @@ function EditStaffModal({ isOpen, onClose, staff, roles, onSuccess }: { isOpen: 
     setError('');
 
     try {
-      await api.put(`/staff/${staff.id}`, formData);
+      await updateStaff({ id: staff.id, ...formData }).unwrap();
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to update staff');
+      setError(err?.data?.message || err.message || 'Failed to update staff');
     } finally {
       setLoading(false);
     }
@@ -977,6 +962,8 @@ function DeleteStaffModal({ isOpen, onClose, staff, onConfirm, loading }: { isOp
 // ─── Manage Roles Modal ────────────────────────────────────────────────────────
 function ManageRolesModal({ isOpen, onClose, roles, onSuccess }: { isOpen: boolean; onClose: () => void; roles: any[]; onSuccess: () => void }) {
   const { user } = useAuth();
+  const [createRole] = useCreateRoleMutation();
+  const [deleteRole] = useDeleteRoleMutation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [newRoleName, setNewRoleName] = useState('');
@@ -990,14 +977,14 @@ function ManageRolesModal({ isOpen, onClose, roles, onSuccess }: { isOpen: boole
     setError('');
 
     try {
-      await api.post('/roles', {
+      await createRole({
         name: newRoleName.trim().toUpperCase(),
         permissions: {},
-      });
+      }).unwrap();
       setNewRoleName('');
       await onSuccess();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to create role');
+      setError(err?.data?.message || err.message || 'Failed to create role');
     } finally {
       setLoading(false);
     }
@@ -1008,10 +995,10 @@ function ManageRolesModal({ isOpen, onClose, roles, onSuccess }: { isOpen: boole
     setLoading(true);
     setError('');
     try {
-      await api.delete(`/roles/${id}`);
+      await deleteRole(id).unwrap();
       await onSuccess();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to delete role');
+      setError(err?.data?.message || err.message || 'Failed to delete role');
     } finally {
       setLoading(false);
     }

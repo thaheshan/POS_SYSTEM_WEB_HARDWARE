@@ -68,7 +68,7 @@ export default function Header() {
               {user?.name || (isAuthenticated ? 'Connecting...' : 'Guest User')}
             </span>
             <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize">
-              {user?.role ? `${user.role.toLowerCase()} Member Profile` : 'Restricted Mode'}
+              {user?.role ? user.role.toLowerCase() + ' Member Profile' : 'Restricted Mode'}
             </span>
           </div>
           
