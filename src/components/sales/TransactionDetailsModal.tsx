@@ -116,7 +116,6 @@ function downloadInvoicePDF({
     <div class="totals-box">
       <div class="total-row"><span>Subtotal</span><span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span></div>
       ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ''}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ''}
       <div class="grand-total"><span>Total Amount</span><span>Rs. ${totalAmount.toLocaleString()}</span></div>
     </div>
   </div>
