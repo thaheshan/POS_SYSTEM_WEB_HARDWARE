@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X } from 'lucide-react';
+import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Plus, Minus } from 'lucide-react';
 import Image from 'next/image';
 
 interface InventoryTableProps {
@@ -12,6 +12,9 @@ interface InventoryTableProps {
   hasActiveFilters: boolean;
   onClearFilters: () => void;
   activeFilterCount: number;
+
+  onIncrement: (item: any) => void;
+  onDecrement: (item: any) => void;
 }
 
 export default function InventoryTable({
@@ -23,7 +26,9 @@ export default function InventoryTable({
   onFilterToggle,
   hasActiveFilters,
   onClearFilters,
-  activeFilterCount
+  activeFilterCount,
+  onIncrement,
+  onDecrement
 }: InventoryTableProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -49,7 +54,7 @@ export default function InventoryTable({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    setSelectedIds([]); // Clear selection on page change
+    setSelectedIds([]); 
   };
 
   // ... (getStatusBadge, getReorderIcon, getQtyBarColor remain same)
@@ -186,8 +191,27 @@ export default function InventoryTable({
                   <td className="px-4 py-4 text-gray-600 font-medium whitespace-nowrap">{item.category}</td>
                   <td className="px-4 py-4 text-right">
                     <div className="flex flex-col items-end gap-1">
-                      <span className="font-bold text-gray-900">{item.qty}</span>
-                      <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        {/* Minus Button */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onDecrement(item); }}
+                          disabled={item.quantity <= 0}
+                          className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        
+                        <span className="font-bold text-gray-900 min-w-[20px] text-center">{item.qty}</span>
+                        
+                        {/* Plus Button */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onIncrement(item); }}
+                          className="p-1 hover:bg-emerald-100 hover:text-emerald-600 rounded text-gray-400 transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${getQtyBarColor(item.qty, item.maxLevel, item.status)}`}
                           style={{ width: `${Math.min(100, Math.max(5, (item.qty / item.maxLevel) * 100))}%` }}
