@@ -45,7 +45,8 @@ const actions = [
       'Return receipt'
     ],
     buttonText: 'New Return',
-    shortcut: 'F4'
+    shortcut: 'F4',
+    href: '/pos/return'
   },
   {
     title: 'Create Quotation',
@@ -60,7 +61,8 @@ const actions = [
       'Email/SMS option'
     ],
     buttonText: 'New Quotation',
-    shortcut: 'F5'
+    shortcut: 'F5',
+    href: '/pos/quotation'
   },
   {
     title: 'Customer Credit Sales',
@@ -74,7 +76,8 @@ const actions = [
       'Interest calculation',
       'Invoice generation'
     ],
-    buttonText: 'Credit Sale'
+    buttonText: 'Credit Sale',
+    href: '/pos/credit'
   },
   {
     title: 'Bulk/Wholesale Sale',
@@ -88,7 +91,8 @@ const actions = [
       'Special terms',
       'Custom invoice'
     ],
-    buttonText: 'Bulk Sale'
+    buttonText: 'Bulk Sale',
+    href: '/pos/bulk'
   },
   {
     title: 'Hold & Resume Sale',
@@ -102,7 +106,8 @@ const actions = [
       'Resume anytime',
       'Auto-backup'
     ],
-    buttonText: 'View Held Sales'
+    buttonText: 'View Held Sales',
+    href: '/pos/hold'
   },
   {
     title: 'Item Exchange',
@@ -116,7 +121,8 @@ const actions = [
       'Price adjustment',
       'Exchange receipt'
     ],
-    buttonText: 'New Exchange'
+    buttonText: 'New Exchange',
+    href: '/pos/exchange'
   },
   {
     title: 'Layaway/Backorder',
@@ -130,7 +136,8 @@ const actions = [
       'Deposit tracking',
       'Customer reminders'
     ],
-    buttonText: 'Manage Layaway'
+    buttonText: 'Manage Layaway',
+    href: '/pos/layaway'
   }
 ];
 

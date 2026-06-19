@@ -135,12 +135,28 @@ export function useWeeklyChart() {
           : [];
 
         setChartData(
-          items.map((day: any) => ({
-            name: day.name,
-            revenue: day.revenue ?? 0,
-            sales: day.sales ?? 0,
-            cost: day.cost ?? 0,
-          }))
+          items.map((day: any) => {
+            const rawCost = day.cost ?? 0;
+            const rawBackendRevenue = day.revenue ?? 0;
+            
+            // The backend currently returns (Invoice Total - Cost) as 'revenue'
+            // Total Invoice Amount = rawBackendRevenue + rawCost
+            const totalInvoiceAmount = rawBackendRevenue + rawCost;
+            
+            // Remove 18% tax to get pure Net Sales (Revenue)
+            const pureRevenue = Math.round(totalInvoiceAmount / 1.18);
+            
+            // Calculate pure Gross Profit
+            const pureProfit = pureRevenue - rawCost;
+
+            return {
+              name: day.name,
+              sales: day.sales ?? 0,
+              cost: rawCost,
+              revenue: pureRevenue,
+              profit: pureProfit,
+            };
+          })
         );
       })
       .catch(() => setChartData([]))
