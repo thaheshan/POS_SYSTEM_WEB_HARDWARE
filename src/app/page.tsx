@@ -1,17 +1,18 @@
-'use client';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import SplashScreen from '@/components/splash/SplashScreen';
-import { Header } from '@/components/marketing/Header';
-import { Hero } from '@/components/marketing/Hero';
-import { Features } from '@/components/marketing/Features';
-import { Benefits } from '@/components/marketing/Benefits';
-import { Modules } from '@/components/marketing/Modules';
-import { Pricing } from '@/components/marketing/Pricing';
-import { Testimonials } from '@/components/marketing/Testimonials';
-import { FAQ } from '@/components/marketing/FAQ';
-import { CTA } from '@/components/marketing/CTA';
-import { Footer } from '@/components/marketing/Footer';
+"use client";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import SplashScreen from "@/components/splash/SplashScreen";
+import { Header } from "@/components/marketing/Header";
+import { Hero } from "@/components/marketing/Hero";
+import { Contact } from "../components/marketing/Contact";
+import { Features } from "@/components/marketing/Features";
+import { Benefits } from "@/components/marketing/Benefits";
+import { Modules } from "@/components/marketing/Modules";
+import { Pricing } from "@/components/marketing/Pricing";
+import { Testimonials } from "@/components/marketing/Testimonials";
+import { FAQ } from "@/components/marketing/FAQ";
+import { CTA } from "@/components/marketing/CTA";
+import { Footer } from "@/components/marketing/Footer";
 
 export default function Home() {
   const router = useRouter();
@@ -19,17 +20,17 @@ export default function Home() {
 
   useEffect(() => {
     // Check both localStorage and cookies for the token to prevent false redirects
-    const localToken = localStorage.getItem('pos_token');
-    const hasCookieToken = document.cookie.includes('pos_token=');
-    
+    const localToken = localStorage.getItem("pos_token");
+    const hasCookieToken = document.cookie.includes("pos_token=");
+
     if (localToken && hasCookieToken) {
-      router.push('/dashboard');
+      router.push("/dashboard");
       return;
     }
 
     // Clean up invalid local storage if cookie is missing
     if (localToken && !hasCookieToken) {
-      localStorage.removeItem('pos_token');
+      localStorage.removeItem("pos_token");
     }
 
     // Show splash for 2.5 seconds then reveal marketing page
@@ -54,7 +55,8 @@ export default function Home() {
       <Pricing />
       <Testimonials />
       <FAQ />
-      <CTA />
+      {/* <CTA /> */}
+      <Contact />
       <Footer />
     </>
   );

@@ -24,7 +24,11 @@ import TransactionTable from "@/components/dashboard/TransactionTable";
 import QuickActions from "@/components/dashboard/QuickActions";
 import AlertBanner from "@/components/dashboard/AlertBanner";
 import LowStockAlertModal from "@/components/dashboard/low-stock-alert";
-import { useDashboardStats, useLowStockCount, usePendingPayments } from '@/hooks/useDashboard';
+import {
+  useDashboardStats,
+  useLowStockCount,
+  usePendingPayments,
+} from "@/hooks/useDashboard";
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -40,10 +44,11 @@ export default function DashboardPage() {
   const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const isStaff = user?.role === "staff" || user?.role === "cashier";
-  
+
   const { stats, loading } = useDashboardStats();
   const lowStockCount = useLowStockCount();
-  const { data: pendingPayments, loading: pendingLoading } = usePendingPayments();
+  const { data: pendingPayments, loading: pendingLoading } =
+    usePendingPayments();
 
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [subLoading, setSubLoading] = useState(true);
@@ -86,7 +91,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}>
+    <ProtectedRoute
+      allowedRoles={["admin", "owner", "manager", "staff", "cashier"]}
+    >
       <MainLayout>
         <div className="max-w-[1600px] mx-auto space-y-8">
           {/* Header Section */}
@@ -96,14 +103,14 @@ export default function DashboardPage() {
                 {isStaff ? "Employee Dashboard" : "Dashboard Overview"}
               </h2>
               <p className="text-gray-500 mt-1 font-medium italic">
-                {user?.role === "admin" 
-                  ? "Welcome back, Shop Owner! Management mode active." 
-                  : user?.role === "manager" 
-                  ? `Welcome back, ${user?.name || "Member"}! Reviewing operational data.`
-                  : `Welcome back, ${user?.name || "Member"}! Here are your service and sales stats.`}
+                {user?.role === "admin"
+                  ? "Welcome back, Shop Owner! Management mode active."
+                  : user?.role === "manager"
+                    ? `Welcome back, ${user?.name || "Member"}! Reviewing operational data.`
+                    : `Welcome back, ${user?.name || "Member"}! Here are your service and sales stats.`}
               </p>
             </div>
-            <Link 
+            <Link
               href="/pos"
               className="bg-[#2563eb] text-white px-8 py-3.5 rounded-[12px] font-black text-sm hover:bg-[#1d4ed8] transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2"
             >
@@ -112,48 +119,92 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats Grid - Role Based Access */}
-          <div className={cn(
-            "grid gap-6",
-            isAdmin 
-              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" 
-              : "grid-cols-1 md:grid-cols-3 w-full"
-          )}>
+          <div
+            className={cn(
+              "grid gap-6",
+              isAdmin
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-3 w-full",
+            )}
+          >
             {!isStaff ? (
               <StatsCard
                 title={isAdmin ? "Today's Sales" : "Today's Operations"}
-                value={loading ? "Loading..." : `LKR ${(stats?.todaySales || 0).toLocaleString()}`}
+                value={
+                  loading
+                    ? "Loading..."
+                    : `LKR ${(stats?.todaySales || 0).toLocaleString()}`
+                }
                 icon={FileText}
                 iconBg="bg-blue-50"
                 iconColor="text-blue-600"
-                subtext={loading ? "..." : isAdmin ? `${stats?.todayTransactions || 0} transactions` : "Operational Records"}
+                subtext={
+                  loading
+                    ? "..."
+                    : isAdmin
+                      ? `${stats?.todayTransactions || 0} transactions`
+                      : "Operational Records"
+                }
                 viewAllHref="/sales"
               />
             ) : (
               <StatsCard
                 title="Your Service Entries"
-                value={loading ? "Loading..." : `LKR ${(stats?.staffServiceRevenue || 0).toLocaleString()}`}
+                value={
+                  loading
+                    ? "Loading..."
+                    : `LKR ${(stats?.staffServiceRevenue || 0).toLocaleString()}`
+                }
                 icon={Wrench}
                 iconBg="bg-amber-50"
                 iconColor="text-amber-600"
-                subtext={loading ? "..." : `${stats?.staffServiceEntries || 0} logs today`}
+                subtext={
+                  loading
+                    ? "..."
+                    : `${stats?.staffServiceEntries || 0} logs today`
+                }
                 viewAllHref="/sales/category-c"
               />
             )}
 
             <StatsCard
               title={isStaff ? "Your Sales" : "Low Stock Items"}
-              value={isStaff ? (loading ? "Loading..." : `LKR ${(stats?.staffSales || 0).toLocaleString()}`) : (loading ? "..." : `${lowStockCount} Products`)}
+              value={
+                isStaff
+                  ? loading
+                    ? "Loading..."
+                    : `LKR ${(stats?.staffSales || 0).toLocaleString()}`
+                  : loading
+                    ? "..."
+                    : `${lowStockCount} Products`
+              }
               icon={isStaff ? DollarSign : Package}
               iconBg={isStaff ? "bg-emerald-50" : "bg-green-50"}
               iconColor={isStaff ? "text-emerald-600" : "text-green-600"}
-              subtext={isStaff ? (loading ? "..." : `${stats?.staffTransactions || 0} transactions`) : "Need reordering"}
+              subtext={
+                isStaff
+                  ? loading
+                    ? "..."
+                    : `${stats?.staffTransactions || 0} transactions`
+                  : "Need reordering"
+              }
               viewAllHref={isStaff ? "/pos" : "/inventory"}
-              onClick={!isStaff ? () => setIsLowStockModalOpen(true) : undefined}
+              onClick={
+                !isStaff ? () => setIsLowStockModalOpen(true) : undefined
+              }
             />
 
             <StatsCard
               title={isStaff ? "Active Orders" : "Active Customers"}
-              value={isStaff ? (loading ? "Loading..." : `${stats?.staffActiveOrders || 0} Orders`) : (loading ? "..." : (stats?.totalCustomers || 0).toLocaleString())}
+              value={
+                isStaff
+                  ? loading
+                    ? "Loading..."
+                    : `${stats?.staffActiveOrders || 0} Orders`
+                  : loading
+                    ? "..."
+                    : (stats?.totalCustomers || 0).toLocaleString()
+              }
               icon={isStaff ? ShoppingCart : Users}
               iconBg="bg-blue-50"
               iconColor="text-blue-600"
@@ -164,7 +215,11 @@ export default function DashboardPage() {
             {isAdmin && (
               <StatsCard
                 title="Monthly Revenue"
-                value={loading ? "Loading..." : `LKR ${(stats?.monthlyRevenue || 0).toLocaleString()}`}
+                value={
+                  loading
+                    ? "Loading..."
+                    : `LKR ${(stats?.monthlyRevenue || 0).toLocaleString()}`
+                }
                 icon={TrendingUp}
                 iconBg="bg-purple-50"
                 iconColor="text-purple-600"
@@ -205,11 +260,11 @@ export default function DashboardPage() {
                 title="Low Stock Alert"
                 message={
                   lowStockCount > 0
-                    ? `${lowStockCount} product${lowStockCount !== 1 ? 's are' : ' is'} running low on stock and need immediate reordering.`
+                    ? `${lowStockCount} product${lowStockCount !== 1 ? "s are" : " is"} running low on stock and need immediate reordering.`
                     : "All products are sufficiently stocked. No reordering needed right now."
                 }
                 actionText="View Inventory"
-                onActionClick={lowStockCount > 0 ? () => setIsLowStockModalOpen(true) : undefined}
+                onActionClick={() => setIsLowStockModalOpen(true)}
               />
             )}
             {isAdmin && (
@@ -220,8 +275,8 @@ export default function DashboardPage() {
                   pendingLoading
                     ? "Loading pending payment data..."
                     : pendingPayments.count > 0
-                    ? `You have ${pendingPayments.count} pending payment${pendingPayments.count !== 1 ? 's' : ''} totaling LKR ${pendingPayments.total.toLocaleString()} that require follow-up.`
-                    : "No pending payments at the moment. All payments are up to date."
+                      ? `You have ${pendingPayments.count} pending payment${pendingPayments.count !== 1 ? "s" : ""} totaling LKR ${pendingPayments.total.toLocaleString()} that require follow-up.`
+                      : "No pending payments at the moment. All payments are up to date."
                 }
                 actionText="Process Payments"
               />

@@ -38,7 +38,6 @@ export default function LowStockAlertModal({
   const [liveProducts, setLiveProducts] = useState<LowStockProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch live low-stock products whenever modal opens
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
@@ -51,6 +50,7 @@ export default function LowStockAlertModal({
       setIsLoading(true);
       try {
         const res = await api.get('/stock?low_stock=true&out_of_stock=true');
+
         // Handle NestJS ResponseInterceptor double-wrapping
         const payload = res.data?.data;
         const items: any[] = Array.isArray(payload)
@@ -63,21 +63,22 @@ export default function LowStockAlertModal({
 
         const mapped: LowStockProduct[] = items.map((item: any, index: number) => ({
           id: item.product_id || item.id || `ls-${index}`,
-          name: item.product_name || item.name || 'Unknown',
-          sku: item.sku || 'N/A',
-          category: item.category_name || item.category || 'Uncategorized',
+          name: item.product_name || item.product?.name || item.name || "Unknown",
+          sku: item.sku || item.product?.sku || "N/A",
+          category: item.category_name || item.product?.category?.name || item.category || "Uncategorized",
           currentStock: Number(item.available_quantity ?? item.quantity ?? 0),
-          reorderLevel: Number(item.minimum_stock_level ?? 0),
-          reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 0) - Number(item.available_quantity ?? 0)),
-          lastSale: 'Recently',
+          reorderLevel: Number(item.minimum_stock_level ?? 20),
+          reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 20) - Number(item.available_quantity ?? 0)),
+          lastSale: "Recently",
           unitsSold: 0,
-          unitCost: Number(item.selling_price ?? 0),
+          unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
           warehouseId: item.warehouse_id,
           warehouseName: item.warehouse_name,
         }));
+
         setLiveProducts(mapped);
       } catch (err) {
-        console.error('Failed to fetch low stock data', err);
+        console.error("Failed to fetch low stock data", err);
         setLiveProducts([]);
       } finally {
         setIsLoading(false);
@@ -96,9 +97,10 @@ export default function LowStockAlertModal({
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return liveProducts;
-    return liveProducts.filter((product) =>
-      product.name.toLowerCase().includes(term) ||
-      product.sku.toLowerCase().includes(term)
+    return liveProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(term) ||
+        product.sku.toLowerCase().includes(term),
     );
   }, [searchTerm, liveProducts]);
 
@@ -230,18 +232,34 @@ export default function LowStockAlertModal({
               <div className="flex flex-1 items-center justify-center py-20">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
-                  <p className="text-sm font-semibold text-slate-400">Loading live stock data...</p>
+                  <p className="text-sm font-semibold text-slate-400">
+                    Loading live stock data...
+                  </p>
                 </div>
               </div>
             ) : liveProducts.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                  <svg className="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="h-8 w-8 text-emerald-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <p className="text-[15px] font-bold text-slate-700">All stock levels are healthy!</p>
-                <p className="text-sm text-slate-400">No products are below their minimum stock level.</p>
+                <p className="text-[15px] font-bold text-slate-700">
+                  All stock levels are healthy!
+                </p>
+                <p className="text-sm text-slate-400">
+                  No products are below their minimum stock level.
+                </p>
               </div>
             ) : (
               <LowStockProductsTable
