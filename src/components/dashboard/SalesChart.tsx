@@ -148,6 +148,16 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
               activeDot={{ r: 6, strokeWidth: 0, fill: '#ec4899' }}
               animationDuration={1500}
             />
+            <Line 
+              type="monotone" 
+              dataKey="profit" 
+              name="Profit"
+              stroke="#10b981" 
+              strokeWidth={4} 
+              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}
+              animationDuration={1500}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
