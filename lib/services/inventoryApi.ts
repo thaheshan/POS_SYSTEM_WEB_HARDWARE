@@ -15,6 +15,7 @@ export const inventoryApi = baseApi.injectEndpoints({
 
     getInventoryItemByBarcode: build.query<Inventory, string>({
       query: (barcode) => `/inventory?barcode=${barcode}`,
+      providesTags: ['Inventory'],
     }),
 
     getInventoryItemsByCategory: build.query<Inventory[], string>({
