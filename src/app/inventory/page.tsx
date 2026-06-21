@@ -25,10 +25,10 @@ import * as Popover from "@radix-ui/react-popover";
 import { Calendar as CalendarIcon, FileDown } from "lucide-react";
 import InventoryReportView from "@/components/inventory/InventoryReportView";
 import {
-  useGetInventoryQuery,
-  useDeleteInventoryItemMutation,
-  useUpdateInventoryItemMutation,
-} from "@/store/services/inventoryApi";
+  useGetProductsQuery,
+  useDeleteProductMutation,
+  useUpdateProductMutation,
+} from "@/lib/services/productApi";
 import { useGetCategoriesQuery } from "@/store/services/settingsApi";
 import { MOCK_CATEGORIES } from "@/lib/mock-data";
 import type { Product } from "@/types";
@@ -145,9 +145,9 @@ export default function InventoryPage() {
     data: inventoryFromApi = [],
     isLoading: isInventoryLoading,
     isError: isInventoryError,
-  } = useGetInventoryQuery();
-  const [deleteInventoryItem] = useDeleteInventoryItemMutation();
-  const [updateInventoryItem] = useUpdateInventoryItemMutation();
+  } = useGetProductsQuery();
+  const [deleteProduct] = useDeleteProductMutation();
+  const [updateProduct] = useUpdateProductMutation();
 
   const categoryMap = useMemo(() => {
     const map = buildFallbackCategoryMap();
@@ -282,9 +282,9 @@ export default function InventoryPage() {
 
     if (!usingMockData) {
       try {
-        await updateInventoryItem({
-          id: String(selectedItem.id),
-          data: mapInventoryRowToProductPayload(
+        await updateProduct({
+          sku: selectedItem.sku,
+          ...mapInventoryRowToProductPayload(
             selectedItem,
             categoryNameToIdMap,
           ),
@@ -311,7 +311,7 @@ export default function InventoryPage() {
     }
 
     try {
-      await deleteInventoryItem(String(selectedItem.id)).unwrap();
+      await deleteProduct(selectedItem.sku).unwrap();
       setInventoryData((prev) =>
         prev.filter((item) => item.id !== selectedItem.id),
       );

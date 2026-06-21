@@ -67,7 +67,7 @@ export const productApi = baseApi.injectEndpoints({
     updateProduct: build.mutation<Product, { sku: string } & Partial<Product>>({
       query: ({ sku, ...body }) => ({
         url: `/inventory/${sku}`,
-        method: "PUT",
+        method: "PATCH",
         body,
       }),
       transformResponse: (response: ApiResponse<Product> | Product) =>
