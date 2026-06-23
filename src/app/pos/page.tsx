@@ -11,11 +11,13 @@ import Link from 'next/link';
 import PaymentConfirmation from '@/components/pos/PaymentConfirmation';
 import SuccessModal from '@/components/pos/SuccessModal';
 import AddLabourModal from '@/components/sales/AddLabourModal';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import api from '@/api/axiosInstance';
 import AddCategoryModal from '@/components/pos/AddCategoryModal';
 import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
+import { useGetCategoriesQuery } from '@/lib/services/settingsApi';
+import { Category } from '../../../types';
 
 type CartItem = {
   id: string;
@@ -211,22 +213,17 @@ export default function POSPage() {
 
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const categories = Array.from(new Set(['All', ...categoriesList]));
+ 
 
+  const {data: categoriesData, isLoading: isCategoriesLoading} = useGetCategoriesQuery();
+
+  const categories = Array.from(
+    new Set(['All', ...(categoriesData?.map((c) => c.name) || [])])
+  );
+  
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
   }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get('/products/categories');
-      const items = res.data?.data || res.data || [];
-      setCategoriesList(items.map((c: any) => c.name));
-    } catch (err) {
-      console.error('Failed to fetch categories', err);
-    }
-  };
 
   const fetchProducts = async () => {
     try {
@@ -339,7 +336,7 @@ export default function POSPage() {
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [notes, setNotes] = useState('');
   const [heldOrders, setHeldOrders] = useState<CartItem[][]>([]);
-
+  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   // ── Cart helpers
   const addToCartWithQty = (product: Product, qty: number) => {
     if (!product || !product.id) {
@@ -446,8 +443,8 @@ export default function POSPage() {
         onClose={() => setIsCategoryModalOpen(false)}
         onSuccess={() => {
           setIsCategoryModalOpen(false);
-          fetchCategories();
         }}
+        categoryToEdit={categoryToEdit}
       />
       {isCustomerModalOpen && (
         <AddCustomerModal 
@@ -902,6 +899,7 @@ export default function POSPage() {
         )}
 
         <SuccessModal isOpen={showSuccess} total={total} />
+        <Toaster />
       </MainLayout>
     </>
   );

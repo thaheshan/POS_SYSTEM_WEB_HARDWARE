@@ -18,6 +18,7 @@ import {
   History,
   Check,
   Loader2,
+  Tags,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -40,6 +41,9 @@ import {
   clearDraft,
 } from "@/store/slices/settingsDraftSlice";
 import { useUpdateSettingsMutation } from "@/lib/services/settingsApi";
+import CategorySettings from "@/components/settings/CategorySettings";
+import { Toaster } from "sonner";
+import { settingsToast } from "@/components/settings/ui/customToast";
 
 const MENU_ITEMS = [
   { id: "profile", label: "Shop Profile", icon: Store },
@@ -52,6 +56,7 @@ const MENU_ITEMS = [
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "system", label: "System Preferences", icon: Settings },
+  { id: "categories", label: "Product Categories", icon: Tags },
 ];
 
 function SettingsHubContent() {
@@ -90,12 +95,32 @@ function SettingsHubContent() {
   // --- THE GLOBAL SAVE FUNCTION ---
   const handleGlobalSave = async () => {
     try {
-      await updateSettings(draftData).unwrap();
+      const payload = { ...draftData };
+
+      if (payload.vatRate !== undefined) {
+        payload.vatRate = Number(payload.vatRate) / 100;
+      }
+
+      // if (payload.nbtRate !== undefined) {
+      //   payload.nbtRate = Number(payload.nbtRate) / 100;
+      // }
+
+      await updateSettings(payload).unwrap();
       dispatch(clearDraft());
-      alert("Settings saved successfully!");
+
+      settingsToast.success(
+        "Settings Saved",
+        "Your store configuration has been updated successfully."
+      );
     } catch (error) {
       console.error("Failed to save settings:", error);
-      alert("Failed to save changes. Please try again.");
+      
+      const apiError = error as { data?: { message?: string } };
+      
+      settingsToast.error(
+        "Failed to Save",
+        apiError?.data?.message || "An error occurred while saving your changes."
+      );
     }
   };
 
@@ -105,6 +130,8 @@ function SettingsHubContent() {
         return <ShopProfileSettings />;
       case "tax":
         return <TaxSettings />;
+      case "categories":
+        return <CategorySettings />;
       case "billing":
         return <BillingSettings />;
       case "printing":
@@ -251,6 +278,7 @@ export default function SettingsHubPage() {
           <SettingsHubContent />
         </Suspense>
       </div>
+      <Toaster position="top-center" />
     </MainLayout>
   );
 }

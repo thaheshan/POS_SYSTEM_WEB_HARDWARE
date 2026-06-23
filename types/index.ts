@@ -124,7 +124,7 @@ export interface TaxBreakdown {
 export interface Category {
   id: string;
   tenantId?: string;
-  name: string;
+  categoryName: string;
   description?: string;
   isActive: boolean;
 }
