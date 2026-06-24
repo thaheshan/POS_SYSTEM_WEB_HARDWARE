@@ -4,7 +4,7 @@ import { TOKEN_KEY } from "../../lib/store/authSlice";
 const api = axios.create({
   // Use environment API URL when available, otherwise local backend for development.
   baseURL:
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1",
 });
 
 // ── Request interceptor: attach JWT to every API call
