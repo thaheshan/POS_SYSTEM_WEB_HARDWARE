@@ -92,8 +92,11 @@ export function middleware(request: NextRequest) {
 
   // 2. Authenticated users
   const payload = decodeJwtPayload(token);
-  const role = payload?.role?.toLowerCase();
+  const extractedRole = typeof payload?.role === 'string' 
+  ? payload.role 
+  : (payload?.role?.name || '');
 
+  const role = extractedRole.toLowerCase();
   if (!role) {
     const response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));
     response.cookies.delete("pos_token");
