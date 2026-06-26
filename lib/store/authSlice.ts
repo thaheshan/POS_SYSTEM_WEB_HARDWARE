@@ -43,36 +43,68 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as any;
-  const id = candidate.id || candidate.user_id;
+
+  // Accept multiple id shapes
+  const id = candidate.id ?? candidate.user_id ?? candidate.staff_id;
+  // Accept multiple email shapes
+  const email = candidate.email ?? candidate.user_email;
+  // Compose name from available fields
   const name =
-    candidate.name ||
-    (candidate.first_name
-      ? `${candidate.first_name} ${candidate.last_name || ""}`.trim()
-      : null);
+    candidate.name ??
+    candidate.full_name ??
+    [candidate.first_name, candidate.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
 
-  if (!id || !candidate.email || !name || !candidate.role) {
-    return null;
-  }
+  // Role may come uppercase from backend; normalize to lowercase string
+  const rawRole = String(
+    candidate.role ?? candidate.user_role ?? ""
+  ).toLowerCase();
 
-  const role = candidate.role.toLowerCase();
-  if (!["admin", "manager", "cashier", "staff", "owner"].includes(role)) {
+  if (!id || !email || !name || !rawRole) return null;
+
+  // Allow known roles including owner
+  if (
+    !["admin", "manager", "cashier", "staff", "owner", "super_admin"].includes(
+      rawRole
+    )
+  ) {
     return null;
   }
 
   return {
-    id: id as string,
-    email: candidate.email as string,
-    name: name as string,
-    role: role as AuthUser["role"],
-    tenantId: candidate.tenant_id || candidate.tenantId,
-    logoUrl: candidate.logoUrl || candidate.logo_url || null,
+    id: String(id),
+    email: String(email),
+    name: String(name),
+    role: rawRole as AuthUser["role"],
+    tenantId: candidate.tenant_id ?? candidate.tenantId,
+    logoUrl: candidate.logoUrl ?? candidate.logo_url ?? null,
     createdAt:
       typeof candidate.createdAt === "string"
         ? candidate.createdAt
+        : typeof candidate.created_at === "string"
+        ? candidate.created_at
         : new Date().toISOString(),
-    paymentStatus: candidate.paymentStatus,
-    subscriptionPlan: candidate.subscriptionPlan,
-  };
+    paymentStatus: candidate.paymentStatus ?? candidate.payment_status,
+    subscriptionPlan: candidate.subscriptionPlan ?? candidate.subscription_plan,
+  } as AuthUser;
+};
+
+const unwrapLoginPayload = (payload: unknown): any => {
+  if (!payload || typeof payload !== "object") return null;
+
+  const root = payload as any;
+
+  // handles:
+  // { success: true, data: { ... } }
+  // { statusCode: 200, message: "...", data: { access_token, user } }
+  // { access_token, user }
+  let level1 = root.data && typeof root.data === "object" ? root.data : root;
+  let level2 =
+    level1.data && typeof level1.data === "object" ? level1.data : level1;
+
+  return level2;
 };
 
 const getStoredToken = (): string | null => {
@@ -86,7 +118,7 @@ const getStoredToken = (): string | null => {
 
   if (!cookieMatch) return null;
   const cookieToken = decodeCookieToken(
-    cookieMatch.split("=").slice(1).join("="),
+    cookieMatch.split("=").slice(1).join("=")
   ).trim();
 
   if (cookieToken) localStorage.setItem(TOKEN_KEY, cookieToken);
@@ -139,29 +171,32 @@ const initialToken = getStoredToken();
 const initialUser = getStoredUser();
 
 const normalizeLoginResponse = (payload: unknown): LoginResponse | null => {
-  if (!payload || typeof payload !== "object") return null;
-
-  // Handle backend wrapper { data: { access_token, user } }
-  let data: any = payload;
-  if ("data" in data && data.data) {
-    data = data.data;
-  }
+  const data = unwrapLoginPayload(payload);
+  if (!data) return null;
 
   const rawToken =
     typeof data.token === "string"
       ? data.token
       : typeof data.accessToken === "string"
-        ? data.accessToken
-        : typeof data.access_token === "string"
-          ? data.access_token
-          : typeof data.jwt === "string"
-            ? data.jwt
-            : null;
+      ? data.accessToken
+      : typeof data.access_token === "string"
+      ? data.access_token
+      : typeof data.jwt === "string"
+      ? data.jwt
+      : null;
 
-  if (!rawToken) return null;
+  if (!rawToken) {
+    console.warn("[loginThunk] Unexpected login response shape:", payload);
+    return null;
+  }
+
   const token = rawToken.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
-  return { token, user: normalizeAuthUser(data.user) };
+
+  return {
+    token,
+    user: normalizeAuthUser(data.user ?? data.user_info ?? data.profile),
+  };
 };
 
 const toBase64Url = (value: string): string => {
@@ -233,17 +268,15 @@ const MOCK_CREDENTIALS =
 
 const getMockLoginResponse = (
   email: string,
-  password: string,
+  password: string
 ): LoginResponse | null => {
   if (process.env.NODE_ENV !== "development") {
     return null;
   }
 
-  // NOTE: mock credentials are deliberately only available in development
-  // to avoid accidental use of factory accounts in production builds.
   const entry = MOCK_CREDENTIALS.find(
     (c) =>
-      c.email.toLowerCase() === email.toLowerCase() && c.password === password,
+      c.email.toLowerCase() === email.toLowerCase() && c.password === password
   );
   if (!entry) return null;
   return {
@@ -282,37 +315,30 @@ export const loginThunk = createAsyncThunk<
 >("auth/login", async ({ email, password }, { rejectWithValue }) => {
   console.log("[loginThunk] Login attempt with email:", email);
 
-  // Product rule: do not allow login in private/incognito sessions.
   if (isPrivateTab()) {
     console.warn("[loginThunk] Private/incognito tab detected");
     return rejectWithValue("Login not allowed in private/incognito tabs");
   }
 
-  // Check local mock accounts first so login works even without backend.
   const mockLogin = getMockLoginResponse(email, password);
   console.log(
     "[loginThunk] Mock login result:",
-    mockLogin ? "Found" : "Not found",
+    mockLogin ? "Found" : "Not found"
   );
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     console.log(
       "[loginThunk] API Base URL:",
-      baseUrl || "Not configured - using mock",
+      baseUrl || "Not configured - using mock"
     );
 
-    // If no API base URL is configured, rely on mock login.
     if (!baseUrl) {
       if (!mockLogin) {
         console.error("[loginThunk] Invalid credentials - no mock match");
         return rejectWithValue("Invalid credentials");
       }
 
-      console.log(
-        "[loginThunk] Using mock login. Token length:",
-        mockLogin.token.length,
-      );
       persistToken(mockLogin.token);
       persistUser(mockLogin.user);
 
@@ -325,7 +351,7 @@ export const loginThunk = createAsyncThunk<
 
     console.log(
       "[loginThunk] Calling backend API:",
-      normalizedBaseUrl + "/auth/login",
+      normalizedBaseUrl + "/auth/login"
     );
     const response = await fetch(`${normalizedBaseUrl}/auth/login`, {
       method: "POST",
@@ -333,11 +359,9 @@ export const loginThunk = createAsyncThunk<
       body: JSON.stringify({ email, password }),
     });
 
-    // Backend rejected the request; allow mock fallback for development.
     if (!response.ok) {
       console.warn("[loginThunk] Backend returned status:", response.status);
       if (mockLogin) {
-        console.log("[loginThunk] Falling back to mock login");
         persistToken(mockLogin.token);
         persistUser(mockLogin.user);
 
@@ -363,11 +387,10 @@ export const loginThunk = createAsyncThunk<
     const rawData = (await response.json()) as any;
     console.log(
       "[loginThunk] Raw response from backend:",
-      JSON.stringify(rawData).substring(0, 200),
+      JSON.stringify(rawData).substring(0, 200)
     );
 
-    // Directly handle the known backend shape which might be double-wrapped by interceptors:
-    // { success: true, data: { statusCode: 200, data: { access_token, user } } }
+    // Unwrap possible double-wrapped responses
     let actualData = rawData;
     if (
       actualData?.data &&
@@ -395,13 +418,13 @@ export const loginThunk = createAsyncThunk<
       "[loginThunk] Extracted token exists:",
       !!token,
       "| user exists:",
-      !!userPayload,
+      !!userPayload
     );
 
     if (!token) {
       console.error(
         "[loginThunk] Could not extract token from response:",
-        rawData,
+        rawData
       );
       return rejectWithValue("Invalid login response from server");
     }
@@ -413,19 +436,13 @@ export const loginThunk = createAsyncThunk<
       user: normalizedUser,
     };
 
-    console.log(
-      "[loginThunk] Backend login successful. Token length:",
-      data.token.length,
-    );
     persistToken(data.token);
     persistUser(data.user);
 
     return data;
   } catch (error) {
-    // Network/connection failure: still allow mock fallback when available.
     console.error("[loginThunk] Network error:", error);
     if (mockLogin) {
-      console.log("[loginThunk] Network error but mock available, using mock");
       persistToken(mockLogin.token);
       persistUser(mockLogin.user);
 
@@ -433,7 +450,6 @@ export const loginThunk = createAsyncThunk<
     }
 
     const message = error instanceof Error ? error.message : "Login failed";
-    console.error("[loginThunk] Final error:", message);
     return rejectWithValue(message);
   }
 });
@@ -442,7 +458,6 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    // Manual session restore/update helper when payload already has token + user.
     setCredentials: (state, action: PayloadAction<LoginResponse>) => {
       state.token = action.payload.token;
       state.user = action.payload.user;
@@ -457,7 +472,6 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = Boolean(state.token) && Boolean(action.payload);
     },
-    // Complete sign-out and clear persisted token.
     logout: (state) => {
       clearPersistedAuth();
 
@@ -471,35 +485,17 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(loginThunk.pending, (state) => {
-        console.log("[Redux] loginThunk.pending");
         state.status = "loading";
         state.error = null;
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
-        console.log(
-          "[Redux] loginThunk.fulfilled - Setting token and user in Redux state",
-        );
-        console.log(
-          "[Redux] Token length from payload:",
-          action.payload.token.length,
-        );
-        console.log("[Redux] User from payload:", action.payload.user);
-
         state.token = action.payload.token;
         state.user = action.payload.user;
         state.isAuthenticated = true;
         state.status = "succeeded";
         state.error = null;
-
-        console.log(
-          "[Redux] Final auth state - isAuthenticated:",
-          state.isAuthenticated,
-          "tokenLength:",
-          state.token?.length ?? 0,
-        );
       })
       .addCase(loginThunk.rejected, (state, action) => {
-        console.error("[Redux] loginThunk.rejected - Error:", action.payload);
         state.status = "failed";
         state.error = action.payload ?? action.error.message ?? "Login failed";
         state.token = null;
@@ -518,7 +514,6 @@ export const selectIsAuthenticated = (state: RootState): boolean =>
 export const selectUserRole = (state: RootState): AuthUser["role"] | null =>
   state.auth.user?.role ?? null;
 
-// Role guard helper for permission checks in UI/routes.
 export const hasRole =
   (role: AuthUser["role"]) =>
   (state: RootState): boolean =>

@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import axiosInstance from "@/api/axiosInstance";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 // Legacy/simple auth slice kept for reference.
 // Active store wiring currently points to ../../lib/store/authSlice.
@@ -24,6 +25,30 @@ const initialState: AuthState = {
   isLoading: false,
 };
 
+export const loginThunk = createAsyncThunk(
+  'auth/login',
+  async (credentials, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/api/v1/auth/login', credentials);
+      
+      // Unwrap the NestJS response structure (response.data.data)
+      const payload = response.data?.data || response.data;
+
+      if (!payload || !payload.user) {
+        throw new Error("Invalid login response from server");
+      }
+      return payload; 
+
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        return rejectWithValue(error.response.data); 
+      }
+      return rejectWithValue({ message: error.message || "Login failed" });
+    }
+  }
+);
+
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -43,6 +68,29 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loginThunk.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(loginThunk.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.access_token;
+        
+        const backendUser = action.payload.user;
+        state.user = {
+          id: backendUser.user_id || backendUser.id,
+          email: backendUser.email,
+          name: `${backendUser.first_name || ''} ${backendUser.last_name || ''}`.trim() || 'Staff Member',
+          role: backendUser.role,
+        };
+      })
+      .addCase(loginThunk.rejected, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+      });
   },
 });
 

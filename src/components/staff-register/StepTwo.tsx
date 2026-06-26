@@ -3,57 +3,67 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
-  KeyRound,
+  Info,
   Lock,
   Mail,
   Phone,
-  ShieldCheck,
   Store,
   User,
   X,
 } from "lucide-react";
 import React, { useState } from "react";
-import { StaffRegisterData } from "@/types/staff";
 import Link from "next/link";
+import { FieldErrors, UseFormRegister, UseFormWatch } from "react-hook-form";
+import { StaffRegistrationFormValues } from "@/lib/validation/staffRegistration.schema";
+
+// TODO: Replace SHOP_OPTIONS import with Redux shops state (useAppSelector)
+// See: src/utils/StaffRegisterData.ts for details
+import { SHOP_OPTIONS } from "@/utils/StaffRegisterData";
+import { useAppSelector } from "@/store/hooks";
 
 interface StepTwoProps {
-  data: StaffRegisterData;
-  updateFields: (fields: Partial<StaffRegisterData>) => void;
-  onNext: () => void;
+  register: UseFormRegister<StaffRegistrationFormValues>;
+  errors: FieldErrors<StaffRegistrationFormValues>;
+  watch: UseFormWatch<StaffRegistrationFormValues>;
   onBack: () => void;
-  selectedShopId: string; // first 8 chars used for verification
 }
 
-const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) => {
+const StepTwo = ({ register, errors, watch, onBack }: StepTwoProps) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const hasMinLength = (data.password ?? "").length >= 8;
-  const hasUppercase = /[A-Z]/.test(data.password ?? "");
-  const hasLowercase = /[a-z]/.test(data.password ?? "");
-  const hasNumber = /[0-9]/.test(data.password ?? "");
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(data.password ?? "");
-  const isPasswordStrong =
-    hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
-  const passwordsMatch =
-    (data.confirmPassword ?? "").length > 0 &&
-    data.password === data.confirmPassword;
+  const currentPassword = watch("password") || "";
+  const currentConfirm = watch("confirmPassword") || "";
+  const currentTerms = watch("acceptTerms");
+  const currentShopId = watch("shop_id");
+  const selectedShop = SHOP_OPTIONS.find((s) => s.id === currentShopId);
 
-  // Verify the code: must match first 8 characters of the selected shop id
-  const expectedCode = selectedShopId ? selectedShopId.substring(0, 8) : "";
-  const verificationCode = data.shopVerificationCode ?? "";
+  const fullName = watch("full_name");
+  const email = watch("email");
+  const phone = watch("phone");
+  const currentVerificationId = watch("shop_verification_id") || "";
+
+  const expectedCode = (selectedShop?.id ?? "").substring(0, 8);
+  const verificationCode = watch("shop_verification_id") || "";
   const isCodeCorrect =
     expectedCode.length > 0 &&
     verificationCode.toLowerCase() === expectedCode.toLowerCase();
   const isCodeEmpty = verificationCode.length === 0;
   const isCodeWrong = !isCodeEmpty && !isCodeCorrect;
 
-  const canGoNext =
-    isCodeCorrect &&
-    isPasswordStrong &&
-    passwordsMatch &&
-    agreedToTerms;
+  const hasMinLength = currentPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(currentPassword);
+  const hasLowercase = /[a-z]/.test(currentPassword);
+  const hasNumber = /[0-9]/.test(currentPassword);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(currentPassword);
+  const isPasswordStrong =
+    hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+  const passwordsMatch =
+    (currentConfirm ?? "").length > 0 && currentPassword === currentConfirm;
+
+  const canSubmit = Boolean(
+    currentVerificationId && isPasswordStrong && passwordsMatch && currentTerms
+  );
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -66,12 +76,12 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
           Join Your Shop
         </h1>
         <p className="text-slate-500 mt-2 text-sm lg:text-base">
-          Enter your shop's verification code to confirm access
+          Tell us about yourself and request to join a shop
         </p>
       </div>
 
       <div className="w-full space-y-6">
-        {/* Personal Information - Read-only summary */}
+        {/* Personal Information */}
         <section className="space-y-4 border-b-2 border-slate-200 pb-6">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Personal Information
@@ -85,7 +95,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.fullName}
+                  value={fullName || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -98,7 +108,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.email}
+                  value={email || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -111,7 +121,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
                 <input
                   readOnly
-                  value={data.phoneNumber}
+                  value={phone || ""}
                   className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed"
                 />
               </div>
@@ -119,42 +129,44 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
           </div>
         </section>
 
-        {/* Shop Verification Code */}
+        {/* Shop Details */}
         <section className="space-y-4 border-b-2 border-slate-200 pb-6">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-            Shop Verification
+            Shop Details
           </h3>
-
-          {/* Info banner */}
-          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-            <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <p className="text-blue-800 text-sm leading-relaxed">
-              Ask your <span className="font-semibold">shop owner</span> for the{" "}
-              <span className="font-semibold">Shop Verification Code</span>. They
-              can find it displayed at the top of their dashboard.
+          <div className="flex items-center justify-start p-4 bg-[#FEFCE8] border border-[#FEF08A] rounded-lg">
+            <Info className="md:w-[16px] md:h-[16px] text-[#CA8A04] mr-2 shrink-0" />
+            <p className="text-[#713F12] text-[12px]">
+              Ask your shop owner for the Shop Private ID
             </p>
           </div>
-
-          <div>
+          <div className="opacity-60">
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Shop Verification Code <span className="text-red-500">*</span>
+              Selected Shop
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+              <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+              <input
+                readOnly
+                value={selectedShop?.name || "Unknown Shop"}
+                className="w-full pl-12 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-not-allowed text-slate-600 font-medium"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Shop Private ID <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
               <input
                 type="text"
-                value={data.shopVerificationCode ?? ""}
-                onChange={(e) =>
-                  updateFields({ shopVerificationCode: e.target.value })
-                }
-                placeholder="e.g. 30d5c1b6"
-                maxLength={8}
-                className={`w-full pl-12 pr-12 py-3 border rounded-xl focus:outline-none transition-all font-mono tracking-widest text-base ${
-                  isCodeWrong
-                    ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-100"
-                    : isCodeCorrect
-                    ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
-                    : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                {...register("shop_verification_id")}
+                placeholder="Ask owner for the 36-character Shop ID"
+                className={`w-full pl-12 py-3 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-700 ${
+                  errors.shop_verification_id
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-slate-200 focus:ring-blue-500 focus:border-blue-500"
                 }`}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -164,19 +176,24 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
                 {isCodeWrong && <X className="size-5 text-red-500" />}
               </div>
             </div>
-            {isCodeWrong && (
-              <p className="text-xs text-red-500 mt-1.5 font-medium">
+
+            {errors.shop_verification_id ? (
+              <p className="text-red-500 text-xs mt-1 font-medium">
+                {errors.shop_verification_id.message}
+              </p>
+            ) : isCodeWrong ? (
+              <p className="text-red-500 text-xs mt-1 font-medium">
                 Incorrect code. Please check with your shop owner.
               </p>
-            )}
-            {isCodeCorrect && (
-              <p className="text-xs text-green-600 mt-1.5 font-medium">
+            ) : isCodeCorrect ? (
+              <p className="text-green-600 text-xs mt-1 font-medium">
                 ✓ Shop verified successfully!
               </p>
+            ) : (
+              <p className="text-slate-500 text-xs mt-1">
+                Unique identifier provided by your shop owner
+              </p>
             )}
-            <p className="text-slate-400 text-xs mt-1">
-              8-character code shown on the owner's dashboard header
-            </p>
           </div>
         </section>
       </div>
@@ -196,8 +213,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors size-5" />
             <input
               type={showPass ? "text" : "password"}
-              value={data.password}
-              onChange={(e) => updateFields({ password: e.target.value })}
+              {...register("password", { required: true })}
               className="w-full pl-12 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-700 font-medium"
               placeholder="Create a strong password"
             />
@@ -221,9 +237,13 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
             ].map((rule) => (
               <li key={rule.label} className="flex items-center gap-2 text-sm">
                 <CheckCircle
-                  className={`size-4 ${rule.met ? "text-green-500" : "text-slate-300"}`}
+                  className={`size-4 ${
+                    rule.met ? "text-green-500" : "text-slate-300"
+                  }`}
                 />
-                <span className={rule.met ? "text-slate-700" : "text-slate-400"}>
+                <span
+                  className={rule.met ? "text-slate-700" : "text-slate-400"}
+                >
                   {rule.label}
                 </span>
               </li>
@@ -239,18 +259,17 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
           <div className="relative group">
             <Lock
               className={`absolute left-4 top-1/2 -translate-y-1/2 size-5 transition-colors ${
-                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
+                errors.confirmPassword
                   ? "text-red-500"
                   : "text-slate-400 group-focus-within:text-blue-600"
               }`}
             />
             <input
               type={showConfirm ? "text" : "password"}
-              value={data.confirmPassword}
-              onChange={(e) => updateFields({ confirmPassword: e.target.value })}
+              {...register("confirmPassword", { required: true })}
               placeholder="Re-enter your password"
               className={`w-full pl-12 pr-12 py-3 bg-white border rounded-xl outline-none transition-all ${
-                (data.confirmPassword ?? "").length > 0 && !passwordsMatch
+                errors.confirmPassword
                   ? "border-red-500 focus:ring-2 focus:ring-red-500/10"
                   : "border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
               }`}
@@ -263,9 +282,9 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
               {showConfirm ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
-          {(data.confirmPassword ?? "").length > 0 && !passwordsMatch && (
+          {errors.confirmPassword && (
             <p className="text-xs text-red-500 mt-1 font-medium">
-              Passwords do not match
+              {errors.confirmPassword.message}
             </p>
           )}
         </div>
@@ -277,8 +296,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
           <input
             type="checkbox"
             id="terms"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            {...register("acceptTerms", { required: true })}
             className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
           />
           <label
@@ -305,18 +323,34 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
         </div>
       </section>
 
+      {/* SERVER ERROR DISPLAY BLOCK */}
+      {errors.root?.serverError && (
+        <div className="w-full mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <div className="p-1 bg-red-100 rounded-full mt-0.5">
+            <Info className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-red-800">
+              Registration Failed
+            </h4>
+            <p className="text-xs text-red-600 mt-0.5 leading-relaxed">
+              {errors.root.serverError.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Next Button */}
       <button
-        type="button"
-        onClick={onNext}
-        disabled={!canGoNext}
+        type="submit"
+        disabled={!canSubmit}
         className={`w-full mt-5 py-4 rounded-xl font-bold transition-all duration-200 ${
-          canGoNext
+          canSubmit
             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 active:scale-[0.98]"
             : "bg-slate-100 text-slate-400 cursor-not-allowed"
         }`}
       >
-        Create Account
+        Next
       </button>
 
       {/* Sign In Link */}
@@ -339,4 +373,4 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
   );
 };
 
-export default StepTwo;
+export default StepTwo;
