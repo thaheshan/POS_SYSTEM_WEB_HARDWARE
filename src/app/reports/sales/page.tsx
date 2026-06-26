@@ -32,7 +32,7 @@ export default function SalesReportsPage() {
   };
 
   const handleExportPDF = () => {
-    window.print();
+    window.open('/reports/preview/sales', '_blank');
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import PrintableReport from "@/components/reports/PrintableReport";
 
@@ -30,7 +30,7 @@ interface ReportPageProps {
   };
 }
 
-export default function DynamicReportPage({ params }: ReportPageProps) {
+function ReportPageContent({ params }: ReportPageProps) {
   const { type } = params;
   const searchParams = useSearchParams();
 
@@ -460,5 +460,22 @@ export default function DynamicReportPage({ params }: ReportPageProps) {
       {type === "customer" && <CustomerReportTable data={reportData} />}
       {type === "staff" && <StaffReportTable data={reportData} />}
     </PrintableReport>
+  );
+}
+
+export default function DynamicReportPage(props: ReportPageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-sans">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm font-bold">Loading Report Viewer...</p>
+          </div>
+        </div>
+      }
+    >
+      <ReportPageContent {...props} />
+    </Suspense>
   );
 }

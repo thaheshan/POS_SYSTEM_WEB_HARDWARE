@@ -16,7 +16,7 @@ export default function ReportFooter({
   isConfidential = false,
 }: ReportFooterProps) {
   return (
-    <div className="w-full mt-auto pt-4 border-t border-slate-200 flex justify-between items-end text-slate-500 text-[10px] break-inside-avoid">
+    <div className="w-full mt-auto pt-4 border-t border-slate-200 flex justify-between items-end text-slate-500 text-[10px] break-inside-avoid print:hidden">
       {/* Left: System Name & Optional Confidentiality */}
       <div className="flex flex-col items-start">
         <span className="font-medium tracking-wide">
