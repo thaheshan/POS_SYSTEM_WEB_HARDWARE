@@ -270,6 +270,7 @@ export default function POSPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -490,6 +491,7 @@ export default function POSPage() {
     });
     setActiveTab("items");
     setPendingProduct(null);
+    setIsMobileCartOpen(true);
     toast.success(`${qty}x ${product.name} added to cart!`);
   };
 
@@ -630,8 +632,8 @@ export default function POSPage() {
       )}
 
       <MainLayout>
-        {viewState === "confirm" ? (
-          <div className="flex h-[calc(100vh-96px)] -m-10 overflow-hidden bg-[#f8fafc] relative z-50">
+        {viewState === 'confirm' ? (
+          <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative z-50">
             <PaymentConfirmation
               onBack={() => setViewState("pos")}
               onProcess={() => {
@@ -663,7 +665,8 @@ export default function POSPage() {
           </div>
         ) : (
           /* ── POS Main Layout ── */
-          <div className="flex h-[calc(100vh-96px)] -m-10 overflow-hidden bg-[#f8fafc]">
+          <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative">
+
             {/* ── LEFT: PRODUCT GRID ── */}
             <div className="flex-1 flex flex-col bg-[#f8fafc] border-r border-gray-200 overflow-hidden">
               {/* Search + Switch */}
@@ -814,14 +817,38 @@ export default function POSPage() {
                   </div>
                 )}
               </div>
+              {/* Floating mobile cart trigger */}
+              {cart.length > 0 && (
+                <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm">
+                  <button
+                    onClick={() => setIsMobileCartOpen(true)}
+                    className="w-full bg-[#059669] hover:bg-emerald-700 text-white py-4 px-6 rounded-2xl flex items-center justify-between shadow-2xl shadow-emerald-500/40 font-black text-[14px] transition-all active:scale-[0.98] border border-emerald-500/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5" />
+                      <span>VIEW CART ({cart.length})</span>
+                    </div>
+                    <span>Rs. {total.toLocaleString()}</span>
+                  </button>
+                </div>
+              )}
             </div>
             {/* END LEFT PANEL */}
 
+            {/* Drawer Overlay */}
+            {cart.length > 0 && isMobileCartOpen && (
+              <div
+                className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+                onClick={() => setIsMobileCartOpen(false)}
+              />
+            )}
+
             {/* ── RIGHT: TABBED CHECKOUT SIDEBAR ── */}
             {cart.length > 0 && (
-              <div className="w-[350px] md:w-[400px] lg:w-[450px] xl:w-[500px] shrink-0 bg-white flex flex-col shadow-2xl z-20 border-l border-gray-200 h-full overflow-hidden">
+              <div className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+
                 {/* Tab Switcher */}
-                <div className="flex bg-gray-50 p-1.5 m-3 rounded-2xl border border-gray-100 gap-1 shrink-0">
+                <div className="flex bg-gray-50 p-1.5 m-3 rounded-2xl border border-gray-100 gap-1 shrink-0 items-center">
                   <button
                     onClick={() => setActiveTab("items")}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[12px] font-black tracking-tight transition-all duration-200 ${
@@ -843,6 +870,12 @@ export default function POSPage() {
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     CHECKOUT
+                  </button>
+                  <button
+                    onClick={() => setIsMobileCartOpen(false)}
+                    className="lg:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl ml-1 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 

@@ -28,8 +28,8 @@ export default function SplashScreen() {
       />
 
       <section className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 text-center text-white">
-        <div className="mb-8 flex h-36 w-36 items-center justify-center rounded-full bg-white shadow-[0_24px_65px_rgba(0,0,0,0.28)]">
-          <Store className="h-12 w-12 text-blue-600" strokeWidth={2.5} />
+        <div className="mb-2 flex h-52 w-52 items-center justify-center">
+          <img src="/images/futura_hardware_logo_white.png" alt="Futura Hardware Logo" className="h-52 w-52 object-contain" />
         </div>
 
         <h1 className="text-5xl font-extrabold tracking-[0.08em] sm:text-6xl">

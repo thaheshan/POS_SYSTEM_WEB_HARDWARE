@@ -239,28 +239,28 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-5xl flex flex-col max-h-[94vh] overflow-hidden">
+      <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-5xl flex flex-col h-full max-h-[94vh] md:h-auto overflow-hidden">
 
         {/* ── TOP BAR ── */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+        <div className="flex items-center justify-between px-4 sm:px-7 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
           <div>
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+            <p className="hidden sm:block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
               Products &rsaquo; All Products &rsaquo; Add Product
             </p>
-            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Add New Product</h2>
-            <p className="text-[12px] text-gray-400 font-medium">Add a new product to your inventory</p>
+            <h2 className="text-[18px] sm:text-[20px] font-black text-gray-900 tracking-tight">Add New Product</h2>
+            <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium">Add a new product to your inventory</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={onClose}
-              className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all">
+              className="hidden md:block py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all">
               Cancel
             </button>
             <button onClick={() => handleSubmit(true)} disabled={saving}
-              className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center gap-2">
+              className="hidden md:flex py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all items-center gap-2">
               <RefreshCw className="w-3.5 h-3.5" /> Save as Draft
             </button>
             <button onClick={() => handleSubmit(false)} disabled={saving}
-              className="py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95">
+              className="hidden md:flex py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 items-center gap-2 active:scale-95">
               {saving ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving…</> : <><Check className="w-3.5 h-3.5" /> Save &amp; Publish</>}
             </button>
             <button onClick={onClose}
@@ -272,13 +272,13 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
         {/* ── BODY ── */}
         <div className="flex-1 overflow-y-auto">
-          <div className="flex gap-0">
+          <div className="flex flex-col lg:flex-row gap-0">
 
             {/* ──── LEFT COLUMN ──── */}
-            <div className="flex-1 p-7 space-y-6 border-r border-gray-100 min-w-0">
+            <div className="flex-1 p-4 sm:p-7 space-y-6 lg:border-r border-gray-100 min-w-0">
 
               {/* 1. Basic Information */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
                 <SectionHeader icon={Package} label="Basic Information" sub="Essential product details" />
 
                 <div className="space-y-4">
@@ -306,7 +306,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
               </div>
 
               {/* 2. Product Media */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
                 <SectionHeader icon={ImageIcon} label="Product Media" sub="Photos and images" color="blue" />
 
                 <p className="text-[12px] font-bold text-gray-600 mb-3">Product Images</p>
@@ -315,7 +315,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
                   onClick={() => setShowImageOptions(true)}
-                  className={`relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-gray-50 hover:border-emerald-300 hover:bg-emerald-50/40'}`}>
+                  className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-gray-50 hover:border-emerald-300 hover:bg-emerald-50/40'}`}>
                   {previewUrl ? (
                     <div className="relative group">
                       <img src={previewUrl} alt="Preview" className="max-h-40 rounded-xl object-contain" />
@@ -355,10 +355,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
               </div>
 
               {/* 3. Pricing */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
                 <SectionHeader icon={DollarSign} label="Pricing" sub="Product pricing and cost" color="amber" />
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <Field label="Cost Price" required>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">Rs.</span>
@@ -379,7 +379,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   </Field>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <Field label="Compare at Price (Optional)">
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">Rs.</span>
@@ -421,10 +421,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
               </div>
 
               {/* 4. Inventory & Stock */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
                 <SectionHeader icon={BarChart2} label="Inventory & Stock" sub="Stock management settings" color="purple" />
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <Field label="SKU (Stock Keeping Unit)" required>
                     <input name="sku" value={form.sku} onChange={handleChange}
                       placeholder="Unique product identifier"
@@ -452,7 +452,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
                 {form.trackInventory && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="Available Quantity">
                         <input name="initialStock" type="number" value={form.initialStock} onChange={handleChange}
                           className={inputCls} min="0" />
@@ -496,7 +496,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             </div>
 
             {/* ──── RIGHT COLUMN ──── */}
-            <div className="w-[280px] flex-shrink-0 p-6 space-y-5 bg-gray-50/50">
+            <div className="w-full lg:w-[280px] flex-shrink-0 p-4 sm:p-6 space-y-5 bg-gray-50/50">
 
               {/* Product Type */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
@@ -609,22 +609,22 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         </div>
 
         {/* ── BOTTOM ACTION BAR ── */}
-        <div className="border-t border-gray-100 px-7 py-4 flex items-center justify-between bg-white flex-shrink-0">
+        <div className="border-t border-gray-100 px-4 sm:px-7 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white flex-shrink-0">
           <div className="flex items-center gap-2 text-[12px] font-bold text-gray-400">
             <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
             Last saved: just now
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
             <button onClick={onClose}
-              className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all">
+              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all">
               Cancel
             </button>
             <button onClick={() => handleSubmit(true)} disabled={saving}
-              className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center gap-2">
+              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center justify-center gap-2">
               <RefreshCw className="w-3.5 h-3.5" /> Save as Draft
             </button>
             <button onClick={() => handleSubmit(false)} disabled={saving}
-              className="py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95">
+              className="w-full sm:w-auto py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 active:scale-95">
               {saving ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving…</> : <><Check className="w-3.5 h-3.5" /> Save &amp; Publish</>}
             </button>
           </div>

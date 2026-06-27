@@ -22,16 +22,49 @@ export function Header() {
         sectionId: "testimonials",
       },
       { label: "FAQ", href: "#faq", sectionId: "faq" },
-      { label: "CTA", href: "#cta", sectionId: "cta" },
+      { label: "Contact", href: "#contact", sectionId: "contact" },
     ],
     [],
   );
 
   useEffect(() => {
     const sectionIds = navLinks.map((link) => link.sectionId);
-    const sections = sectionIds
-      .map((id) => document.getElementById(id))
-      .filter((section): section is HTMLElement => Boolean(section));
+
+    const getActiveSectionId = () => {
+      const headerOffset = 96;
+      const probePoint = window.scrollY + headerOffset;
+
+      const sections = sectionIds
+        .map((id) => document.getElementById(id))
+        .filter((section): section is HTMLElement => Boolean(section))
+        .sort(
+          (first, second) =>
+            first.getBoundingClientRect().top -
+            second.getBoundingClientRect().top,
+        );
+
+      let currentSectionId = sectionIds[0];
+
+      for (const section of sections) {
+        const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+        if (probePoint >= sectionTop) {
+          currentSectionId = section.id;
+        } else {
+          break;
+        }
+      }
+
+      return currentSectionId;
+    };
+
+    let rafId = 0;
+
+    const updateActiveSection = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(() => {
+        setActiveSection(getActiveSectionId());
+      });
+    };
 
     const updateFromHash = () => {
       const hash = window.location.hash.replace("#", "");
@@ -42,30 +75,16 @@ export function Header() {
 
     updateFromHash();
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-
-        if (visibleEntries.length > 0) {
-          setActiveSection(visibleEntries[0].target.id);
-        }
-      },
-      {
-        root: null,
-        rootMargin: "-35% 0px -55% 0px",
-        threshold: [0.15, 0.3, 0.6],
-      },
-    );
-
-    sections.forEach((section) => observer.observe(section));
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
     window.addEventListener("hashchange", updateFromHash);
+    window.addEventListener("resize", updateActiveSection);
 
     return () => {
-      sections.forEach((section) => observer.unobserve(section));
-      observer.disconnect();
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", updateActiveSection);
       window.removeEventListener("hashchange", updateFromHash);
+      window.removeEventListener("resize", updateActiveSection);
     };
   }, [navLinks]);
 
@@ -74,8 +93,8 @@ export function Header() {
       <nav className="mx-auto flex w-full max-w-[1240px] items-center justify-between px-4 py-2.5 lg:px-6">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#025d47]">
-            <Store size={20} className="text-white" strokeWidth={2.5} />
+          <div className="flex items-center justify-center">
+            <img src="/images/futura_hardware_logo_green.png" alt="Futura Hardware Logo" className="h-12 sm:h-14 object-contain" />
           </div>
           <div className="leading-tight">
             <p className="text-[20px] font-extrabold uppercase tracking-[-0.02em] text-[#025d47]">
@@ -88,7 +107,7 @@ export function Header() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden xl:flex items-center gap-4 lg:gap-6">
           {navLinks.map((link) => (
             <a
               key={link.label}
@@ -109,7 +128,7 @@ export function Header() {
         </div>
 
         {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-2.5">
+        <div className="hidden xl:flex items-center gap-2.5">
           <Button
             asChild
             variant="outline"
@@ -127,7 +146,7 @@ export function Header() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden rounded-md p-2 text-[#374151]"
+          className="xl:hidden rounded-md p-2 text-[#374151]"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
         >
@@ -137,7 +156,7 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="xl:hidden border-t border-gray-200 bg-white">
           <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-3 px-4 py-4 lg:px-6">
             {navLinks.map((link) => (
               <a
