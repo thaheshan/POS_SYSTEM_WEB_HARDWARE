@@ -1,10 +1,6 @@
 import { Bell, BellRing, Mail, Smartphone } from 'lucide-react';
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
-
-export default function NotificationSettings({ setHasUnsavedChanges }: Props) {
+export default function NotificationSettings() {
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#fff7ed]">
@@ -36,7 +32,7 @@ export default function NotificationSettings({ setHasUnsavedChanges }: Props) {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500"><Mail className="w-3.5 h-3.5" /> Email</span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+                <input type="checkbox" defaultChecked className="sr-only peer" />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
               </label>
             </div>
@@ -57,7 +53,7 @@ export default function NotificationSettings({ setHasUnsavedChanges }: Props) {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500"><Mail className="w-3.5 h-3.5" /> Email</span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+                <input type="checkbox" defaultChecked className="sr-only peer" />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
               </label>
             </div>
@@ -74,7 +70,7 @@ export default function NotificationSettings({ setHasUnsavedChanges }: Props) {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500"><Smartphone className="w-3.5 h-3.5" /> App Push</span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+                <input type="checkbox" className="sr-only peer" />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
               </label>
             </div>

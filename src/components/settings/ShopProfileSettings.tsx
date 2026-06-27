@@ -1,19 +1,67 @@
-import { Store, Edit2, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { useState, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { shopApi } from '@/api/shop';
-import { useDispatch } from 'react-redux';
-import { setUser } from '../../../lib/store/authSlice';
+"use client";
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
+import { Store, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { shopApi } from "@/api/shop";
 
-export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../../../lib/store/authSlice";
+import { useGetSettingsQuery } from "@/lib/services/settingsApi";
+import {
+  selectSettingsDraft,
+  updateDraftField,
+} from "@/store/slices/settingsDraftSlice";
+import { StoreSettings } from "../../../types";
+
+export default function ShopProfileSettings() {
   const { user, token } = useAuth();
   const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // We only FETCH here. Updating is handled globally by page.tsx!
+  const { data: settings, isLoading: isFetching } = useGetSettingsQuery();
+  const draft = useSelector(selectSettingsDraft);
+
+  const displayData = {
+    shopName:
+      draft.shopName !== undefined ? draft.shopName : settings?.shopName || "",
+    businessRegistration:
+      draft.businessRegistration !== undefined
+        ? draft.businessRegistration
+        : settings?.businessRegistration || "",
+    businessPhone:
+      draft.businessPhone !== undefined
+        ? draft.businessPhone
+        : settings?.businessPhone || "",
+    businessEmail:
+      draft.businessEmail !== undefined
+        ? draft.businessEmail
+        : settings?.businessEmail || "",
+    shopAddress:
+      draft.shopAddress !== undefined
+        ? draft.shopAddress
+        : settings?.shopAddress || "",
+    city: draft.city !== undefined ? draft.city : settings?.city || "",
+    district:
+      draft.district !== undefined ? draft.district : settings?.district || "",
+    province:
+      draft.province !== undefined ? draft.province : settings?.province || "",
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    // Dispatch to Redux so the Global Banner knows to pop up!
+    dispatch(
+      updateDraftField({
+        field: name as keyof StoreSettings,
+        value,
+      })
+    );
+  };
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -31,12 +79,11 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
     setIsUploading(true);
     try {
       const response = await shopApi.uploadLogo(file, token);
-      
-      // Update local storage and Redux user state
+
       const updatedUser = { ...user, logoUrl: response.logo_url };
       dispatch(setUser(updatedUser));
       localStorage.setItem("user", JSON.stringify(updatedUser));
-      
+
       alert("Shop logo uploaded successfully!");
     } catch (error: any) {
       alert(error.message || "Failed to upload logo");
@@ -48,24 +95,31 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
     }
   };
 
+  if (isFetching) {
+    return (
+      <div className="flex items-center justify-center p-12 bg-white rounded-[24px] shadow-sm border border-gray-100">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
-      {/* Card Header */}
+      {/* --- HEADER (CLEANED UP - NO BUTTON) --- */}
       <div className="p-6 border-b border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-blue-50 rounded-[12px] flex items-center justify-center border border-blue-100">
             <Store className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-[18px] font-black tracking-tight text-gray-900">Shop Profile</h2>
+            <h2 className="text-[18px] font-black tracking-tight text-gray-900">
+              Shop Profile
+            </h2>
             <p className="text-[12px] font-bold text-gray-400 mt-0.5">
               Update your shop information, branding, and business details
             </p>
           </div>
         </div>
-        <button className="flex items-center gap-2 border border-gray-200 px-4 py-2 rounded-[10px] text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-          <Edit2 className="w-3.5 h-3.5" /> Edit Profile
-        </button>
       </div>
 
       <div className="p-8">
@@ -73,7 +127,11 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
         <div className="bg-gray-50 rounded-[20px] p-6 mb-8 border border-gray-100 flex items-center gap-6">
           <div className="w-24 h-24 bg-white border border-gray-200 rounded-[16px] overflow-hidden flex items-center justify-center shadow-sm shrink-0">
             {user?.logoUrl ? (
-              <img src={user.logoUrl} alt="Shop Logo" className="w-full h-full object-cover" />
+              <img
+                src={user.logoUrl}
+                alt="Shop Logo"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <ImageIcon className="w-8 h-8 text-gray-300" />
             )}
@@ -84,20 +142,22 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
               Recommended: 200x200px PNG or JPG, max 2MB
             </p>
             <div className="flex gap-3">
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/png, image/jpeg, image/jpg" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleFileChange}
               />
-              <button 
+              <button
                 onClick={handleUploadClick}
                 disabled={isUploading}
                 className="bg-[#1e40af] text-white px-4 py-2 rounded-lg text-[12px] font-bold transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {isUploading ? 'Uploading...' : 'Upload New Logo'}
+                {isUploading && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                )}
+                {isUploading ? "Uploading..." : "Upload New Logo"}
               </button>
             </div>
           </div>
@@ -111,8 +171,9 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
             </label>
             <input
               type="text"
-              defaultValue="ABC Hardware Store"
-              onChange={() => setHasUnsavedChanges(true)}
+              name="shopName"
+              value={displayData.shopName}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             />
           </div>
@@ -122,8 +183,9 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
             </label>
             <input
               type="text"
-              defaultValue="BR-2024-001234"
-              onChange={() => setHasUnsavedChanges(true)}
+              name="businessRegistration"
+              value={displayData.businessRegistration}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             />
           </div>
@@ -133,8 +195,9 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
             </label>
             <input
               type="text"
-              defaultValue="+94 11 234 5678"
-              onChange={() => setHasUnsavedChanges(true)}
+              name="businessPhone"
+              value={displayData.businessPhone}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             />
           </div>
@@ -144,8 +207,9 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
             </label>
             <input
               type="email"
-              defaultValue="info@abchardware.lk"
-              onChange={() => setHasUnsavedChanges(true)}
+              name="businessEmail"
+              value={displayData.businessEmail}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             />
           </div>
@@ -157,8 +221,9 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
           </label>
           <input
             type="text"
-            defaultValue="123 Galle Road, Dehiwala"
-            onChange={() => setHasUnsavedChanges(true)}
+            name="shopAddress"
+            value={displayData.shopAddress}
+            onChange={handleChange}
             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
           />
         </div>
@@ -167,28 +232,44 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
           <div className="space-y-2">
             <label className="text-[12px] font-black text-gray-700">City</label>
             <select
-              onChange={() => setHasUnsavedChanges(true)}
+              name="city"
+              value={displayData.city}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             >
-              <option>Dehiwala</option>
+              <option value="">Select City</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Colombo">Colombo</option>
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[12px] font-black text-gray-700">District</label>
+            <label className="text-[12px] font-black text-gray-700">
+              District
+            </label>
             <select
-              onChange={() => setHasUnsavedChanges(true)}
+              name="district"
+              value={displayData.district}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             >
-              <option>Colombo</option>
+              <option value="">Select District</option>
+              <option value="Colombo">Colombo</option>
+              <option value="Gampaha">Gampaha</option>
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[12px] font-black text-gray-700">Province</label>
+            <label className="text-[12px] font-black text-gray-700">
+              Province
+            </label>
             <select
-              onChange={() => setHasUnsavedChanges(true)}
+              name="province"
+              value={displayData.province}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-bold outline-none focus:border-blue-500 transition-colors"
             >
-              <option>Western</option>
+              <option value="">Select Province</option>
+              <option value="Western">Western</option>
+              <option value="Southern">Southern</option>
             </select>
           </div>
         </div>

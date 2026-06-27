@@ -14,6 +14,7 @@ import ordersReducer from "./slices/ordersSlice";
 import staffReducer from "./slices/staffSlice";
 import salesReducer from "./slices/salesSlice";
 import forgotPasswordReducer from "./slices/forgotPasswordSlice";
+import settingsDraftReducer from "./slices/settingsDraftSlice";
 import { baseApi } from './baseApi';
 
 export const store = configureStore({
@@ -29,6 +30,7 @@ export const store = configureStore({
     staff: staffReducer,
     sales: salesReducer,
     forgotPassword: forgotPasswordReducer,
+    settingsDraft: settingsDraftReducer,
   },
   middleware: (getDefault) => getDefault().concat(baseApi.middleware),
 });

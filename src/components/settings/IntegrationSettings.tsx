@@ -1,10 +1,6 @@
 import { Blocks, Link2, Zap } from 'lucide-react';
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
-
-export default function IntegrationSettings({ setHasUnsavedChanges }: Props) {
+export default function IntegrationSettings() {
   const integrations = [
     { name: 'WhatsApp Business', desc: 'Send automated receipts and delivery updates via WhatsApp.', status: 'Connected', icon: 'WA', color: 'bg-green-500' },
     { name: 'Xero Accounting', desc: 'Sync daily sales, invoices, and expenses automatically.', status: 'Not Connected', icon: 'XO', color: 'bg-blue-400' },
