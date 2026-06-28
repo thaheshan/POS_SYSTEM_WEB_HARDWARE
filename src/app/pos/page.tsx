@@ -502,7 +502,6 @@ export default function POSPage() {
               change={Math.max(0, Number(amountPaid) - total)}
               subtotal={subtotal}
               discount={discountAmount}
-              tax={tax}
               total={total}
               notes={notes}
             />

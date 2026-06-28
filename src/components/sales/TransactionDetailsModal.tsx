@@ -24,7 +24,6 @@ function downloadInvoicePDF({
   items: { productName: string; sku: string; qty: number; unitPrice: number; total: number }[];
   subtotal: number;
   discount: number;
-  tax: number;
   totalAmount: number;
 }) {
   const itemRows = items.map((item, i) => `
@@ -457,8 +456,7 @@ export default function TransactionDetailsModal({
 
   const subtotal    = viewItems.reduce((s, it) => s + it.total, 0) || Number(data?.subtotal ?? data?.totalAmount ?? 0);
   const discount    = Number(data?.discount ?? 0);
-  const tax         = Number(data?.tax ?? 0);
-  const totalAmount = Number(data?.totalAmount ?? data?.amount ?? (subtotal - discount + tax));
+  const totalAmount = Number(data?.totalAmount ?? data?.amount ?? (subtotal - discount));
 
   const payStatus = data?.paymentStatus || data?.status || 'Completed';
   const customer  = data?.customerName  || data?.customer?.name   || 'Walk-in';
@@ -510,7 +508,7 @@ export default function TransactionDetailsModal({
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, tax, totalAmount })}
+                    onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, totalAmount })}
                     title="Download PDF"
                     className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
                   >
@@ -645,12 +643,6 @@ export default function TransactionDetailsModal({
                         <div className="flex justify-between text-[12px] font-bold text-red-500">
                           <span className="uppercase tracking-widest text-[9px]">Discount</span>
                           <span className="font-mono text-[14px]">−Rs. {discount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {tax > 0 && (
-                        <div className="flex justify-between text-[12px] font-bold text-emerald-500">
-                          <span className="uppercase tracking-widest text-[9px]">Tax</span>
-                          <span className="font-mono text-[14px]">+Rs. {tax.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="border-t border-gray-100 my-1" />
@@ -820,13 +812,13 @@ export default function TransactionDetailsModal({
         {activeTab !== 'edit' && !loading && (
           <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-100 px-8 py-4 flex items-center justify-end gap-3 shrink-0">
             <button
-              onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, tax, totalAmount })}
+              onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, totalAmount })}
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[13px] font-bold text-blue-600 hover:bg-blue-50 transition"
             >
               <Download className="w-4 h-4" /> Download PDF
             </button>
             <button
-              onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, tax, totalAmount })}
+              onClick={() => downloadInvoicePDF({ invoiceNo: invNum, dateStr: formattedDate, timeStr: formattedTime, customer, phone, cashier, txnType, items: viewItems, subtotal, discount, totalAmount })}
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[13px] font-bold text-blue-600 hover:bg-blue-50 transition"
             >
               <Printer className="w-4 h-4" /> Print
