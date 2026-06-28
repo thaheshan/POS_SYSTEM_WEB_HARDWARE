@@ -9,7 +9,12 @@ import api from '@/api/axiosInstance';
 import ImageOptionsModal from './ImageOptionsModal';
 import CameraCaptureModal from './CameraCaptureModal';
 
-const generateNextSku = (products: any[]): string => {
+interface Product {
+  sku?: string;
+  [key: string]: any;
+}
+
+const generateNextSku = (products: Product[]): string => {
   const skuPattern = /^SKU_(\d+)$/i;
   let maxNum = 0;
   
@@ -83,7 +88,8 @@ const selectCls = "w-full appearance-none px-3.5 py-2.5 bg-gray-50 border border
 export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
   const [loading, setLoading]           = useState(false);
   const [saving, setSaving]             = useState(false);
-  const [existingProducts, setExistingProducts] = useState<any[]>([]);
+  const [existingProducts, setExistingProducts] = useState<Product[]>([]);
+  const existingProductsRef             = useRef<Product[]>([]);
   const [categories, setCategories]     = useState<{ id: string; name: string }[]>([]);
   const [subCategories, setSubCategories] = useState<{ id: string; name: string }[]>([]);
   const [suppliers, setSuppliers]       = useState<{ id: string; name: string }[]>([]);
@@ -146,11 +152,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         api.get('/products'),
       ]);
 
-      let productsList: any[] = [];
+      let productsList: Product[] = [];
       if (prodRes.status === 'fulfilled') {
         const prodData = prodRes.value.data;
-        productsList = Array.isArray(prodData) ? prodData : (prodData?.data || prodData?.products || prodData || []);
+        productsList = Array.isArray(prodData) ? prodData : (Array.isArray(prodData?.data) ? prodData.data : []);
         setExistingProducts(productsList);
+        existingProductsRef.current = productsList;
       }
 
       if (catRes.status === 'fulfilled') {
@@ -224,7 +231,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     if (!form.categoryId)          errs.categoryId   = 'Category is required';
 
     // Validate SKU uniqueness
-    const isDuplicate = existingProducts.some(
+    const isDuplicate = existingProductsRef.current.some(
       p => p.sku && typeof p.sku === 'string' && p.sku.trim().toLowerCase() === form.sku.trim().toLowerCase()
     );
     if (isDuplicate) {
