@@ -28,7 +28,7 @@ export default function InventoryReportsPage() {
   };
 
   const handleExportPDF = () => {
-    window.print();
+    window.open('/reports/preview/inventory', '_blank');
   };
 
   return (
