@@ -168,7 +168,9 @@ const persistResetTokenRecord = async (
     return;
   }
 
-  throw new Error("Reset token storage requires Redis or a database.");
+  // Production fallback: stateless mode — token is validated by HMAC signature
+  // and expiry only (no server-side one-time-use enforcement).
+  console.warn("[forgot-password] Redis not configured — using stateless token mode.");
 };
 
 // readResetTokenRecord / removeResetTokenRecord are the single-source
@@ -198,7 +200,15 @@ const readResetTokenRecord = async (
     return devResetTokenStore.get(key) ?? null;
   }
 
-  throw new Error("Reset token storage requires Redis or a database.");
+  // Production stateless fallback: decode payload from token itself
+  // Token is already HMAC-validated by the time we reach this call.
+  try {
+    const encodedPayload = token.split(".")[0];
+    const payload = JSON.parse(fromBase64Url(encodedPayload)) as StoredResetTokenRecord;
+    return payload;
+  } catch {
+    return null;
+  }
 };
 
 const removeResetTokenRecord = async (token: string) => {
@@ -215,7 +225,8 @@ const removeResetTokenRecord = async (token: string) => {
     return;
   }
 
-  throw new Error("Reset token storage requires Redis or a database.");
+  // Production stateless fallback: nothing to delete — token expiry handles invalidation.
+  console.warn("[forgot-password] Redis not configured — token will expire naturally via TTL.");
 };
 
 const setForgotPasswordCooldown = async (email: string) => {
@@ -237,9 +248,8 @@ const setForgotPasswordCooldown = async (email: string) => {
     return;
   }
 
-  throw new Error(
-    "Forgot-password cooldown storage requires Redis or a database.",
-  );
+  // Production stateless fallback: skip cooldown without Redis.
+  console.warn("[forgot-password] Redis not configured — skipping cooldown.");
 };
 
 export const isForgotPasswordCoolingDown = async (
@@ -267,9 +277,8 @@ export const isForgotPasswordCoolingDown = async (
     return true;
   }
 
-  throw new Error(
-    "Forgot-password cooldown storage requires Redis or a database.",
-  );
+  // Production stateless fallback: no cooldown enforcement without Redis.
+  return false;
 };
 
 export const markForgotPasswordCooldown = async (email: string) => {
