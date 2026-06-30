@@ -197,10 +197,16 @@ const readResetTokenRecord = async (
   }
 
   if (process.env.NODE_ENV === "development") {
-    return devResetTokenStore.get(key) ?? null;
+    const memRecord = devResetTokenStore.get(key);
+    if (memRecord) {
+      return memRecord;
+    }
+    // If not found in memory (e.g. Next.js hot-reloaded and cleared memory),
+    // fall through to the stateless payload decoder below.
+    console.warn("[forgot-password] Token not in dev memory (hot-reload?), falling back to stateless decode");
   }
 
-  // Production stateless fallback: decode payload from token itself
+  // Stateless fallback: decode payload from token itself
   // Token is already HMAC-validated by the time we reach this call.
   try {
     const encodedPayload = token.split(".")[0];
@@ -317,20 +323,20 @@ const safeCompare = (a: string, b: string) => {
 export const validateResetToken = async (
   token: string,
   email: string,
-): Promise<boolean> => {
+): Promise<{ valid: boolean; reason?: string }> => {
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) {
-    return false;
+    return { valid: false, reason: "No email provided" };
   }
 
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) {
-    return false;
+    return { valid: false, reason: "Malformed token format" };
   }
 
   const expectedSignature = signPayload(encodedPayload);
   if (!safeCompare(signature, expectedSignature)) {
-    return false;
+    return { valid: false, reason: "Invalid token signature (secret mismatch)" };
   }
 
   try {
@@ -339,36 +345,33 @@ export const validateResetToken = async (
     ) as ResetTokenPayload;
 
     if (!payload.email || !payload.exp) {
-      return false;
+      return { valid: false, reason: "Token payload missing required fields" };
     }
 
     if (payload.exp <= Date.now()) {
-      return false;
+      return { valid: false, reason: `Token expired at ${new Date(payload.exp).toISOString()} (Current time: ${new Date().toISOString()})` };
     }
 
     if (payload.email !== normalizedEmail) {
-      return false;
+      return { valid: false, reason: `Email mismatch: token is for ${payload.email}, but requested for ${normalizedEmail}` };
     }
 
     const storedRecord = await readResetTokenRecord(token);
-    // Ensure the token exists server-side and matches the expected payload.
-    // This prevents stateless replay of a token that was not recorded,
-    // and allows us to check one-time-use semantics.
     if (!storedRecord) {
-      return false;
+      return { valid: false, reason: "Token not found in durable storage or payload missing" };
     }
 
     if (storedRecord.email !== normalizedEmail) {
-      return false;
+      return { valid: false, reason: "Stored email mismatch" };
     }
 
     if (storedRecord.exp !== payload.exp) {
-      return false;
+      return { valid: false, reason: "Stored expiry mismatch" };
     }
 
-    return true;
-  } catch {
-    return false;
+    return { valid: true };
+  } catch (err: any) {
+    return { valid: false, reason: `Exception during validation: ${err.message}` };
   }
 };
 
