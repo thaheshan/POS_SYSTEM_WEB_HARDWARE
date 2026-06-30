@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 const getUpstreamAuthBaseUrl = () => {
   return (
     process.env.AUTH_BACKEND_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
     ""
   );
 };
@@ -49,37 +49,48 @@ const forwardPasswordReset = async ({
     return { proxied: false };
   }
 
-  const response = await fetch(
-    `${normalizedUpstreamBaseUrl}/auth/reset-password`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
+  try {
+    const response = await fetch(
+      `${normalizedUpstreamBaseUrl}/auth/password-reset-external`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, newPassword }),
       },
-      body: JSON.stringify({ email, token, newPassword }),
-    },
-  );
+    );
 
-  if (!response.ok) {
-    let message = "The reset token is invalid or expired.";
-    try {
-      const payload = (await response.json()) as { message?: string };
-      if (typeof payload.message === "string" && payload.message.trim()) {
-        message = payload.message;
+    if (!response.ok) {
+      let message = `Upstream backend failed with status ${response.status}.`;
+      try {
+        const payload = (await response.json()) as { message?: string };
+        if (typeof payload.message === "string" && payload.message.trim()) {
+          message = payload.message;
+        }
+      } catch {
+        // Keep fallback message.
       }
-    } catch {
-      // Keep fallback message.
+
+      console.error("[reset-password] Upstream returned error:", response.status, message);
+      return {
+        proxied: true,
+        ok: false,
+        status: response.status,
+        message,
+      };
     }
 
+    return { proxied: true, ok: true };
+  } catch (err: any) {
+    console.error("[reset-password] Failed to connect to upstream auth backend:", err.message);
     return {
       proxied: true,
       ok: false,
-      status: response.status,
-      message,
+      status: 502,
+      message: "Unable to contact the authentication server. Please try again later.",
     };
   }
-
-  return { proxied: true, ok: true };
 };
 
 async function handlePasswordReset(req: Request) {
@@ -116,10 +127,11 @@ async function handlePasswordReset(req: Request) {
     }
 
     // Validate token ownership/expiry before consuming it.
-    const valid = await validateResetToken(token, email);
-    if (!valid) {
+    const validation = await validateResetToken(token, email);
+    if (!validation.valid) {
+      console.error("[reset-password] Token validation failed:", validation.reason);
       return NextResponse.json(
-        { message: "The reset token is invalid or expired." },
+        { message: `Token validation failed: ${validation.reason}` },
         { status: 400 },
       );
     }
