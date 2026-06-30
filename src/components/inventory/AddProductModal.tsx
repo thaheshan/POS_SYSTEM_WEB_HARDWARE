@@ -9,6 +9,32 @@ import api from '@/api/axiosInstance';
 import ImageOptionsModal from './ImageOptionsModal';
 import CameraCaptureModal from './CameraCaptureModal';
 
+interface Product {
+  sku?: string;
+  [key: string]: any;
+}
+
+const generateNextSku = (products: Product[]): string => {
+  const skuPattern = /^SKU_(\d+)$/i;
+  let maxNum = 0;
+  
+  products.forEach(p => {
+    if (p.sku && typeof p.sku === 'string') {
+      const match = p.sku.trim().match(skuPattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+  
+  const nextNum = maxNum + 1;
+  const paddedNum = String(nextNum).padStart(3, '0');
+  return `SKU_${paddedNum}`;
+};
+
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -62,6 +88,8 @@ const selectCls = "w-full appearance-none px-3.5 py-2.5 bg-gray-50 border border
 export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
   const [loading, setLoading]           = useState(false);
   const [saving, setSaving]             = useState(false);
+  const [existingProducts, setExistingProducts] = useState<Product[]>([]);
+  const existingProductsRef             = useRef<Product[]>([]);
   const [categories, setCategories]     = useState<{ id: string; name: string }[]>([]);
   const [subCategories, setSubCategories] = useState<{ id: string; name: string }[]>([]);
   const [suppliers, setSuppliers]       = useState<{ id: string; name: string }[]>([]);
@@ -119,9 +147,19 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes] = await Promise.allSettled([
+      const [catRes, prodRes] = await Promise.allSettled([
         api.get('/products/categories'),
+        api.get('/products'),
       ]);
+
+      let productsList: Product[] = [];
+      if (prodRes.status === 'fulfilled') {
+        const prodData = prodRes.value.data;
+        productsList = Array.isArray(prodData) ? prodData : (Array.isArray(prodData?.data) ? prodData.data : []);
+        setExistingProducts(productsList);
+        existingProductsRef.current = productsList;
+      }
+
       if (catRes.status === 'fulfilled') {
         const catData = catRes.value.data;
         const arr = Array.isArray(catData) ? catData : (catData?.data || catData?.categories || []);
@@ -134,6 +172,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       }
       // suppliers removed
       setSuppliers([]);
+
+      // Auto-generate SKU
+      const nextSku = generateNextSku(productsList);
+      setForm(prev => ({ ...prev, sku: nextSku }));
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
@@ -187,6 +229,15 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     if (!form.sku.trim())          errs.sku          = 'SKU is required';
     if (!form.sellingPrice)        errs.sellingPrice = 'Selling price is required';
     if (!form.categoryId)          errs.categoryId   = 'Category is required';
+
+    // Validate SKU uniqueness
+    const isDuplicate = existingProductsRef.current.some(
+      p => p.sku && typeof p.sku === 'string' && p.sku.trim().toLowerCase() === form.sku.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      errs.sku = 'SKU already exists';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
