@@ -1,6 +1,7 @@
 "use client";
 
 import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -9,13 +10,14 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 bg-teal-600 rounded flex items-center justify-center">
-                <span className="text-white font-bold text-xs">P</span>
-              </div>
-              <span className="font-bold text-sm text-white tracking-wide">
-                HARDWARE
-              </span>
+            <div className="mb-4">
+              <Image 
+                src="/images/futura_hardware_logo_white.png" 
+                alt="Futura Hardware POS Logo" 
+                width={150} 
+                height={50} 
+                className="object-contain"
+              />
             </div>
             <p className="text-sm">
               Revolutionary POS system for hardware stores. Built for
@@ -109,7 +111,7 @@ export function Footer() {
         <div className="border-t border-gray-800 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm">
-              © 2024 Hardware POS System. All rights reserved.
+              © 2026 futura solutions pvt ltd
             </p>
             <div className="flex gap-4">
               <a

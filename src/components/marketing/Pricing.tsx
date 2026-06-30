@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/marketing/ui/button";
 import { Card } from "@/components/marketing/ui/card";
 import { Check } from "lucide-react";
@@ -8,8 +9,10 @@ const pricingPlans = [
   {
     name: "Starter",
     subtitle: "Perfect for small hardware stores",
-    price: "Rs. 4,999",
-    period: "per month",
+    priceMonthly: "Rs. 4,999",
+    priceAnnual: "Rs. 3,999",
+    periodMonthly: "per month",
+    periodAnnual: "per month, billed annually",
     features: [
       "1 Checkout Terminal",
       "Basic Inventory Management",
@@ -24,8 +27,10 @@ const pricingPlans = [
   {
     name: "Professional",
     subtitle: "Ideal for growing stores",
-    price: "Rs. 9,999",
-    period: "per month",
+    priceMonthly: "Rs. 9,999",
+    priceAnnual: "Rs. 7,999",
+    periodMonthly: "per month",
+    periodAnnual: "per month, billed annually",
     features: [
       "5 Checkout Terminals",
       "Advanced Inventory Management",
@@ -40,8 +45,10 @@ const pricingPlans = [
   {
     name: "Enterprise",
     subtitle: "For large retail chains",
-    price: "Custom",
-    period: "Contact us",
+    priceMonthly: "Custom",
+    priceAnnual: "Custom",
+    periodMonthly: "Contact us",
+    periodAnnual: "Contact us",
     features: [
       "Unlimited Terminals",
       "Complete Custom Integration",
@@ -56,6 +63,8 @@ const pricingPlans = [
 ];
 
 export function Pricing() {
+  const [isAnnual, setIsAnnual] = useState(true);
+
   return (
     <section
       id="pricing"
@@ -71,10 +80,28 @@ export function Pricing() {
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
             Plans for Every Business Size
           </h2>
-          <p className="text-sm text-gray-500 max-w-xl mx-auto">
+          <p className="text-sm text-gray-500 max-w-xl mx-auto mb-8">
             Choose the plan that fits your business needs. All plans include a
             30-day free trial.
           </p>
+          
+          {/* Toggle */}
+          <div className="flex items-center justify-center gap-3">
+            <span className={`text-sm font-semibold ${!isAnnual ? "text-gray-900" : "text-gray-500"}`}>Monthly</span>
+            <button
+              onClick={() => setIsAnnual(!isAnnual)}
+              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              style={{ backgroundColor: isAnnual ? "#059669" : "#D1D5DB" }}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAnnual ? "translate-x-6" : "translate-x-1"}`}
+              />
+            </button>
+            <span className={`text-sm font-semibold flex items-center gap-1 ${isAnnual ? "text-gray-900" : "text-gray-500"}`}>
+              Yearly
+              <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full ml-1">Save 20%</span>
+            </span>
+          </div>
         </div>
 
         {/* Pricing Cards */}
@@ -106,13 +133,13 @@ export function Pricing() {
                   <div className="flex flex-col items-center">
                     <span
                       className={`font-semibold tracking-tight text-emerald-500 ${
-                        plan.price === "Custom" ? "text-3xl" : "text-4xl"
+                        (isAnnual ? plan.priceAnnual : plan.priceMonthly) === "Custom" ? "text-3xl" : "text-4xl"
                       }`}
                     >
-                      {plan.price}
+                      {isAnnual ? plan.priceAnnual : plan.priceMonthly}
                     </span>
                     <span className="text-gray-400 text-xs mt-1">
-                      {plan.period}
+                      {isAnnual ? plan.periodAnnual : plan.periodMonthly}
                     </span>
                   </div>
                 </div>

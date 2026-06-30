@@ -29,11 +29,11 @@ export default function SplashScreen() {
 
       <section className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 text-center text-white">
         <div className="mb-2 flex h-52 w-52 items-center justify-center">
-          <img src="/images/futura_hardware_logo_white.png" alt="Futura Hardware Logo" className="h-52 w-52 object-contain" />
+          <img src="/images/futura_hardware_logo.png" alt="Futura Hardware Logo" className="h-52 w-52 object-contain" />
         </div>
 
-        <h1 className="text-5xl font-extrabold tracking-[0.08em] sm:text-6xl">
-          POS SYSTEM
+        <h1 className="text-4xl font-extrabold tracking-[0.08em] sm:text-5xl whitespace-nowrap">
+          FUTURA HARDWARE
         </h1>
         <p className="mt-4 text-lg text-white/90 sm:text-2xl">
           Complete Shop Management System
