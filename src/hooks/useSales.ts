@@ -72,9 +72,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
         }
 
         const amt = Number(inv.totalAmount || 0);
-        const prevRunning = runningTotal;
-        runningTotal += amt;
-
+        const rawId = inv.id || inv._id || '';
         const time = new Date(inv.createdAt).toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
@@ -83,21 +81,27 @@ export function useSalesData(dateRange: DateRange | undefined) {
           ? inv.saleType.charAt(0) + inv.saleType.slice(1).toLowerCase()
           : 'Cash';
 
+        // Determine special type label for Returns/Exchanges
+        const isReturn = inv.invoiceNumber?.startsWith('RET-');
+        const isExchange = inv.invoiceNumber?.startsWith('EXC-');
+        const typeLabel = isReturn ? 'Return' : (isExchange ? 'Exchange' : null);
+
+        const prevRunning = runningTotal;
+        runningTotal += amt;
+
         if (prevRunning >= threshold) {
           // Entire invoice is overflow / Cat B
           catBOverflow += amt;
           catBTxns += 1;
           catBItemCount += inv.items?.length || 1;
-          const rawId = inv.id || inv._id || '';
-          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: 'Overflow' };
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow' };
           allCatBTxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else if (prevRunning + amt <= threshold) {
           // Entire invoice fits within Cat A threshold
           catACore += amt;
           catATxns += 1;
           catAItemCount += inv.items?.length || 1;
-          const rawId = inv.id || inv._id || '';
-          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: 'Taxable' };
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable' };
           allCatATxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else {
           // Invoice straddles the threshold — split it
@@ -109,12 +113,11 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catBTxns += 1;
           catAItemCount += inv.items?.length || 1;
           catBItemCount += inv.items?.length || 1;
-          const rawId = inv.id || inv._id || '';
 
-          const txnObjA = { id: inv.invoiceNumber, rawId, time, amount: catAPortion.toLocaleString(), mode, type: 'Taxable' };
+          const txnObjA = { id: inv.invoiceNumber, rawId, time, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable' };
           allCatATxns.push({ ...txnObjA, rawAmount: catAPortion, timestamp: new Date(inv.createdAt).getTime() });
 
-          const txnObjB = { id: inv.invoiceNumber, rawId, time, amount: catBPortion.toLocaleString(), mode, type: 'Overflow' };
+          const txnObjB = { id: inv.invoiceNumber, rawId, time, amount: catBPortion.toLocaleString(), mode, type: typeLabel || 'Overflow' };
           allCatBTxns.push({ ...txnObjB, rawAmount: catBPortion, timestamp: new Date(inv.createdAt).getTime() });
         }
       }
@@ -181,7 +184,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
       setData({
         catA: {
           core: catACore,
-          vat: Math.round(catACore * 0.18),
+          vat: Math.round(catACore - (catACore / 1.18)),
           avg: catATxns ? Math.round(catACore / catATxns) : 0,
           items: catAItemCount,
           txns: catATxns,

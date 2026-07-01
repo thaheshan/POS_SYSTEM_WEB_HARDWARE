@@ -175,6 +175,10 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
           <div className="w-3 h-3 rounded-full bg-[#ec4899]" />
           <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">Revenue</span>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#10b981]" />
+          <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">Profit</span>
+        </div>
       </div>
     </div>
   );

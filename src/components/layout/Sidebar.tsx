@@ -81,7 +81,7 @@ export default function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean;
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center shrink-0">
-                 <img src="/images/futura_hardware_logo_white.png" alt="Futura Hardware Logo" className="h-12 sm:h-16 object-contain" />
+                <img src="/images/futura_hardware_logo.png" alt="Futura Hardware Logo" className="h-14 w-14 object-contain" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold tracking-wide leading-tight uppercase text-white">FUTURA HARDWARE</h1>
