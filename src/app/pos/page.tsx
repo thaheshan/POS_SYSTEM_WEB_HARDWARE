@@ -253,16 +253,8 @@ export default function POSPage() {
         const name = item.product?.name || item.product_name || 'Unknown';
         const nameLower = name.toLowerCase();
         
-        let sellType: 'fixed' | 'loose' = 'fixed';
-        let measurementUnit = 'unit';
-        
-        if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
-          sellType = 'loose';
-          measurementUnit = 'm';
-        } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
-          sellType = 'loose';
-          measurementUnit = 'kg';
-        }
+        let sellType: 'fixed' | 'loose' = item.product?.sellType?.toLowerCase() || item.sellType?.toLowerCase() || 'fixed';
+        let measurementUnit = item.product?.measurementUnit || item.measurementUnit || 'unit';
 
         const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
 
@@ -289,16 +281,8 @@ export default function POSPage() {
           const name = p.name || 'Unknown';
           const nameLower = name.toLowerCase();
           
-          let sellType: 'fixed' | 'loose' = 'fixed';
-          let measurementUnit = 'unit';
-          
-          if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
-            sellType = 'loose';
-            measurementUnit = 'm';
-          } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
-            sellType = 'loose';
-            measurementUnit = 'kg';
-          }
+          let sellType: 'fixed' | 'loose' = p.sellType?.toLowerCase() || 'fixed';
+          let measurementUnit = p.measurementUnit || 'unit';
 
           return {
             id: String(p.id),
