@@ -20,6 +20,11 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import { useSalesData } from '@/hooks/useSales';
+import {
+  useGetSalesReportQuery,
+  useGetTaxReportQuery,
+  useGetInventoryReportQuery,
+} from '@/lib/services/reportApi';
 
 // Modals from previous implementation
 import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
@@ -45,6 +50,22 @@ export default function ReportsPage() {
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
   const { data, loading } = useSalesData(dateRange);
+
+  const startDate = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
+  const endDate = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
+
+  const { data: salesReport, isLoading: isSalesLoading } = useGetSalesReportQuery(
+    { startDate, endDate },
+    { skip: !startDate || !endDate }
+  );
+
+  const { data: taxReport, isLoading: isTaxLoading } = useGetTaxReportQuery(
+    { startDate, endDate },
+    { skip: !startDate || !endDate }
+  );
+
+  const { data: inventoryReport, isLoading: isInventoryLoading } = useGetInventoryReportQuery();
+
 
   return (
     <MainLayout>
@@ -133,7 +154,13 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <ReportStatCard 
              title="Total Revenue"
-             value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString()}`}
+             value={
+               isSalesLoading 
+                 ? '...' 
+                 : salesReport 
+                 ? `Rs. ${salesReport.revenue.toLocaleString()}` 
+                 : (loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString()}`)
+             }
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Coins className="w-5 h-5 text-white" /></div>}
              variant="blue"
              trend="+18.5%"
@@ -141,14 +168,30 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="Gross Profit"
-             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString()}`}
+             value={
+               isSalesLoading || isTaxLoading
+                 ? '...' 
+                 : (salesReport && taxReport) 
+                 ? `Rs. ${(salesReport.revenue - taxReport.vatCollected).toLocaleString()}` 
+                 : (loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString()}`)
+             }
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
-             marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
+             marginText={`${
+               salesReport && salesReport.revenue > 0
+                 ? Math.round(((salesReport.revenue - (taxReport?.vatCollected || 0)) / salesReport.revenue) * 100)
+                 : (data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0)
+             }% margin`}
           />
           <ReportStatCard 
              title="Transactions"
-             value={loading ? '...' : (data.catA.txns + data.catB.txns).toLocaleString()}
+             value={
+               isSalesLoading 
+                 ? '...' 
+                 : salesReport 
+                 ? salesReport.salesCount.toLocaleString() 
+                 : (loading ? '...' : (data.catA.txns + data.catB.txns).toLocaleString())
+             }
              icon={<div className="w-9 h-9 rounded-xl bg-[#fef08a] flex items-center justify-center"><FileText className="w-5 h-5 text-[#854d0e]" /></div>}
              variant="white"
              trend="+8.2%"
@@ -156,7 +199,13 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="VAT Collected"
-             value={loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
+             value={
+               isTaxLoading 
+                 ? '...' 
+                 : taxReport 
+                 ? `Rs. ${taxReport.vatCollected.toLocaleString()}` 
+                 : (loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`)
+             }
              icon={<div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center"><FileText className="w-5 h-5 text-[#9333ea]" /></div>}
              variant="white"
              badge="IRD Compliant"

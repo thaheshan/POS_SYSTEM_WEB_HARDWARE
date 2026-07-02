@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Download, ChevronLeft, Boxes, FileSpreadsheet, FileText, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useGetInventoryReportQuery, useLazyExportReportQuery } from '@/lib/services/reportApi';
 
 const mockInventoryData = [
   { id: 'PRD-101', name: 'Holcim Cement 50kg', sku: 'CEM-H50', stock: 145, threshold: 50, value: 239250, status: 'Healthy' },
@@ -14,21 +16,51 @@ const mockInventoryData = [
 ];
 
 export default function InventoryReportsPage() {
-  const handleExportCSV = () => {
-    const rows = [
-      ['Product Name', 'SKU', 'Current Stock', 'Stock Threshold', 'Total Value (Rs)', 'Status'],
-      ...mockInventoryData.map(i => [`"${i.name}"`, i.sku, i.stock, i.threshold, i.value, i.status])
-    ].map(e => e.join(",")).join("\n");
-    const blob = new Blob([rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'inventory_valuation_report.csv';
-    a.click();
+  const { data: inventoryReport, isLoading } = useGetInventoryReportQuery();
+  const [triggerExport] = useLazyExportReportQuery();
+
+  const handleExportCSV = async () => {
+    try {
+      const blob = await triggerExport({ type: 'inventory', format: 'csv' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory_valuation_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      // Fallback
+      const rows = [
+        ['Product Name', 'SKU', 'Current Stock', 'Stock Threshold', 'Total Value (Rs)', 'Status'],
+        ...mockInventoryData.map(i => [`"${i.name}"`, i.sku, i.stock, i.threshold, i.value, i.status])
+      ].map(e => e.join(",")).join("\n");
+      const blob = new Blob([rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'inventory_valuation_report.csv';
+      a.click();
+    }
   };
 
-  const handleExportPDF = () => {
-    window.print();
+  const handleExportPDF = async () => {
+    try {
+      const blob = await triggerExport({ type: 'inventory', format: 'pdf' }).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory_valuation_report_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      window.print();
+    }
   };
 
   return (
@@ -76,7 +108,9 @@ export default function InventoryReportsPage() {
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm flex items-start justify-between">
               <div>
                  <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Total Inventory Value</span>
-                 <span className="text-[28px] font-black tracking-tight text-[#059669]">Rs. 1,078,250</span>
+                 <span className="text-[28px] font-black tracking-tight text-[#059669]">
+                   {isLoading ? '...' : inventoryReport ? `Rs. ${inventoryReport.stockValuation.toLocaleString()}` : 'Rs. 1,078,250'}
+                 </span>
               </div>
               <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
                  <Boxes className="w-6 h-6 text-[#059669]" />
@@ -85,7 +119,9 @@ export default function InventoryReportsPage() {
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm flex items-start justify-between">
               <div>
                  <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Total Items in Stock</span>
-                 <span className="text-[28px] font-black tracking-tight">1,248</span>
+                 <span className="text-[28px] font-black tracking-tight">
+                   {isLoading ? '...' : inventoryReport ? inventoryReport.inventorySummary.totalItems.toLocaleString() : '1,248'}
+                 </span>
               </div>
               <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
                  <Boxes className="w-6 h-6 text-gray-500" />
@@ -94,7 +130,9 @@ export default function InventoryReportsPage() {
            <div className="bg-[#fef2f2] border border-red-200 rounded-[20px] p-6 shadow-sm flex items-start justify-between">
               <div>
                  <span className="text-[12px] font-bold text-red-400 uppercase tracking-widest mb-1 block">Critical Stock Alerts</span>
-                 <span className="text-[28px] font-black tracking-tight text-red-600">12 Products</span>
+                 <span className="text-[28px] font-black tracking-tight text-red-600">
+                   {isLoading ? '...' : inventoryReport ? `${inventoryReport.inventorySummary.lowStockItems + inventoryReport.inventorySummary.outOfStockItems} Products` : '12 Products'}
+                 </span>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
                  <AlertTriangle className="w-6 h-6 text-red-600" />

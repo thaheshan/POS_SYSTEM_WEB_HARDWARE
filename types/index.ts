@@ -120,3 +120,51 @@ export interface TaxBreakdown {
   vatRate: number;
   nbtRate: number;
 }
+
+export interface CategorySalesBreakdown {
+  category: string;
+  revenue: number;
+  salesCount: number;
+}
+
+export interface SalesReport {
+  revenue: number;
+  salesCount: number;
+  categoryBreakdown: CategorySalesBreakdown[];
+}
+
+export interface SlowMovingItem {
+  productId: string;
+  name: string;
+  stockQty: number;
+  reorderLevel: number;
+}
+
+export interface InventorySummary {
+  totalItems: number;
+  totalCategories: number;
+  outOfStockItems: number;
+  lowStockItems: number;
+}
+
+export interface InventoryReport {
+  stockValuation: number;
+  slowMovingItems: SlowMovingItem[];
+  inventorySummary: InventorySummary;
+}
+
+export interface TaxReport {
+  vatCollected: number;
+  nbtCollected: number;
+  taxableSales: number;
+  nonTaxableSales: number;
+}
+
+export interface TopProductReportItem {
+  productId: string;
+  name: string;
+  sku: string;
+  quantitySold: number;
+  revenue: number;
+}
+
