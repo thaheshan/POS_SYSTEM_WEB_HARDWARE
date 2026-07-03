@@ -35,8 +35,8 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
 
   const handleCSV = () => {
     const rows = [
-      ['Invoice', 'Time', 'Amount (Rs)', 'Tax (Rs)', 'Mode'],
-      ...orders.map((o: any) => [o.id, o.time, o.rawAmount, Math.round(o.rawAmount * 0.18), o.mode]),
+      ['Invoice', 'Date', 'Time', 'Customer Name', 'Amount (Rs)', 'Tax (Rs)', 'Mode'],
+      ...orders.map((o: any) => [o.id, o.date, o.time, `"${o.customerName}"`, o.rawAmount, Math.round(o.rawAmount * 0.18), o.mode]),
       ['', '', '', 'Subtotal', subtotal],
       ['', '', '', 'VAT (18%)', vat.toFixed(2)],
       ['', '', '', 'Total', total.toFixed(2)],
@@ -156,10 +156,13 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax (18%)</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,17 +172,30 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
                   return (
                     <tr key={i} className="border-b border-gray-50 last:border-0">
                       <td className="py-4 px-4">
-                        <p className="text-[13px] font-bold text-gray-900">{o.id}</p>
+                        <p className="text-[13px] font-bold text-gray-900 font-mono">{o.id}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-[13px] font-bold text-gray-700">{o.customerName}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-[13px] font-bold text-gray-900">{o.date}</p>
                         <p className="text-[10px] font-bold text-gray-400">{o.time}</p>
                       </td>
+                      <td className="py-4 px-4">
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-black rounded-lg uppercase tracking-wider">Cat A</span>
+                      </td>
                       <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-700 font-mono">Rs. {rawAmt.toLocaleString()}</td>
-                      <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-400 font-mono">Rs. {itemVat.toLocaleString()}</td>
-                      <td className="py-4 px-4 text-right text-[13px] font-black text-blue-600 font-mono">Rs. {(rawAmt + itemVat).toLocaleString()}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`px-2 py-1 text-[11px] font-black rounded-lg ${o.status === 'Completed' || o.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : o.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{o.status || 'Completed'}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gray-300">—</span>
+                      </td>
                     </tr>
                   )
                 })}
                 {orders.length === 0 && (
-                  <tr><td colSpan={4} className="py-8 text-center text-[13px] font-bold text-gray-300">No transactions</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-[13px] font-bold text-gray-300">No transactions</td></tr>
                 )}
               </tbody>
             </table>

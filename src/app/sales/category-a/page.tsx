@@ -49,6 +49,9 @@ function CategoryAReportPageContent() {
       ["Average Bill", catA.avg],
       ["Items Sold", catA.items],
       ["Remaining to Threshold", remaining],
+      [],
+      ["Invoice", "Date", "Time", "Customer Name", "Amount", "VAT", "Mode"],
+      ...(catA.allTxns || []).map((t: any) => [t.id, t.date, t.time, `"${t.customerName}"`, t.rawAmount, Math.round(t.rawAmount * 0.18), t.mode]),
     ].map((r) => r.join(",")).join("\n");
     const blob = new Blob([rows], { type: "text/csv" });
     const a = document.createElement("a");
@@ -202,12 +205,13 @@ function CategoryAReportPageContent() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
+                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">VAT</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mode</th>
-                  <th className="py-3 px-6 w-14"></th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="text-right py-3 px-6 w-14 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -232,12 +236,20 @@ function CategoryAReportPageContent() {
                     const isOpen = openMenuId === menuKey;
                     return (
                       <tr key={i} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="py-4 px-6 text-[13px] font-bold text-gray-900 font-mono">{txn.id}</td>
-                        <td className="py-4 px-4 text-[13px] font-medium text-gray-500">{txn.time}</td>
-                        <td className="py-4 px-4 text-right text-[13px] font-black text-blue-600 font-mono">Rs. {txn.amount}</td>
-                        <td className="py-4 px-4 text-right text-[13px] font-medium text-gray-400 font-mono">Rs. {Math.round(amt * 0.18).toLocaleString()}</td>
+                        <td className="py-4 px-6">
+                          <p className="text-[13px] font-bold text-gray-900 font-mono">{txn.id}</p>
+                        </td>
+                        <td className="py-4 px-4 text-[13px] font-medium text-gray-700">{txn.customerName}</td>
+                        <td className="py-4 px-4">
+                          <p className="text-[13px] font-bold text-gray-900">{txn.date}</p>
+                          <p className="text-[10px] font-bold text-gray-400">{txn.time}</p>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-black rounded-lg uppercase tracking-wider">Cat A</span>
+                        </td>
+                        <td className="py-4 px-4 text-right text-[13px] font-black text-gray-900 font-mono">Rs. {txn.amount}</td>
                         <td className="py-4 px-4 text-right">
-                          <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-full uppercase tracking-wider">{txn.mode}</span>
+                          <span className={`px-2 py-1 text-[11px] font-black rounded-lg ${txn.status === 'Completed' || txn.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : txn.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{txn.status || 'Completed'}</span>
                         </td>
                         {/* ── Three-dot Actions ── */}
                         <td className="py-4 px-6">

@@ -41,9 +41,9 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
 
   const handleCSV = () => {
     const rows = [
-      ['Invoice', 'Time', 'Type', 'Amount (Rs)', 'Mode'],
-      ...filtered.map((i: any) => [i.id, i.time, i.type, i.rawAmount, i.mode]),
-      ['', '', '', 'Subtotal', subtotal],
+      ['Invoice', 'Date', 'Time', 'Customer Name', 'Type', 'Amount (Rs)', 'Mode'],
+      ...filtered.map((i: any) => [i.id, i.date, i.time, `"${i.customerName}"`, i.type, i.rawAmount, i.mode]),
+      ['', '', '', '', 'Subtotal', subtotal],
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob([rows], { type: 'text/csv' });
     const a = document.createElement('a');
@@ -178,16 +178,26 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
                   <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((inv: any, i: number) => (
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-4 px-4">
-                      <p className="text-[13px] font-bold text-gray-900">{inv.id}</p>
+                      <p className="text-[13px] font-bold text-gray-900 font-mono">{inv.id}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-[13px] font-bold text-gray-700">{inv.customerName}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-[13px] font-bold text-gray-900">{inv.date}</p>
                       <p className="text-[10px] font-bold text-gray-400">{inv.time}</p>
                     </td>
                     <td className="py-4 px-4">
@@ -196,10 +206,16 @@ export default function CategoryBReportModal({ isOpen, onClose, onPrintPDF, data
                       </span>
                     </td>
                     <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">Rs. {inv.rawAmount?.toLocaleString() || inv.amount}</td>
+                    <td className="py-4 px-4 text-right">
+                      <span className={`px-2 py-1 text-[11px] font-black rounded-lg ${inv.status === 'Completed' || inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{inv.status || 'Completed'}</span>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className="text-gray-300">—</span>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={3} className="py-8 text-center text-[13px] font-bold text-gray-300">No records found</td></tr>
+                  <tr><td colSpan={4} className="py-8 text-center text-[13px] font-bold text-gray-300">No records found</td></tr>
                 )}
               </tbody>
             </table>

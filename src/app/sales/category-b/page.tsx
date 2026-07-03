@@ -57,6 +57,9 @@ function CategoryBReportPageContent() {
       ["Non-Taxable Products", catB.baseNonTax],
       ["Transactions", catB.txns],
       ["Average Bill", catB.avg],
+      [],
+      ["Invoice", "Date", "Time", "Customer Name", "Type", "Amount", "Mode"],
+      ...(catB.allTxns || []).map((t: any) => [t.id, t.date, t.time, `"${t.customerName}"`, t.type, t.rawAmount, t.mode]),
     ].map((r) => r.join(",")).join("\n");
     const blob = new Blob([rows], { type: "text/csv" });
     const a = document.createElement("a");
@@ -198,11 +201,12 @@ function CategoryBReportPageContent() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
+                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
                   <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mode</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                   <th className="text-right py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
@@ -227,8 +231,14 @@ function CategoryBReportPageContent() {
                     const isOpen = openMenuId === menuKey;
                     return (
                     <tr key={i} className="hover:bg-emerald-50/30 transition-colors">
-                      <td className="py-4 px-6 text-[13px] font-bold text-gray-900 font-mono">{txn.id}</td>
-                      <td className="py-4 px-4 text-[13px] font-medium text-gray-500">{txn.time}</td>
+                      <td className="py-4 px-6">
+                        <p className="text-[13px] font-bold text-gray-900 font-mono">{txn.id}</p>
+                      </td>
+                      <td className="py-4 px-4 text-[13px] font-medium text-gray-700">{txn.customerName}</td>
+                      <td className="py-4 px-4">
+                        <p className="text-[13px] font-bold text-gray-900">{txn.date}</p>
+                        <p className="text-[10px] font-bold text-gray-400">{txn.time}</p>
+                      </td>
                       <td className="py-4 px-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                           txn.type === "Overflow"
@@ -240,7 +250,7 @@ function CategoryBReportPageContent() {
                       </td>
                       <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">Rs. {txn.amount}</td>
                       <td className="py-4 px-4 text-right">
-                        <span className="px-3 py-1 bg-gray-50 text-gray-600 text-[10px] font-black rounded-full uppercase tracking-wider">{txn.mode}</span>
+                        <span className={`px-2 py-1 text-[11px] font-black rounded-lg ${txn.status === 'Completed' || txn.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : txn.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{txn.status || 'Completed'}</span>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="relative flex justify-end">

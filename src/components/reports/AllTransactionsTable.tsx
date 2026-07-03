@@ -24,11 +24,14 @@ import api from '@/api/axiosInstance';
 interface SaleRow {
   id: string;
   rawId: string;
+  date: string;
+  customerName: string;
   time: string;
   amount: string;
   rawAmount: number;
   mode: string;
-  type: 'Taxable' | 'Overflow' | 'Labour';
+  type: 'Taxable' | 'Overflow' | 'Labour' | string;
+  status: string;
 }
 
 function buildRows(data: any): SaleRow[] {
@@ -161,7 +164,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
           <table className="w-full text-left border-collapse min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                {['Invoice #', 'Time', 'Mode', 'Category', 'Amount', 'Actions'].map(h => (
+                {['Transaction ID', 'Customer Name', 'Transaction Date', 'Type', 'Amount', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-6 py-4 text-[11px] font-black text-gray-400 tracking-widest uppercase last:text-right">
                     {h}
                   </th>
@@ -182,30 +185,31 @@ export default function AllTransactionsTable({ dateRange }: Props) {
               ) : (
                 currentData.map(inv => (
                   <tr key={inv.id} className="hover:bg-gray-50/60 transition-colors">
-                    {/* Invoice # */}
+                    {/* Transaction ID */}
                     <td className="px-6 py-4">
                       <span className="text-[13px] font-black text-blue-600 font-mono">{inv.id}</span>
                     </td>
 
-                    {/* Time */}
+                    {/* Customer Name */}
                     <td className="px-6 py-4">
-                      <span className="text-[13px] font-bold text-gray-500">{inv.time}</span>
+                      <span className="text-[13px] font-bold text-gray-700">{inv.customerName}</span>
                     </td>
 
-                    {/* Mode */}
+                    {/* Transaction Date */}
                     <td className="px-6 py-4">
-                      <span className={cn('text-[13px] font-black', MODE_COLOR[inv.mode] ?? 'text-gray-600')}>
-                        {inv.mode}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-gray-900">{inv.date}</span>
+                        <span className="text-[11px] font-semibold text-gray-500">{inv.time}</span>
+                      </div>
                     </td>
 
-                    {/* Category / Type */}
+                    {/* Type */}
                     <td className="px-6 py-4">
                       <span className={cn(
                         'text-[11px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider',
                         TYPE_STYLE[inv.type] ?? 'bg-gray-50 text-gray-600 border-gray-200'
                       )}>
-                        {inv.type === 'Taxable' ? 'Cat A' : inv.type === 'Overflow' ? 'Cat B' : 'Cat C'}
+                        {inv.type === 'Taxable' ? 'Cat A' : inv.type === 'Overflow' ? 'Cat B' : inv.type}
                       </span>
                     </td>
 
@@ -213,6 +217,17 @@ export default function AllTransactionsTable({ dateRange }: Props) {
                     <td className="px-6 py-4">
                       <span className="text-[14px] font-black text-gray-900">
                         Rs. {inv.amount}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-6 py-4">
+                      <span className={cn('text-[12px] font-black px-2 py-1 rounded-lg', 
+                        inv.status === 'Completed' || inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 
+                        inv.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 
+                        'bg-gray-100 text-gray-700'
+                      )}>
+                        {inv.status || 'Completed'}
                       </span>
                     </td>
 

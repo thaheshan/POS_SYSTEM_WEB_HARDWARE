@@ -7,12 +7,12 @@ import { useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const mockSales = [
-  { id: 'INV-2026-001234', date: '2026-04-18', time: '10:24 AM', product: 'Holcim Cement 50kg', cashier: 'John Silva', amount: 5450, status: 'Completed' },
-  { id: 'INV-2026-001233', date: '2026-04-18', time: '09:58 AM', product: 'Steel Rod 12mm', cashier: 'John Silva', amount: 3200, status: 'Completed' },
-  { id: 'INV-2026-001232', date: '2026-04-17', time: '04:15 PM', product: 'PVC Pipe 1"×10ft', cashier: 'Amritha V.', amount: 12450, status: 'Completed' },
-  { id: 'INV-2026-001231', date: '2026-04-17', time: '02:30 PM', product: 'Dulux Paint 4L', cashier: 'John Silva', amount: 8900, status: 'Refunded' },
-  { id: 'INV-2026-001230', date: '2026-04-16', time: '11:45 AM', product: 'Wire Roll 100m', cashier: 'Amritha V.', amount: 4500, status: 'Completed' },
-  { id: 'INV-2026-001229', date: '2026-04-16', time: '09:10 AM', product: 'Nails 2kg', cashier: 'John Silva', amount: 850, status: 'Completed' },
+  { id: 'INV-2026-001234', date: '2026-04-18', time: '10:24 AM', customer: 'Walk-in Customer', product: 'Holcim Cement 50kg', cashier: 'John Silva', amount: 5450, status: 'Completed' },
+  { id: 'INV-2026-001233', date: '2026-04-18', time: '09:58 AM', customer: 'Kamal Perera', product: 'Steel Rod 12mm', cashier: 'John Silva', amount: 3200, status: 'Completed' },
+  { id: 'INV-2026-001232', date: '2026-04-17', time: '04:15 PM', customer: 'Walk-in Customer', product: 'PVC Pipe 1"×10ft', cashier: 'Amritha V.', amount: 12450, status: 'Completed' },
+  { id: 'INV-2026-001231', date: '2026-04-17', time: '02:30 PM', customer: 'Sunil Silva', product: 'Dulux Paint 4L', cashier: 'John Silva', amount: 8900, status: 'Refunded' },
+  { id: 'INV-2026-001230', date: '2026-04-16', time: '11:45 AM', customer: 'Walk-in Customer', product: 'Wire Roll 100m', cashier: 'Amritha V.', amount: 4500, status: 'Completed' },
+  { id: 'INV-2026-001229', date: '2026-04-16', time: '09:10 AM', customer: 'Ravin Perera', product: 'Nails 2kg', cashier: 'John Silva', amount: 850, status: 'Completed' },
 ];
 
 export default function SalesReportsPage() {
@@ -20,8 +20,8 @@ export default function SalesReportsPage() {
 
   const handleExportCSV = () => {
     const rows = [
-      ['Invoice ID', 'Date', 'Time', 'Product', 'Cashier', 'Amount', 'Status'],
-      ...mockSales.map(s => [s.id, s.date, s.time, `"${s.product}"`, s.cashier, s.amount, s.status])
+      ['Transaction ID', 'Customer Name', 'Transaction Date', 'Type', 'Amount', 'Status'],
+      ...mockSales.map(s => [s.id, `"${s.customer}"`, `${s.date} ${s.time}`, 'Standard', s.amount, s.status])
     ].map(e => e.join(",")).join("\n");
     const blob = new Blob([rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -113,28 +113,31 @@ export default function SalesReportsPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100">
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Date & Time</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Invoice ID</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Primary Product</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {mockSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors group">
+                    <td className="py-4 px-6 text-[13px] font-bold text-gray-600 font-mono tracking-tight">{sale.id}</td>
+                    <td className="py-4 px-6 text-[13.5px] font-semibold text-gray-800">{sale.customer}</td>
                     <td className="py-4 px-6">
                       <p className="text-[13.5px] font-bold text-gray-900">{sale.date}</p>
                       <p className="text-[11px] font-semibold text-gray-400">{sale.time}</p>
                     </td>
-                    <td className="py-4 px-6 text-[13px] font-bold text-gray-600 font-mono tracking-tight">{sale.id}</td>
-                    <td className="py-4 px-6 text-[13.5px] font-semibold text-gray-800">{sale.product} <span className="text-gray-400 font-normal">...</span></td>
-                    <td className="py-4 px-6 text-[13px] font-semibold text-gray-700 flex items-center gap-2">
-                       <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-black uppercase">
-                         {sale.cashier.charAt(0)}
-                       </div>
-                       {sale.cashier}
+                    <td className="py-4 px-6 text-[13px] font-semibold text-gray-700">
+                       <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                         Standard
+                       </span>
+                    </td>
+                    <td className="py-4 px-6 text-[14px] font-black text-gray-900 font-mono tracking-tighter">
+                      Rs. {sale.amount.toLocaleString()}
                     </td>
                     <td className="py-4 px-6">
                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10.5px] font-black uppercase tracking-widest ${
@@ -143,8 +146,8 @@ export default function SalesReportsPage() {
                          {sale.status}
                        </span>
                     </td>
-                    <td className="py-4 px-6 text-[14px] font-black text-gray-900 font-mono tracking-tighter text-right">
-                      Rs. {sale.amount.toLocaleString()}
+                    <td className="py-4 px-6 text-right text-[13px] font-semibold text-gray-400">
+                      —
                     </td>
                   </tr>
                 ))}

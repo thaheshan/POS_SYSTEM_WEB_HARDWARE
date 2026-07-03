@@ -46,11 +46,13 @@ export default function TransactionTable() {
         <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
           <thead>
             <tr className="text-[13px] font-bold text-[#64748b] border-b border-gray-100">
-              <th className="pb-4 pt-2 font-semibold">Invoice</th>
-              <th className="pb-4 pt-2 font-semibold text-center">Customer</th>
-              <th className="pb-4 pt-2 font-semibold text-center">Date</th>
+              <th className="pb-4 pt-2 font-semibold">Transaction ID</th>
+              <th className="pb-4 pt-2 font-semibold text-center">Customer Name</th>
+              <th className="pb-4 pt-2 font-semibold text-center">Transaction Date</th>
+              <th className="pb-4 pt-2 font-semibold text-center">Type</th>
               <th className="pb-4 pt-2 font-semibold text-center">Amount</th>
-              <th className="pb-4 pt-2 font-semibold text-right pr-2">Status</th>
+              <th className="pb-4 pt-2 font-semibold text-center pr-2">Status</th>
+              <th className="pb-4 pt-2 font-semibold text-right pr-2">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -65,13 +67,15 @@ export default function TransactionTable() {
                     </div>
                   </td>
                   <td className="py-5 text-center"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse mx-auto"></div></td>
+                  <td className="py-5 text-center"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse mx-auto"></div></td>
                   <td className="py-5 text-center"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse mx-auto"></div></td>
-                  <td className="py-5 text-right pr-2"><div className="h-6 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div></td>
+                  <td className="py-5 text-center pr-2"><div className="h-6 w-16 bg-gray-200 rounded animate-pulse mx-auto"></div></td>
+                  <td className="py-5 text-right pr-2"><div className="h-4 w-12 bg-gray-200 rounded animate-pulse ml-auto"></div></td>
                 </tr>
               ))
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-16 text-center">
+                <td colSpan={7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2">
                       <RefreshCw className="w-5 h-5 text-gray-300" />
@@ -84,27 +88,33 @@ export default function TransactionTable() {
             ) : (
               transactions.map((tx) => (
                 <tr key={tx.id} className="group hover:bg-gray-50/50 transition-colors duration-200">
-                  <td className="py-5 text-[14px] font-bold text-gray-900 tracking-tight pl-2">{tx.invoiceNumber}</td>
+                  <td className="py-5 text-[14px] font-bold text-gray-900 tracking-tight pl-2">{tx.invoiceNumber || tx.id}</td>
                   <td className="py-5">
                     <div className="flex items-center gap-3 justify-center">
                       <img
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${tx.customerName}`}
-                        alt={tx.customerName || 'Walk-in'}
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${tx.customerName || tx.customer?.name}`}
+                        alt={tx.customerName || tx.customer?.name || 'Walk-in'}
                         className="w-8 h-8 rounded-full bg-gray-100 object-cover"
                       />
-                      <span className="text-[14px] font-medium text-[#334155]">{tx.customerName}</span>
+                      <span className="text-[14px] font-medium text-[#334155]">{tx.customerName || tx.customer?.name || 'Walk-in Customer'}</span>
                     </div>
                   </td>
                   <td className="py-5 text-[14px] font-medium text-[#64748b] text-center">
-                    {tx.date ? format(new Date(tx.date), 'MMM dd, yyyy') : '—'}
+                    {tx.date ? format(new Date(tx.date), 'MMM dd, yyyy') : (tx.createdAt ? format(new Date(tx.createdAt), 'MMM dd, yyyy') : '—')}
+                  </td>
+                  <td className="py-5 text-[14px] font-medium text-[#64748b] text-center">
+                    {tx.type || 'Standard'}
                   </td>
                   <td className="py-5 text-[14px] font-bold text-gray-900 text-center">
-                    LKR {tx.amount.toLocaleString()}
+                    LKR {(tx.amount || tx.totalAmount || 0).toLocaleString()}
                   </td>
-                  <td className="py-5 text-right pr-2">
+                  <td className="py-5 text-center pr-2">
                     <span className={cn('px-2.5 py-1 rounded-lg text-[12px] font-semibold inline-block', getStatusStyle(tx.status))}>
                       {getStatusLabel(tx.status)}
                     </span>
+                  </td>
+                  <td className="py-5 text-right pr-2">
+                    <span className="text-gray-300">—</span>
                   </td>
                 </tr>
               ))
