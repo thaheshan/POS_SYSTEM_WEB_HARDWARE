@@ -20,6 +20,7 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
     "/sales", 
     "/reports", 
     "/staff-management", 
+    "/activity-log",
     "/settings",
     "/payment"
   ],
@@ -32,6 +33,7 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
     "/sales", 
     "/reports", 
     "/staff-management", 
+    "/activity-log",
     "/settings",
     "/payment"
   ],
