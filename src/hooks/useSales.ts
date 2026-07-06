@@ -94,14 +94,14 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catBOverflow += amt;
           catBTxns += 1;
           catBItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow' };
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow', customerName: inv.customer?.name || 'Walk-in' };
           allCatBTxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else if (prevRunning + amt <= threshold) {
           // Entire invoice fits within Cat A threshold
           catACore += amt;
           catATxns += 1;
           catAItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable' };
+          const txnObj = { id: inv.invoiceNumber, rawId, time, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable', customerName: inv.customer?.name || 'Walk-in' };
           allCatATxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else {
           // Invoice straddles the threshold — split it
@@ -114,10 +114,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catAItemCount += inv.items?.length || 1;
           catBItemCount += inv.items?.length || 1;
 
-          const txnObjA = { id: inv.invoiceNumber, rawId, time, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable' };
+          const txnObjA = { id: inv.invoiceNumber, rawId, time, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable', customerName: inv.customer?.name || 'Walk-in' };
           allCatATxns.push({ ...txnObjA, rawAmount: catAPortion, timestamp: new Date(inv.createdAt).getTime() });
 
-          const txnObjB = { id: inv.invoiceNumber, rawId, time, amount: catBPortion.toLocaleString(), mode, type: typeLabel || 'Overflow' };
+          const txnObjB = { id: inv.invoiceNumber, rawId, time, amount: catBPortion.toLocaleString(), mode, type: typeLabel || 'Overflow', customerName: inv.customer?.name || 'Walk-in' };
           allCatBTxns.push({ ...txnObjB, rawAmount: catBPortion, timestamp: new Date(inv.createdAt).getTime() });
         }
       }
