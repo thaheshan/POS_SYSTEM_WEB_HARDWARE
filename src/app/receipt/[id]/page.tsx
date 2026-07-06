@@ -26,7 +26,11 @@ export default function PublicReceiptPage() {
       .then(async res => {
         if (!res.ok) throw new Error("Not found");
         const json = await res.json();
-        setInvoice(json.data);
+        // ResponseInterceptor wraps: { success, data: { status, data: invoice } }
+        // So we need to unwrap two levels
+        const invoice = json?.data?.data || json?.data;
+        if (!invoice?.id) throw new Error("Invalid receipt data");
+        setInvoice(invoice);
       })
       .catch(() => {
         setError("Receipt not found or the link may have expired.");
