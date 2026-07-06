@@ -6,8 +6,16 @@ import MainLayout from "@/components/layout/MainLayout";
 import { useSalesData } from "@/hooks/useSales";
 import { DateRange } from "react-day-picker";
 import {
-  ArrowLeft, Download, FileText, FileSpreadsheet,
-  TrendingUp, Receipt, Percent, MoreVertical, Trash2, AlertCircle,
+  ArrowLeft,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  TrendingUp,
+  Receipt,
+  Percent,
+  MoreVertical,
+  Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
@@ -33,7 +41,9 @@ function CategoryAReportPageContent() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [txnToDelete, setTxnToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    null,
+  );
 
   const catA = data.catA;
   const threshold = 200000;
@@ -50,9 +60,25 @@ function CategoryAReportPageContent() {
       ["Items Sold", catA.items],
       ["Remaining to Threshold", remaining],
       [],
-      ["Invoice", "Date", "Time", "Customer Name", "Amount", "VAT", "Mode"],
-      ...(catA.allTxns || []).map((t: any) => [t.id, t.date, t.time, `"${t.customerName}"`, t.rawAmount, Math.round(t.rawAmount * 0.18), t.mode]),
-    ].map((r) => r.join(",")).join("\n");
+      [
+        "Transaction ID",
+        "Customer Name",
+        "Transaction Date",
+        "Type",
+        "Amount",
+        "Status",
+      ],
+      ...(catA.allTxns || []).map((t: any) => [
+        t.id,
+        `"${t.customerName}"`,
+        `${t.date} ${t.time}`,
+        t.type,
+        t.rawAmount,
+        t.status,
+      ]),
+    ]
+      .map((r) => r.join(","))
+      .join("\n");
     const blob = new Blob([rows], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -69,7 +95,7 @@ function CategoryAReportPageContent() {
   // Opens the dropdown for a row
   const toggleMenu = (e: React.MouseEvent, key: string) => {
     e.stopPropagation();
-    setOpenMenuId(prev => (prev === key ? null : key));
+    setOpenMenuId((prev) => (prev === key ? null : key));
   };
 
   // Transfers from dropdown to confirmation modal
@@ -89,7 +115,10 @@ function CategoryAReportPageContent() {
       refresh();
     } catch (err: any) {
       console.error("[CategoryA] Delete failed:", err);
-      alert(err?.response?.data?.message || "Failed to delete invoice. Please try again.");
+      alert(
+        err?.response?.data?.message ||
+          "Failed to delete invoice. Please try again.",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -99,19 +128,21 @@ function CategoryAReportPageContent() {
     dateRange?.from && dateRange.to
       ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
       : dateRange?.from
-      ? format(dateRange.from, "MMMM d, yyyy")
-      : "Today";
+        ? format(dateRange.from, "MMMM d, yyyy")
+        : "Today";
 
   return (
     <MainLayout>
       {/* Close any open dropdown when clicking outside */}
-      <div className="max-w-[1200px] mx-auto pb-20" onClick={() => setOpenMenuId(null)}>
-
+      <div
+        className="max-w-[1200px] mx-auto pb-20"
+        onClick={() => setOpenMenuId(null)}
+      >
         {/* PAGE HEADER */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/sales')}
+              onClick={() => router.push("/sales")}
               className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 shadow-sm transition-all active:scale-95"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -121,7 +152,9 @@ function CategoryAReportPageContent() {
                 <span className="text-[11px] font-black uppercase tracking-[0.15em] bg-blue-100 text-blue-700 px-3 py-1 rounded-md">
                   Category A
                 </span>
-                <span className="text-[12px] font-bold text-gray-400">{dateLabel}</span>
+                <span className="text-[12px] font-bold text-gray-400">
+                  {dateLabel}
+                </span>
               </div>
               <h1 className="text-[26px] font-black text-gray-900 tracking-tight">
                 Taxable Sales — Detailed Report
@@ -135,18 +168,28 @@ function CategoryAReportPageContent() {
           {/* Export */}
           <div className="relative">
             <button
-              onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowExportMenu(!showExportMenu);
+              }}
               className="flex items-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
             >
               <Download className="w-4 h-4" /> Export
             </button>
             {showExportMenu && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-[185px]">
-                <button onClick={handlePDF} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
+                <button
+                  onClick={handlePDF}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                >
                   <FileText className="w-4 h-4 text-red-500" /> Download PDF
                 </button>
-                <button onClick={handleCSV} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
-                  <FileSpreadsheet className="w-4 h-4 text-blue-500" /> Download CSV
+                <button
+                  onClick={handleCSV}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-blue-500" /> Download
+                  CSV
                 </button>
               </div>
             )}
@@ -157,15 +200,23 @@ function CategoryAReportPageContent() {
         <div className="bg-gradient-to-r from-[#1e40af] to-[#1e3a8a] rounded-2xl p-6 mb-8 text-white shadow-xl shadow-blue-200">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Daily Threshold Progress</p>
+              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">
+                Daily Threshold Progress
+              </p>
               <p className="text-[28px] font-black">
                 Rs. {loading ? "..." : catA.core.toLocaleString()}
-                <span className="text-[16px] font-bold text-blue-300 ml-2">/ Rs. 200,000</span>
+                <span className="text-[16px] font-bold text-blue-300 ml-2">
+                  / Rs. 200,000
+                </span>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Remaining</p>
-              <p className="text-[22px] font-black text-yellow-300">Rs. {loading ? "..." : remaining.toLocaleString()}</p>
+              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">
+                Remaining
+              </p>
+              <p className="text-[22px] font-black text-yellow-300">
+                Rs. {loading ? "..." : remaining.toLocaleString()}
+              </p>
             </div>
           </div>
           <div className="w-full h-3 bg-blue-900/40 rounded-full overflow-hidden">
@@ -174,23 +225,58 @@ function CategoryAReportPageContent() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="text-[12px] font-bold text-blue-200 mt-2">{progressPct.toFixed(1)}% of daily taxable threshold used</p>
+          <p className="text-[12px] font-bold text-blue-200 mt-2">
+            {progressPct.toFixed(1)}% of daily taxable threshold used
+          </p>
         </div>
 
         {/* KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
           {[
-            { label: "Total Taxable Sales", value: `Rs. ${(catA.core || 0).toLocaleString()}`, icon: Receipt, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "VAT Collected (18%)", value: `Rs. ${(catA.vat || 0).toLocaleString()}`, icon: Percent, color: "text-purple-600", bg: "bg-purple-50" },
-            { label: "Total Transactions", value: `${catA.txns || 0}`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            { label: "Average Bill", value: `Rs. ${(catA.avg || 0).toLocaleString()}`, icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
+            {
+              label: "Total Taxable Sales",
+              value: `Rs. ${(catA.core || 0).toLocaleString()}`,
+              icon: Receipt,
+              color: "text-blue-600",
+              bg: "bg-blue-50",
+            },
+            {
+              label: "VAT Collected (18%)",
+              value: `Rs. ${(catA.vat || 0).toLocaleString()}`,
+              icon: Percent,
+              color: "text-purple-600",
+              bg: "bg-purple-50",
+            },
+            {
+              label: "Total Transactions",
+              value: `${catA.txns || 0}`,
+              icon: TrendingUp,
+              color: "text-emerald-600",
+              bg: "bg-emerald-50",
+            },
+            {
+              label: "Average Bill",
+              value: `Rs. ${(catA.avg || 0).toLocaleString()}`,
+              icon: FileText,
+              color: "text-amber-600",
+              bg: "bg-amber-50",
+            },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center mb-3`}>
+            <div
+              key={kpi.label}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+            >
+              <div
+                className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center mb-3`}
+              >
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
               </div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-              <p className="text-[20px] font-black text-gray-900">{loading ? "..." : kpi.value}</p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                {kpi.label}
+              </p>
+              <p className="text-[20px] font-black text-gray-900">
+                {loading ? "..." : kpi.value}
+              </p>
             </div>
           ))}
         </div>
@@ -198,20 +284,38 @@ function CategoryAReportPageContent() {
         {/* TRANSACTIONS TABLE */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between p-6 border-b border-gray-50">
-            <h3 className="text-[16px] font-black text-gray-900">Category A Transactions</h3>
-            <span className="text-[12px] font-bold text-gray-400">{catA.txns || 0} records</span>
+            <h3 className="text-[16px] font-black text-gray-900">
+              Category A Transactions
+            </h3>
+            <span className="text-[12px] font-bold text-gray-400">
+              {catA.txns || 0} records
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="text-right py-3 px-6 w-14 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Transaction ID
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Customer Name
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Transaction Date
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Type
+                  </th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Amount
+                  </th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-6 w-14 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -225,7 +329,10 @@ function CategoryAReportPageContent() {
                   ))
                 ) : (catA.recentTxns || []).length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-[13px] font-bold text-gray-300">
+                    <td
+                      colSpan={6}
+                      className="py-16 text-center text-[13px] font-bold text-gray-300"
+                    >
                       No Category A transactions found for this period.
                     </td>
                   </tr>
@@ -235,21 +342,40 @@ function CategoryAReportPageContent() {
                     const menuKey = txn.rawId || txn.id || String(i);
                     const isOpen = openMenuId === menuKey;
                     return (
-                      <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                      <tr
+                        key={i}
+                        className="hover:bg-blue-50/30 transition-colors"
+                      >
                         <td className="py-4 px-6">
-                          <p className="text-[13px] font-bold text-gray-900 font-mono">{txn.id}</p>
+                          <p className="text-[13px] font-bold text-gray-900 font-mono">
+                            {txn.id}
+                          </p>
                         </td>
-                        <td className="py-4 px-4 text-[13px] font-medium text-gray-700">{txn.customerName}</td>
+                        <td className="py-4 px-4 text-[13px] font-medium text-gray-700">
+                          {txn.customerName}
+                        </td>
                         <td className="py-4 px-4">
-                          <p className="text-[13px] font-bold text-gray-900">{txn.date}</p>
-                          <p className="text-[10px] font-bold text-gray-400">{txn.time}</p>
+                          <p className="text-[13px] font-bold text-gray-900">
+                            {txn.date}
+                          </p>
+                          <p className="text-[10px] font-bold text-gray-400">
+                            {txn.time}
+                          </p>
                         </td>
                         <td className="py-4 px-4">
-                          <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-black rounded-lg uppercase tracking-wider">Cat A</span>
+                          <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-black rounded-lg uppercase tracking-wider">
+                            Cat A
+                          </span>
                         </td>
-                        <td className="py-4 px-4 text-right text-[13px] font-black text-gray-900 font-mono">Rs. {txn.amount}</td>
+                        <td className="py-4 px-4 text-right text-[13px] font-black text-gray-900 font-mono">
+                          Rs. {txn.amount}
+                        </td>
                         <td className="py-4 px-4 text-right">
-                          <span className={`px-2 py-1 text-[11px] font-black rounded-lg ${txn.status === 'Completed' || txn.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : txn.status === 'Refunded' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{txn.status || 'Completed'}</span>
+                          <span
+                            className={`px-2 py-1 text-[11px] font-black rounded-lg ${txn.status === "Completed" || txn.status === "Paid" ? "bg-emerald-100 text-emerald-700" : txn.status === "Refunded" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}
+                          >
+                            {txn.status || "Completed"}
+                          </span>
                         </td>
                         {/* ── Three-dot Actions ── */}
                         <td className="py-4 px-6">
@@ -265,7 +391,9 @@ function CategoryAReportPageContent() {
                             {isOpen && (
                               <div
                                 className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 py-1 z-50 w-[175px]"
-                                style={{ animation: 'fadeInScale 0.15s ease-out' }}
+                                style={{
+                                  animation: "fadeInScale 0.15s ease-out",
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
@@ -302,20 +430,25 @@ function CategoryAReportPageContent() {
             <div className="border-t border-gray-100 p-6 bg-gray-50/50 space-y-2">
               <div className="flex justify-between text-[13px] font-bold text-gray-500">
                 <span>Subtotal</span>
-                <span className="font-mono">Rs. {catA.core.toLocaleString()}</span>
+                <span className="font-mono">
+                  Rs. {catA.core.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-gray-500">
                 <span>VAT (18%)</span>
-                <span className="font-mono">Rs. {catA.vat.toLocaleString()}</span>
+                <span className="font-mono">
+                  Rs. {catA.vat.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between text-[17px] font-black text-gray-900 pt-3 border-t border-gray-200">
                 <span>Total Taxable</span>
-                <span className="text-blue-600 font-mono">Rs. {(catA.core + catA.vat).toLocaleString()}</span>
+                <span className="text-blue-600 font-mono">
+                  Rs. {(catA.core + catA.vat).toLocaleString()}
+                </span>
               </div>
             </div>
           )}
         </div>
-
       </div>
 
       {/* ── Delete Confirmation Modal ──────────────────────────────────────────── */}
@@ -326,7 +459,7 @@ function CategoryAReportPageContent() {
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-            style={{ animation: 'fadeInScale 0.2s ease-out' }}
+            style={{ animation: "fadeInScale 0.2s ease-out" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -335,22 +468,30 @@ function CategoryAReportPageContent() {
                 <Trash2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-black text-[16px]">Delete Invoice</h3>
-                <p className="text-red-100 text-[11px] font-medium mt-0.5">This action cannot be undone</p>
+                <h3 className="text-white font-black text-[16px]">
+                  Delete Invoice
+                </h3>
+                <p className="text-red-100 text-[11px] font-medium mt-0.5">
+                  This action cannot be undone
+                </p>
               </div>
             </div>
 
             {/* Body */}
             <div className="px-6 py-6">
               <p className="text-gray-700 text-[14px] leading-relaxed">
-                You are about to permanently delete invoice{' '}
-                <span className="font-black text-gray-900">{txnToDelete.id}</span>.
+                You are about to permanently delete invoice{" "}
+                <span className="font-black text-gray-900">
+                  {txnToDelete.id}
+                </span>
+                .
               </p>
               <div className="mt-4 bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-start gap-3">
                 <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                 <p className="text-red-700 text-[12px] leading-relaxed">
-                  All invoice items, payment records, and associated data will be{' '}
-                  <strong>permanently removed</strong> from the database. This cannot be recovered.
+                  All invoice items, payment records, and associated data will
+                  be <strong>permanently removed</strong> from the database.
+                  This cannot be recovered.
                 </p>
               </div>
             </div>
