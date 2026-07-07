@@ -2,6 +2,7 @@
 
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface StatsCardProps {
   title: string;
@@ -76,13 +77,13 @@ export default function StatsCard({
       </div>
 
       <div className="pt-4 mt-4 border-t border-gray-50 flex justify-center">
-         <a 
+         <Link 
            href={viewAllHref} 
            onClick={handleViewAllClick}
            className="text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
          >
             View All →
-         </a>
+         </Link>
       </div>
     </div>
   );

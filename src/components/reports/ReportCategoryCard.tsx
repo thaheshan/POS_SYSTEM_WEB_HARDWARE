@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export interface ReportCategoryProps {
   title: string;
@@ -16,6 +17,7 @@ export interface ReportCategoryProps {
   cardContext?: ReactNode;
   onButtonClick?: () => void;
   onReportClick?: (report: string) => void;
+  href?: string;
 }
 
 export default function ReportCategoryCard({
@@ -29,7 +31,8 @@ export default function ReportCategoryCard({
   iconBgClass,
   cardContext,
   onButtonClick,
-  onReportClick
+  onReportClick,
+  href
 }: ReportCategoryProps) {
   return (
     <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-8 flex flex-col h-full">
@@ -69,15 +72,27 @@ export default function ReportCategoryCard({
         ))}
       </div>
       
-      <button 
-        onClick={onButtonClick}
-        className={cn(
-          "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all hover:opacity-90 active:scale-[0.98] mt-auto text-white",
-          buttonColorClass
-        )}
-      >
-        {buttonText} <ArrowRight className="w-4 h-4" />
-      </button>
+      {href ? (
+        <Link 
+          href={href}
+          className={cn(
+            "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all hover:opacity-90 active:scale-[0.98] mt-auto text-white",
+            buttonColorClass
+          )}
+        >
+          {buttonText} <ArrowRight className="w-4 h-4" />
+        </Link>
+      ) : (
+        <button 
+          onClick={onButtonClick}
+          className={cn(
+            "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all hover:opacity-90 active:scale-[0.98] mt-auto text-white",
+            buttonColorClass
+          )}
+        >
+          {buttonText} <ArrowRight className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
