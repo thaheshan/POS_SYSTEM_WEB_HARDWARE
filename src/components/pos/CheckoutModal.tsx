@@ -213,7 +213,7 @@ export default function CheckoutModal({ isOpen, onClose, subtotal, onComplete }:
                      </button>
                      <button className="border border-gray-200 hover:border-gray-300 rounded-lg py-2 flex flex-col items-center justify-center transition-colors">
                         <span className="text-[11px] font-bold text-gray-700">Clearance</span>
-                        <span className="text-[10px] font-bold text-gray-400">15%</span>
+                        <span className="text-[10px] font-bold text-gray-400">(Included)</span>
                      </button>
                   </div>
                 </div>

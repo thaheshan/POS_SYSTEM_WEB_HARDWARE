@@ -244,7 +244,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <h4 className="text-[15px] font-black text-blue-900 mb-0.5">
-                    {loading ? 'Loading...' : `Today's Taxable Sales (Category A): Rs. ${data.catA.core.toLocaleString()} / Rs. ${currentThreshold.toLocaleString()}`}
+                    {loading ? 'Loading...' : `Taxable Sales (Category A): Rs. ${data.catA.core.toLocaleString()} / Max Allowed: Rs. ${currentThreshold.toLocaleString()}`}
                   </h4>
                   <p className="text-[12.5px] font-bold text-blue-600 opacity-80">
                     Remaining before non-tax threshold: Rs.{' '}

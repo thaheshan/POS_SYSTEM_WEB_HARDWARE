@@ -50,10 +50,29 @@ export async function POST(req: Request) {
         ? { previewUrl: mailResult.previewUrl, resetLink: mailResult.resetLink }
         : {}),
     });
-  } catch (error) {
-    console.error("[forgot-password] Failed to send reset email", error);
+  } catch (error: any) {
+    const errMessage = error?.message || JSON.stringify(error) || "Unknown error";
+    const errStatus = error?.statusCode || 500;
+    console.error("[forgot-password] FULL ERROR:", errMessage);
+
+    // Resend domain not verified yet
+    if (errStatus === 403 || errMessage.includes("verify a domain") || errMessage.includes("validation_error")) {
+      return NextResponse.json(
+        { message: "Email service not yet configured. Please try again shortly or contact support." },
+        { status: 503 },
+      );
+    }
+
+    // Redis not configured in production
+    if (errMessage.includes("Redis") || errMessage.includes("storage requires")) {
+      return NextResponse.json(
+        { message: "Token storage not configured. Please add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to your Vercel environment variables." },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
-      { message: "Unable to request a password reset." },
+      { message: `Unable to request a password reset: ${errMessage}` },
       { status: 500 },
     );
   }

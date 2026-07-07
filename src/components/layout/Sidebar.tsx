@@ -16,7 +16,8 @@ import {
   ChevronDown,
   MoreVertical,
   Wrench,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: Wrench, label: 'Labour & Services', href: '/labour-services', roles: ['staff', 'cashier'] },
   { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin', 'owner'] },
   { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'owner', 'manager'] },
+  { icon: ClipboardList, label: 'Activity Log', href: '/activity-log', roles: ['admin', 'owner'] },
   { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'owner'] },
   { icon: Settings, label: 'Staff Settings', href: '/staff-settings', roles: ['staff', 'cashier'] },
 ];
@@ -81,7 +83,7 @@ export default function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean;
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center shrink-0">
-                 <img src="/images/futura_hardware_logo_white.png" alt="Futura Hardware Logo" className="h-12 sm:h-16 object-contain" />
+                <img src="/images/futura_hardware_logo.png" alt="Futura Hardware Logo" className="h-14 w-14 object-contain" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold tracking-wide leading-tight uppercase text-white">FUTURA HARDWARE</h1>

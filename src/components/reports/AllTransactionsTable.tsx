@@ -29,6 +29,7 @@ interface SaleRow {
   rawAmount: number;
   mode: string;
   type: 'Taxable' | 'Overflow' | 'Labour';
+  customerName?: string;
 }
 
 function buildRows(data: any): SaleRow[] {
@@ -87,7 +88,8 @@ export default function AllTransactionsTable({ dateRange }: Props) {
     return rows.filter(r =>
       r.id.toLowerCase().includes(q) ||
       (r.mode ?? '').toLowerCase().includes(q) ||
-      (r.type ?? '').toLowerCase().includes(q)
+      (r.type ?? '').toLowerCase().includes(q) ||
+      (r.customerName ?? '').toLowerCase().includes(q)
     );
   }, [rows, searchTerm]);
 
@@ -135,7 +137,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search invoice, type, mode…"
+              placeholder="Search invoice, customer, type…"
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full h-10 pl-10 pr-4 rounded-xl border border-gray-200 bg-gray-50/50 text-[13px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -161,7 +163,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
           <table className="w-full text-left border-collapse min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                {['Invoice #', 'Time', 'Mode', 'Category', 'Amount', 'Actions'].map(h => (
+                {['Invoice #', 'Time', 'Customer', 'Mode', 'Category', 'Amount', 'Actions'].map(h => (
                   <th key={h} className="px-6 py-4 text-[11px] font-black text-gray-400 tracking-widest uppercase last:text-right">
                     {h}
                   </th>
@@ -171,7 +173,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
             <tbody className="divide-y divide-gray-100">
               {currentData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
+                  <td colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Receipt className="h-10 w-10 text-gray-200" />
                       <p className="text-[14px] font-semibold text-gray-400">No transactions for this period.</p>
@@ -190,6 +192,11 @@ export default function AllTransactionsTable({ dateRange }: Props) {
                     {/* Time */}
                     <td className="px-6 py-4">
                       <span className="text-[13px] font-bold text-gray-500">{inv.time}</span>
+                    </td>
+
+                    {/* Customer */}
+                    <td className="px-6 py-4">
+                      <span className="text-[13px] font-bold text-gray-800">{inv.customerName || 'Walk-in'}</span>
                     </td>
 
                     {/* Mode */}

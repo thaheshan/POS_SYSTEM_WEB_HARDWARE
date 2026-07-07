@@ -243,13 +243,27 @@ export default function ProcessReturnPage() {
                             <td className="py-4 font-medium text-slate-700">{item.quantity} units</td>
                             <td className="py-4 font-medium text-slate-700">Rs. {item.price.toLocaleString()}</td>
                             <td className="py-4">
-                              <div className="flex items-center justify-center gap-3">
+                              <div className="flex items-center justify-center gap-2">
                                 <button 
                                   onClick={() => updateReturnQuantity(item.id, item.returnQuantity - 1)}
                                   className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30"
                                   disabled={item.returnQuantity <= 0}
                                 >-</button>
-                                <span className="w-6 text-center font-bold text-slate-900">{item.returnQuantity}</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={item.quantity}
+                                  step="any"
+                                  value={item.returnQuantity}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                      updateReturnQuantity(item.id, Math.min(item.quantity, Math.max(0, val)));
+                                    }
+                                  }}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-16 h-9 text-center font-bold text-slate-900 border-2 border-slate-200 rounded-lg outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
                                 <button 
                                   onClick={() => updateReturnQuantity(item.id, item.returnQuantity + 1)}
                                   className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30"
