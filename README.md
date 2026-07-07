@@ -16,7 +16,7 @@ Visit: http://localhost:3000
 - ? Next.js 14 with TypeScript
 - ? Redux Toolkit state management
 - ? Protected routes & authentication
-- ? Responsive Tailwind CSS design
+- ? Responsive Tailwind CS design
 - ? Toast notifications
 - ? Lucide icons
 - ? Complete folder structure
@@ -41,6 +41,6 @@ src/
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 
-## ?? License
+##  License
 
 Proprietary - Futura Solutions PVT LTD

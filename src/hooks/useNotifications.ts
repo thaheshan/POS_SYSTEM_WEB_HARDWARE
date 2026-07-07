@@ -82,6 +82,34 @@ export function useNotifications() {
         console.error('Failed to fetch low stock for notifications', err);
       }
 
+      // 3.5 Fetch Subscription Status for alerts
+      try {
+        const subRes = await api.get('/api/shop/subscription-status');
+        const subData = subRes.data?.data || subRes.data;
+        if (subData && !subData.selfReportedPaid) {
+          const isOverdue = subData.paymentStatus === 'OVERDUE';
+          const isDueSoon = subData.paymentStatus === 'PENDING' && subData.daysUntilDue !== null && subData.daysUntilDue <= 7;
+          
+          if (isOverdue || isDueSoon) {
+            const id = `sub-alert-${subData.nextPaymentDue || 'now'}`;
+            if (!clearedIds.includes(id)) {
+              synthesizedNotifications.push({
+                id,
+                title: isOverdue ? 'Subscription Overdue' : 'Subscription Payment Due',
+                message: isOverdue 
+                  ? 'Your subscription is overdue! Please pay immediately.'
+                  : `Please complete your subscription payment before ${new Date(subData.nextPaymentDue).toLocaleDateString()} to avoid account suspension.`,
+                type: 'WARNING',
+                isRead: readIds.includes(id),
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        // May fail for non-admins, which is fine
+      }
+
       // 4. Merge and sort
       const allNotifications = [...synthesizedNotifications, ...data];
       

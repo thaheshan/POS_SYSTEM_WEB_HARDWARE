@@ -7,6 +7,7 @@ import Link from "next/link";
 interface Step3Props {
   onNext: (newPassword: string) => void;
   loading: boolean;
+  error?: string;
 }
 
 interface Rule {
@@ -30,7 +31,7 @@ function strengthScore(pw: string) {
   return n;
 }
 
-export default function Step3ChangePassword({ onNext, loading }: Step3Props) {
+export default function Step3ChangePassword({ onNext, loading, error: serverError }: Step3Props) {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -185,6 +186,15 @@ export default function Step3ChangePassword({ onNext, loading }: Step3Props) {
                   • {err}
                 </p>
               ))}
+            </div>
+          )}
+
+          {/* Server errors */}
+          {serverError && errors.length === 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3">
+              <p className="text-red-700 text-sm font-medium">
+                {serverError}
+              </p>
             </div>
           )}
 

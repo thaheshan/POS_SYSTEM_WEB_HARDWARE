@@ -174,7 +174,7 @@ function downloadInvoicePDF({
         <span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span>
       </div>
       ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ''}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax (15%)</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ''}
+      ${tax > 0 ? `<div class="total-row tax"><span>Tax (Included)</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ''}
       <div class="grand-total">
         <span>Grand Total</span>
         <span>Rs. ${total.toLocaleString()}</span>
@@ -408,7 +408,7 @@ export default function PaymentConfirmation({
                 <span>Rs. {subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
-                <span>Tax (15%)</span>
+                <span>Tax (Included)</span>
                 <span>Rs. {tax.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-red-500">

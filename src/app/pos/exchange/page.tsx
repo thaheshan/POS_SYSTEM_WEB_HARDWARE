@@ -102,7 +102,7 @@ export default function ExchangePage() {
       const filtered = productsList.filter(p => 
         p.name?.toLowerCase().includes(lowerTerm) || 
         p.sku?.toLowerCase().includes(lowerTerm) ||
-        p.category?.toLowerCase().includes(lowerTerm)
+        p.category?.name?.toLowerCase().includes(lowerTerm)
       );
       setSearchResults(filtered);
     } catch (err) {
@@ -259,10 +259,22 @@ export default function ExchangePage() {
                           <td className="p-4">{item.quantity} units</td>
                           <td className="p-4">Rs. {item.price.toLocaleString()}</td>
                           <td className="p-4">
-                            <div className="flex items-center justify-center gap-3">
-                              <button onClick={() => updateReturnQuantity(item.id, item.returnQuantity - 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">-</button>
-                              <span className="w-8 text-center font-bold text-lg">{item.returnQuantity}</span>
-                              <button onClick={() => updateReturnQuantity(item.id, item.returnQuantity + 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">+</button>
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => updateReturnQuantity(item.id, item.returnQuantity - 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center disabled:opacity-30" disabled={item.returnQuantity <= 0}>-</button>
+                              <input
+                                type="number"
+                                min={0}
+                                max={item.quantity}
+                                step="any"
+                                value={item.returnQuantity}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val)) updateReturnQuantity(item.id, Math.min(item.quantity, Math.max(0, val)));
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                className="w-16 h-9 text-center font-bold text-slate-900 border-2 border-slate-200 rounded-lg outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button onClick={() => updateReturnQuantity(item.id, item.returnQuantity + 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center disabled:opacity-30" disabled={item.returnQuantity >= item.quantity}>+</button>
                             </div>
                           </td>
                         </tr>
@@ -321,9 +333,20 @@ export default function ExchangePage() {
                           </td>
                           <td className="p-4">Rs. {item.price.toLocaleString()}</td>
                           <td className="p-4">
-                            <div className="flex items-center justify-center gap-3">
-                              <button onClick={() => updateNewItemQty(item.productId, item.quantity - 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">-</button>
-                              <span className="w-8 text-center font-bold text-lg">{item.quantity}</span>
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => updateNewItemQty(item.productId, item.quantity - 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center disabled:opacity-30" disabled={item.quantity <= 1}>-</button>
+                              <input
+                                type="number"
+                                min={1}
+                                step="any"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val) && val >= 1) updateNewItemQty(item.productId, val);
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                className="w-16 h-9 text-center font-bold text-slate-900 border-2 border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
                               <button onClick={() => updateNewItemQty(item.productId, item.quantity + 1)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">+</button>
                             </div>
                           </td>

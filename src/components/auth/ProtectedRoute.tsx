@@ -18,8 +18,8 @@ export default function ProtectedRoute({
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push('/auth/login');
-      } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        router.push('/unauthorized');
+      } else if (allowedRoles && user && !allowedRoles.includes(user.role.toLowerCase())) {
+        router.push('/dashboard');
       }
     }
   }, [isAuthenticated, isLoading, user, allowedRoles, router]);
@@ -33,7 +33,7 @@ export default function ProtectedRoute({
   }
 
   if (!isAuthenticated) return null;
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) return null;
+  if (allowedRoles && user && !allowedRoles.includes(user.role.toLowerCase())) return null;
 
   return <>{children}</>;
 }

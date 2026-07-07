@@ -318,8 +318,12 @@ export default function POSPage() {
           const name = item.product?.name || item.product_name || "Unknown";
           const nameLower = name.toLowerCase();
 
-          let sellType: "fixed" | "loose" = "fixed";
-          let measurementUnit = "unit";
+          let sellType: "fixed" | "loose" =
+            item.product?.sellType?.toLowerCase() ||
+            item.sellType?.toLowerCase() ||
+            "fixed";
+          let measurementUnit =
+            item.product?.measurementUnit || item.measurementUnit || "unit";
 
           if (
             nameLower.includes("rod") ||
@@ -391,29 +395,9 @@ export default function POSPage() {
           const name = p.name || "Unknown";
           const nameLower = name.toLowerCase();
 
-          let sellType: "fixed" | "loose" = "fixed";
-          let measurementUnit = "unit";
-
-          if (
-            nameLower.includes("rod") ||
-            nameLower.includes("wire") ||
-            nameLower.includes("cable") ||
-            nameLower.includes("pipe") ||
-            nameLower.includes("rope")
-          ) {
-            sellType = "loose";
-            measurementUnit = "m";
-          } else if (
-            nameLower.includes("sand") ||
-            nameLower.includes("metal") ||
-            nameLower.includes("gravel") ||
-            nameLower.includes("cement (loose)") ||
-            nameLower.includes("nails") ||
-            nameLower.includes("screws")
-          ) {
-            sellType = "loose";
-            measurementUnit = "kg";
-          }
+          let sellType: "fixed" | "loose" =
+            p.sellType?.toLowerCase() || "fixed";
+          let measurementUnit = p.measurementUnit || "unit";
 
           return {
             id: String(p.id),
@@ -632,7 +616,7 @@ export default function POSPage() {
       )}
 
       <MainLayout>
-        {viewState === 'confirm' ? (
+        {viewState === "confirm" ? (
           <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative z-50">
             <PaymentConfirmation
               onBack={() => setViewState("pos")}
@@ -666,7 +650,6 @@ export default function POSPage() {
         ) : (
           /* ── POS Main Layout ── */
           <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative">
-
             {/* ── LEFT: PRODUCT GRID ── */}
             <div className="flex-1 flex flex-col bg-[#f8fafc] border-r border-gray-200 overflow-hidden">
               {/* Search + Switch */}
@@ -845,8 +828,9 @@ export default function POSPage() {
 
             {/* ── RIGHT: TABBED CHECKOUT SIDEBAR ── */}
             {cart.length > 0 && (
-              <div className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
-
+              <div
+                className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+              >
                 {/* Tab Switcher */}
                 <div className="flex bg-gray-50 p-1.5 m-3 rounded-2xl border border-gray-100 gap-1 shrink-0 items-center">
                   <button

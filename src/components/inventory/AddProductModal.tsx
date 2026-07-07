@@ -9,6 +9,32 @@ import api from '@/api/axiosInstance';
 import ImageOptionsModal from './ImageOptionsModal';
 import CameraCaptureModal from './CameraCaptureModal';
 
+interface Product {
+  sku?: string;
+  [key: string]: any;
+}
+
+const generateNextSku = (products: Product[]): string => {
+  const skuPattern = /^SKU_(\d+)$/i;
+  let maxNum = 0;
+  
+  products.forEach(p => {
+    if (p.sku && typeof p.sku === 'string') {
+      const match = p.sku.trim().match(skuPattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+  
+  const nextNum = maxNum + 1;
+  const paddedNum = String(nextNum).padStart(3, '0');
+  return `SKU_${paddedNum}`;
+};
+
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,7 +46,78 @@ const TAX_RATES = [
   { label: 'VAT (18%)',    value: '18' },
 ];
 
-const UNIT_OPTIONS = ['Pieces', 'Kg', 'Litres', 'Metres', 'Bags', 'Boxes', 'Pairs'];
+const UNIT_GROUPS: { group: string; units: { label: string; value: string }[] }[] = [
+  {
+    group: '⚖️ Weight',
+    units: [
+      { label: 'Kilogram (kg)',       value: 'kg' },
+      { label: 'Gram (g)',            value: 'g' },
+      { label: 'Milligram (mg)',      value: 'mg' },
+      { label: 'Metric Ton (t)',      value: 't' },
+      { label: 'Pound (lb)',          value: 'lb' },
+      { label: 'Ounce (oz)',          value: 'oz' },
+    ],
+  },
+  {
+    group: '🧪 Volume / Liquid',
+    units: [
+      { label: 'Litre (L)',           value: 'L' },
+      { label: 'Millilitre (mL)',     value: 'mL' },
+      { label: 'Cubic Metre (m³)',    value: 'm³' },
+      { label: 'Cubic Centimetre (cc)', value: 'cc' },
+      { label: 'Gallon (gal)',        value: 'gal' },
+      { label: 'Fluid Ounce (fl oz)', value: 'fl oz' },
+    ],
+  },
+  {
+    group: '📏 Length / Distance',
+    units: [
+      { label: 'Metre (m)',           value: 'm' },
+      { label: 'Centimetre (cm)',     value: 'cm' },
+      { label: 'Millimetre (mm)',     value: 'mm' },
+      { label: 'Kilometre (km)',      value: 'km' },
+      { label: 'Inch (in)',           value: 'in' },
+      { label: 'Foot (ft)',           value: 'ft' },
+      { label: 'Yard (yd)',           value: 'yd' },
+    ],
+  },
+  {
+    group: '🟫 Area',
+    units: [
+      { label: 'Square Metre (m²)',   value: 'm²' },
+      { label: 'Square Foot (ft²)',   value: 'ft²' },
+      { label: 'Square Centimetre (cm²)', value: 'cm²' },
+      { label: 'Perch',               value: 'perch' },
+      { label: 'Acre',                value: 'acre' },
+    ],
+  },
+  {
+    group: '📦 Count / Packaging',
+    units: [
+      { label: 'Piece (pc)',          value: 'pc' },
+      { label: 'Dozen (doz)',         value: 'doz' },
+      { label: 'Pair',                value: 'pair' },
+      { label: 'Set',                 value: 'set' },
+      { label: 'Bundle',              value: 'bundle' },
+      { label: 'Roll',                value: 'roll' },
+      { label: 'Bag',                 value: 'bag' },
+      { label: 'Box',                 value: 'box' },
+      { label: 'Carton',              value: 'carton' },
+      { label: 'Packet',              value: 'packet' },
+      { label: 'Sheet',               value: 'sheet' },
+      { label: 'Coil',                value: 'coil' },
+    ],
+  },
+  {
+    group: '⏱️ Time',
+    units: [
+      { label: 'Hour (hr)',           value: 'hr' },
+      { label: 'Day',                 value: 'day' },
+      { label: 'Week',                value: 'week' },
+      { label: 'Month',               value: 'month' },
+    ],
+  },
+];
 
 function SectionHeader({ icon: Icon, label, sub, color = 'emerald' }: {
   icon: React.ElementType; label: string; sub: string; color?: string;
@@ -62,6 +159,8 @@ const selectCls = "w-full appearance-none px-3.5 py-2.5 bg-gray-50 border border
 export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
   const [loading, setLoading]           = useState(false);
   const [saving, setSaving]             = useState(false);
+  const [existingProducts, setExistingProducts] = useState<Product[]>([]);
+  const existingProductsRef             = useRef<Product[]>([]);
   const [categories, setCategories]     = useState<{ id: string; name: string }[]>([]);
   const [subCategories, setSubCategories] = useState<{ id: string; name: string }[]>([]);
   const [suppliers, setSuppliers]       = useState<{ id: string; name: string }[]>([]);
@@ -79,7 +178,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     shortDescription: '',
     // Product Type
     productType:  'FIX',   // FIX | LOOSE
-    unit:         'Pieces',
+    unit:         '',
     // Pricing
     costPrice:      '',
     sellingPrice:   '',
@@ -119,9 +218,19 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes] = await Promise.allSettled([
+      const [catRes, prodRes] = await Promise.allSettled([
         api.get('/products/categories'),
+        api.get('/products'),
       ]);
+
+      let productsList: Product[] = [];
+      if (prodRes.status === 'fulfilled') {
+        const prodData = prodRes.value.data;
+        productsList = Array.isArray(prodData) ? prodData : (Array.isArray(prodData?.data) ? prodData.data : []);
+        setExistingProducts(productsList);
+        existingProductsRef.current = productsList;
+      }
+
       if (catRes.status === 'fulfilled') {
         const catData = catRes.value.data;
         const arr = Array.isArray(catData) ? catData : (catData?.data || catData?.categories || []);
@@ -134,6 +243,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       }
       // suppliers removed
       setSuppliers([]);
+
+      // Auto-generate SKU
+      const nextSku = generateNextSku(productsList);
+      setForm(prev => ({ ...prev, sku: nextSku }));
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
@@ -187,6 +300,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     if (!form.sku.trim())          errs.sku          = 'SKU is required';
     if (!form.sellingPrice)        errs.sellingPrice = 'Selling price is required';
     if (!form.categoryId)          errs.categoryId   = 'Category is required';
+    if (form.productType === 'LOOSE' && !form.unit) errs.unit = 'Select a measurement unit for Loose product';
+
+    // Validate SKU uniqueness
+    const isDuplicate = existingProductsRef.current.some(
+      p => p.sku && typeof p.sku === 'string' && p.sku.trim().toLowerCase() === form.sku.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      errs.sku = 'SKU already exists';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -206,6 +329,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       formData.append('initialStock', (parseInt(form.initialStock) || 0).toString());
       formData.append('taxCategory', 'STANDARD_VAT');
       formData.append('taxRate', (parseFloat(form.taxRate) || 18).toString());
+      formData.append('sellType', form.productType);
+      if (form.productType === 'LOOSE') {
+        formData.append('measurementUnit', form.unit);
+      }
 
       if (form.description?.trim()) formData.append('description', form.description.trim());
       if (form.imageFile) formData.append('imageFile', form.imageFile);
@@ -530,13 +657,21 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
                 {form.productType === 'LOOSE' && (
                   <div className="mt-3">
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Measurement Unit</label>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Measurement Unit <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <select name="unit" value={form.unit} onChange={handleChange} className={selectCls}>
-                        {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                      <select name="unit" value={form.unit} onChange={handleChange} className={`${selectCls} ${errors.unit ? 'border-red-300 ring-2 ring-red-100' : ''}`}>
+                        <option value="">Select measurement unit…</option>
+                        {UNIT_GROUPS.map(group => (
+                          <optgroup key={group.group} label={group.group}>
+                            {group.units.map(u => (
+                              <option key={u.value} value={u.value}>{u.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
                       </select>
                       <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
+                    {errors.unit && <p className="text-[10.5px] text-red-500 mt-1 font-medium">{errors.unit}</p>}
                   </div>
                 )}
               </div>

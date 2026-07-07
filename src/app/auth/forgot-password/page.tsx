@@ -124,9 +124,6 @@ function ForgotPasswordPageContent() {
         {step === 2 && (
           <Step2Verification
             email={email}
-            code={code}
-            onCodeChange={setCode}
-            onNext={() => setStep(3)}
             onOpenEmailApp={handleOpenEmailApp}
             onResend={handleResend}
             loading={forgotPassword.loading}
@@ -137,6 +134,7 @@ function ForgotPasswordPageContent() {
           <Step3ChangePassword
             onNext={handleResetPassword}
             loading={forgotPassword.loading}
+            error={forgotPassword.error || ""}
           />
         )}
 
