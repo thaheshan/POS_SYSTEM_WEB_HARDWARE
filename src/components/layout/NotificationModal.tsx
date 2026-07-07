@@ -5,6 +5,7 @@ import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface NotificationModalProps {
   isOpen: boolean;
@@ -12,7 +13,45 @@ interface NotificationModalProps {
 }
 
 export default function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
-  const { notifications, unreadCount, markAllAsRead, clearAll } = useNotifications();
+  const router = useRouter();
+  const { notifications, unreadCount, markAllAsRead, clearAll, markAsRead } = useNotifications();
+
+  const handleNotificationClick = async (notif: Notification) => {
+    // 1. Mark as read if unread
+    if (!notif.isRead) {
+      await markAsRead(notif.id);
+    }
+
+    // 2. Navigate based on type
+    if (notif.link) {
+      router.push(notif.link);
+      onClose();
+      return;
+    }
+
+    if (notif.id.startsWith('tx-')) {
+      const txId = notif.id.replace('tx-', '');
+      router.push(`/receipt/${txId}`);
+      onClose();
+      return;
+    }
+
+    if (notif.id.startsWith('stock-')) {
+      const stockId = notif.id.replace('stock-', '');
+      router.push(`/inventory?editId=${stockId}`);
+      onClose();
+      return;
+    }
+
+    if (notif.id.startsWith('sub-alert-')) {
+      router.push(`/settings`);
+      onClose();
+      return;
+    }
+
+    // Default action if no specific destination
+    onClose();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -104,10 +143,11 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
               {notifications.map((notif) => (
                 <div 
                   key={notif.id} 
+                  onClick={() => handleNotificationClick(notif)}
                   className={cn(
-                    'p-5 rounded-xl border border-gray-100/50 transition-colors', 
+                    'p-5 rounded-xl border border-gray-100/50 transition-colors cursor-pointer', 
                     getBg(notif.type, notif.isRead),
-                    notif.isRead ? 'shadow-sm' : 'shadow-md border-transparent'
+                    notif.isRead ? 'shadow-sm' : 'shadow-md border-transparent hover:shadow-lg'
                   )}
                 >
                   <div className="flex gap-4">
@@ -124,12 +164,11 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
                       <p className="text-sm text-gray-600 mt-1 leading-relaxed">{notif.message}</p>
                       
                       {notif.link && (
-                        <a 
-                          href={notif.link}
+                        <span 
                           className="inline-block mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                         >
                           View Details &rarr;
-                        </a>
+                        </span>
                       )}
                     </div>
                   </div>

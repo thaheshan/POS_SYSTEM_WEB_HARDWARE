@@ -25,6 +25,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { Calendar as CalendarIcon, FileDown } from 'lucide-react';
 import InventoryReportView from '@/components/inventory/InventoryReportView';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -57,10 +58,33 @@ export default function InventoryPage() {
         }
         setIsPurchaseOrderModalOpen(true);
         // Clean up URL without reloading
-        window.history.replaceState({}, '', '/inventory');
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('po');
+        newUrl.searchParams.delete('items');
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
       }
     }
   }, []);
+
+  React.useEffect(() => {
+    if (inventoryData.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get('editId');
+      if (editId) {
+        const item = inventoryData.find(i => String(i.id) === editId || String(i.productId) === editId);
+        if (item) {
+          setSelectedItem(item);
+          setIsEditModalOpen(true);
+        } else {
+          toast.error('The requested item is no longer available.');
+        }
+        // Clean up URL without reloading
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('editId');
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
+      }
+    }
+  }, [inventoryData]);
 
   const fetchInventory = async () => {
     try {
@@ -235,7 +259,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh inventory data list
     } catch (error: any) {
       console.error('Failed to update product details:', error);
-      alert(error?.response?.data?.message || 'Failed to update product. Please try again.');
+      toast.error(error?.response?.data?.message || 'Failed to update product. Please try again.');
     }
   };
 
@@ -249,7 +273,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh from server
     } catch (error: any) {
       console.error('Failed to delete product:', error);
-      alert(error?.response?.data?.message || 'Failed to delete product. Please try again.');
+      toast.error(error?.response?.data?.message || 'Failed to delete product. Please try again.');
     } finally {
       setIsDeleting(false);
     }
