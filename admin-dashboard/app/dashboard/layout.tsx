@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { LogOut, ShieldAlert, Clock, Store } from "lucide-react";
+import { LogOut, ShieldAlert, Clock, Store, MessageSquare } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -74,6 +74,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <ShieldAlert className="w-5 h-5" />
               Notifications
+            </Link>
+            <Link 
+              href="/dashboard/contacts"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                pathname === '/dashboard/contacts' 
+                  ? 'bg-emerald-50 text-emerald-700' 
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <MessageSquare className="w-5 h-5" />
+              Contacts
             </Link>
           </nav>
         </aside>

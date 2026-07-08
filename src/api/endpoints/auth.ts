@@ -1,3 +1,4 @@
+import axios from "axios";
 import api from "../axiosInstance";
 
 export const authAPI = {
@@ -6,7 +7,7 @@ export const authAPI = {
   logout: () => api.post("/auth/logout"),
   getMe: () => api.get("/auth/me"),
   forgotPassword: (email: string) =>
-    api.post("/auth/forgot-password", { email }),
+    axios.post("/api/v1/auth/forgot-password", { email }),
   resetPassword: (payload: {
     email: string;
     token: string;
@@ -14,5 +15,5 @@ export const authAPI = {
   }) =>
     // NOTE: use PATCH for idempotent update semantics on the backend reset
     // endpoint. The backend should actually update the user's password.
-    api.patch("/auth/reset-password", payload),
+    axios.patch("/api/v1/auth/reset-password", payload),
 };

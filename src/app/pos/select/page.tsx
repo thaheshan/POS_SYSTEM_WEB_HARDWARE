@@ -30,7 +30,8 @@ const actions = [
     ],
     buttonText: 'Start New Sale',
     shortcut: 'F2',
-    href: '/pos'
+    href: '/pos',
+    isEnabled: true
   },
   {
     title: 'Process Return',
@@ -45,7 +46,9 @@ const actions = [
       'Return receipt'
     ],
     buttonText: 'New Return',
-    shortcut: 'F4'
+    shortcut: 'F4',
+    href: '/pos/return',
+    isEnabled: true
   },
   {
     title: 'Create Quotation',
@@ -60,7 +63,9 @@ const actions = [
       'Email/SMS option'
     ],
     buttonText: 'New Quotation',
-    shortcut: 'F5'
+    shortcut: 'F5',
+    href: '/pos/quotation',
+    isEnabled: true
   },
   {
     title: 'Customer Credit Sales',
@@ -74,7 +79,9 @@ const actions = [
       'Interest calculation',
       'Invoice generation'
     ],
-    buttonText: 'Credit Sale'
+    buttonText: 'Credit Sale',
+    href: '/pos/credit',
+    isEnabled: false
   },
   {
     title: 'Bulk/Wholesale Sale',
@@ -88,7 +95,9 @@ const actions = [
       'Special terms',
       'Custom invoice'
     ],
-    buttonText: 'Bulk Sale'
+    buttonText: 'Bulk Sale',
+    href: '/pos/bulk',
+    isEnabled: false
   },
   {
     title: 'Hold & Resume Sale',
@@ -102,7 +111,9 @@ const actions = [
       'Resume anytime',
       'Auto-backup'
     ],
-    buttonText: 'View Held Sales'
+    buttonText: 'View Held Sales',
+    href: '/pos/hold',
+    isEnabled: false
   },
   {
     title: 'Item Exchange',
@@ -116,7 +127,9 @@ const actions = [
       'Price adjustment',
       'Exchange receipt'
     ],
-    buttonText: 'New Exchange'
+    buttonText: 'New Exchange',
+    href: '/pos/exchange',
+    isEnabled: true
   },
   {
     title: 'Layaway/Backorder',
@@ -130,7 +143,9 @@ const actions = [
       'Deposit tracking',
       'Customer reminders'
     ],
-    buttonText: 'Manage Layaway'
+    buttonText: 'Manage Layaway',
+    href: '/pos/layaway',
+    isEnabled: false
   }
 ];
 
@@ -146,6 +161,8 @@ const colorMap = {
 };
 
 export default function POSSelectionPage() {
+  const visibleActions = actions.filter((action) => action.isEnabled);
+
   return (
     <MainLayout>
       <div className="max-w-[1400px] mx-auto">
@@ -159,9 +176,8 @@ export default function POSSelectionPage() {
 
         {/* Action Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 pb-20">
-          {actions.map((action, idx) => {
+          {visibleActions.map((action, idx) => {
             const colors = colorMap[action.color as keyof typeof colorMap];
-            const CardWrapper = action.href ? Link : 'div';
             
             return (
               <div key={idx} className="bg-white rounded-[32px] p-10 shadow-sm border border-gray-100 flex flex-col relative group transition-all hover:shadow-xl hover:-translate-y-1">
