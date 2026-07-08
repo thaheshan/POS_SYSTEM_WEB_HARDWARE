@@ -96,7 +96,7 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-gray-300" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">You're all caught up!</h3>
+              <h3 className="text-lg font-bold text-gray-900">You&apos;re all caught up!</h3>
               <p className="text-gray-500 mt-1">No new notifications to display right now.</p>
             </div>
           ) : (

@@ -159,7 +159,7 @@ export default function InventoryCharts({ data, dateRange }: InventoryChartsProp
       {/* 2. Stock Value by Category (Thousands) */}
       <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6 flex flex-col hover:shadow-md transition-shadow">
         <h3 className="text-[15px] font-black text-gray-900 mb-1">Stock Value by Category</h3>
-        <p className="text-[12px] font-bold text-gray-400 mb-6">Inventory value (Rs. '000)</p>
+        <p className="text-[12px] font-bold text-gray-400 mb-6">Inventory value (Rs. &apos;000)</p>
         
         <div className="flex-1 w-full -ml-4" style={{ minHeight: 220 }}>
           {isMounted && (

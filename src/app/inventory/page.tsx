@@ -78,7 +78,7 @@ export default function InventoryPage() {
   }, []);
 
   const inventoryData = useMemo(() => {
-    const rawData = Array.isArray(response) ? response : response?.data || [];
+    const rawData = response || [];
 
     return rawData.map((item: any) => {
       const qty = Number(item.available_quantity ?? item.quantity) || 0;
@@ -88,8 +88,8 @@ export default function InventoryPage() {
       const status = item.out_of_stock
         ? "Out of Stock"
         : item.low_stock
-        ? "Low Stock"
-        : "In Stock";
+          ? "Low Stock"
+          : "In Stock";
 
       return {
         ...item,
@@ -109,8 +109,8 @@ export default function InventoryPage() {
         reorder: item.out_of_stock
           ? "critical"
           : item.low_stock
-          ? "warning"
-          : "good",
+            ? "warning"
+            : "good",
       };
     });
   }, [response]);
@@ -119,14 +119,14 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(
-    null
+    null,
   );
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(
       new Date().getFullYear() - 1,
       new Date().getMonth(),
-      new Date().getDate()
+      new Date().getDate(),
     ),
     to: new Date(),
   });
@@ -200,42 +200,42 @@ export default function InventoryPage() {
     setSelectedStatus(null);
   };
 
-const handleIncrement = async (item: any) => {
+  const handleIncrement = async (item: any) => {
     try {
       await adjustStock({
-        action: 'add',
+        action: "add",
         product_id: item.product_id || item.id,
         warehouse_id: item.warehouse_id || item.warehouseId,
-        branch_id: item.branch_id || item.branchId, 
-        add_quantity: 1, 
-        reason: 'Manual adjustment via dashboard',
+        branch_id: item.branch_id || item.branchId,
+        add_quantity: 1,
+        reason: "Manual adjustment via dashboard",
       }).unwrap();
-      
+
       toast.success(`Added 1 to ${item.name} stock`);
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to adjust stock');
+      toast.error(err?.data?.message || "Failed to adjust stock");
     }
   };
 
   const handleDecrement = async (item: any) => {
     if (item.quantity <= 0) {
-      toast.error('Stock cannot go below zero');
+      toast.error("Stock cannot go below zero");
       return;
     }
 
     try {
       await adjustStock({
-        action: 'deduct',
+        action: "deduct",
         product_id: item.product_id || item.id,
         warehouse_id: item.warehouse_id || item.warehouseId,
         branch_id: item.branch_id || item.branchId,
         deduct_quantity: 1,
-        reason: 'Manual adjustment via dashboard',
+        reason: "Manual adjustment via dashboard",
       }).unwrap();
 
       toast.success(`Removed 1 from ${item.name} stock`);
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to adjust stock');
+      toast.error(err?.data?.message || "Failed to adjust stock");
     }
   };
 
@@ -260,7 +260,7 @@ const handleIncrement = async (item: any) => {
       console.error("Failed to update product details:", error);
       alert(
         error?.response?.data?.message ||
-          "Failed to update product. Please try again."
+          "Failed to update product. Please try again.",
       );
     }
   };
@@ -277,7 +277,7 @@ const handleIncrement = async (item: any) => {
       console.error("Failed to delete product:", error);
       alert(
         error?.response?.data?.message ||
-          "Failed to delete product. Please try again."
+          "Failed to delete product. Please try again.",
       );
     } finally {
       setIsDeleting(false);

@@ -32,7 +32,7 @@ export default function SecuritySettings({ setHasUnsavedChanges }: Props) {
             <div>
               <h4 className="text-[14px] font-black text-gray-900 mb-1">Two-Factor Authentication (2FA)</h4>
               <p className="text-[12px] font-bold text-gray-500 mb-3 max-w-lg">
-                Require all staff with "Manager" and "Owner" roles to use an authenticator app when logging in.
+                Require all staff with &quot;Manager&quot; and &quot;Owner&quot; roles to use an authenticator app when logging in.
               </p>
               <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
                 Currently Disabled

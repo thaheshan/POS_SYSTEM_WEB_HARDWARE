@@ -283,7 +283,7 @@ export default function SalesDashboardPage() {
           {/* TABLE HEADER WITH SEARCH + FILTER */}
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-[14px] font-black text-gray-900">Today's Transactions</h3>
+              <h3 className="text-[14px] font-black text-gray-900">Today&apos;s Transactions</h3>
               <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{filteredTransactions.length} total</span>
               {/* Active filter chips */}
               {hasActiveFilter && (

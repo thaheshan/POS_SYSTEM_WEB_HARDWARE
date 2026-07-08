@@ -66,7 +66,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
           Join Your Shop
         </h1>
         <p className="text-slate-500 mt-2 text-sm lg:text-base">
-          Enter your shop's verification code to confirm access
+          Enter your shop&apos;s verification code to confirm access
         </p>
       </div>
 
@@ -175,7 +175,7 @@ const StepTwo = ({ data, updateFields, onNext, selectedShopId }: StepTwoProps) =
               </p>
             )}
             <p className="text-slate-400 text-xs mt-1">
-              8-character code shown on the owner's dashboard header
+              8-character code shown on the owner&apos;s dashboard header
             </p>
           </div>
         </section>

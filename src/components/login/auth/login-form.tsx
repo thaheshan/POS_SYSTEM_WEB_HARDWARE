@@ -200,7 +200,7 @@ export default function LoginForm() {
       {/* Sign Up Link */}
       <div className="text-center">
         <p className="text-gray-700 text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/auth/register/role"
             className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200"

@@ -1,6 +1,5 @@
 import { baseApi } from "@/store/baseApi";
-import { InventoryItem } from "../../../types";
-import { AdjustStockPayload, PaginatedResponse } from "@/types/inventory";
+import { AdjustStockPayload, InventoryItem, PaginatedResponse } from "@/types/inventory";
 
 
 export const inventoryApi = baseApi.injectEndpoints({
@@ -8,6 +7,7 @@ export const inventoryApi = baseApi.injectEndpoints({
     
     getInventory: build.query<InventoryItem[], void>({
       query: () => "/stock",
+      transformResponse: (response: { success: boolean; data: InventoryItem[] }) => response.data,
       providesTags: ["Inventory"],
     }),
 

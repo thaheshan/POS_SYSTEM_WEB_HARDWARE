@@ -84,7 +84,7 @@ export default function CreditSalesPage() {
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 w-full max-w-lg text-center">
             <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 className="w-10 h-10" /></div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Credit Sale Approved</h2>
-            <p className="text-slate-500 mb-8">Rs. {amount} has been added to {selectedCustomer?.name}'s credit balance.</p>
+            <p className="text-slate-500 mb-8">Rs. {amount} has been added to {selectedCustomer?.name}&apos;s credit balance.</p>
             <button onClick={() => window.print()} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-3">Print Invoice</button>
             <button onClick={() => { setSuccess(false); setSelectedCustomer(null); setAmount(''); }} className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">New Credit Sale</button>
           </div>

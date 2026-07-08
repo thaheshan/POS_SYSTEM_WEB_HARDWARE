@@ -74,7 +74,7 @@ export default function PaymentPage() {
           Processing Payment
         </h2>
         <p className="text-blue-200 text-sm mb-10">
-          Please don't close this window
+          Please don&apos;t close this window
         </p>
         <ProcessingSteps steps={PROCESSING_STEPS} activeStep={activeStep} />
       </div>
