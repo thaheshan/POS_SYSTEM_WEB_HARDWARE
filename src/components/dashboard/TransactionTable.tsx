@@ -144,9 +144,7 @@ export default function TransactionTable() {
                   <td className="py-5 text-[14px] font-medium text-[#64748b] text-center">
                     {tx.date
                       ? format(new Date(tx.date), "MMM dd, yyyy")
-                      : tx.createdAt
-                        ? format(new Date(tx.createdAt), "MMM dd, yyyy")
-                        : "—"}
+                      : "—"}
                   </td>
                   <td className="py-5 text-[14px] font-medium text-[#64748b] text-center">
                     {tx.type || "Standard"}
