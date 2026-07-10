@@ -38,7 +38,6 @@ const StepOne = ({ data, updateFields, onNext }: StepOneProps) => {
   useEffect(() => {
     const loadShops = async () => {
       try {
-        setLoadingShops(true);
         const activeShops = await shopApi.getActiveShops();
         setShops(activeShops);
       } catch (error) {
