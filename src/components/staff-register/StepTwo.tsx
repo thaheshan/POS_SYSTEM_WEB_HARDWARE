@@ -66,7 +66,7 @@ const StepTwo = ({
     try {
       await shopApi.verifyShopAssociation(
         selectedShopId,
-        data.shopVerificationCode
+        data.shopVerificationCode,
       );
       setIsVerified(true);
     } catch (error: any) {
@@ -101,7 +101,7 @@ const StepTwo = ({
           Join Your Shop
         </h1>
         <p className="text-slate-500 mt-2 text-sm lg:text-base">
-          Enter your shop's verification code to confirm access
+          Enter your shop &apos;s verification code to confirm access
         </p>
       </div>
 
@@ -194,8 +194,8 @@ const StepTwo = ({
                     verifyError
                       ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-100"
                       : isVerified
-                      ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
-                      : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
+                        ? "border-green-400 bg-green-50 focus:ring-2 focus:ring-green-100"
+                        : "border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
                   }`}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -215,8 +215,8 @@ const StepTwo = ({
                   isVerified
                     ? "bg-green-600 text-white"
                     : isCodeValidFormat && !isVerifying
-                    ? "bg-slate-900 hover:bg-slate-800 text-white shadow-lg active:scale-[0.98]"
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                      ? "bg-slate-900 hover:bg-slate-800 text-white shadow-lg active:scale-[0.98]"
+                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
                 }`}
               >
                 {isVerifying ? (
@@ -240,7 +240,7 @@ const StepTwo = ({
               </p>
             )}
             <p className="text-slate-400 text-xs mt-1">
-              8-character code shown on the owner's dashboard header
+              8-character code shown on the owner&apos;s dashboard header
             </p>
           </div>
         </section>
