@@ -27,6 +27,14 @@ type CartItem = {
   branchId?: string;
   sellType?: 'fixed' | 'loose';
   measurementUnit?: string;
+  // Discount properties
+  isDiscountEnabled?: boolean;
+  isDiscountApproved?: boolean;
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  maxAllowedDiscount?: number;
+  defaultDiscountValue?: number;
+  discountAmount?: number; // LKR discount amount per unit
+  discountPercentage?: number; // applied percentage discount
 };
 
 type Product = {
@@ -42,6 +50,12 @@ type Product = {
   branchId?: string;
   sellType: 'fixed' | 'loose';
   measurementUnit?: string;
+  // Discount properties
+  isDiscountEnabled?: boolean;
+  isDiscountApproved?: boolean;
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  maxAllowedDiscount?: number;
+  defaultDiscountValue?: number;
 };
 
 // ── Stock Error Modal ─────────────────────────────────────────────────────────
@@ -253,13 +267,23 @@ export default function POSPage() {
         const name = item.product?.name || item.product_name || 'Unknown';
         const nameLower = name.toLowerCase();
         
-        let sellType: 'fixed' | 'loose' = item.product?.sellType?.toLowerCase() || item.sellType?.toLowerCase() || 'fixed';
-        let measurementUnit = item.product?.measurementUnit || item.measurementUnit || 'unit';
+        let sellType: 'fixed' | 'loose' = 'fixed';
+        let measurementUnit = 'unit';
+        
+        if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
+          sellType = 'loose';
+          measurementUnit = 'm';
+        } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
+          sellType = 'loose';
+          measurementUnit = 'kg';
+        }
 
         const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
+        const prodId = String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`);
+        const originalProduct = allProducts.find((p: any) => String(p.id) === prodId);
 
         return {
-          id: String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`),
+          id: prodId,
           name: name,
           sku: item.product?.sku || item.sku || 'N/A',
           price: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
@@ -270,7 +294,13 @@ export default function POSPage() {
           warehouseId: item.warehouseId || item.warehouse_id,
           branchId: item.branchId || item.branch_id,
           sellType,
-          measurementUnit
+          measurementUnit,
+          // Discount configurations (fall back to stock/product API values if not found in allProducts)
+          isDiscountEnabled: originalProduct?.isDiscountEnabled || item.product?.isDiscountEnabled || item.isDiscountEnabled || false,
+          isDiscountApproved: originalProduct?.isDiscountApproved || item.product?.isDiscountApproved || item.isDiscountApproved || false,
+          discountType: originalProduct?.discountType || item.product?.discountType || item.discountType || 'PERCENTAGE',
+          maxAllowedDiscount: Number(originalProduct?.maxAllowedDiscount || item.product?.maxAllowedDiscount || item.maxAllowedDiscount || 0),
+          defaultDiscountValue: Number(originalProduct?.defaultDiscountValue || item.defaultDiscountValue || 0),
         };
       });
 
@@ -281,8 +311,16 @@ export default function POSPage() {
           const name = p.name || 'Unknown';
           const nameLower = name.toLowerCase();
           
-          let sellType: 'fixed' | 'loose' = p.sellType?.toLowerCase() || 'fixed';
-          let measurementUnit = p.measurementUnit || 'unit';
+          let sellType: 'fixed' | 'loose' = 'fixed';
+          let measurementUnit = 'unit';
+          
+          if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
+            sellType = 'loose';
+            measurementUnit = 'm';
+          } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
+            sellType = 'loose';
+            measurementUnit = 'kg';
+          }
 
           return {
             id: String(p.id),
@@ -296,10 +334,20 @@ export default function POSPage() {
             warehouseId: undefined,
             branchId: undefined,
             sellType,
-            measurementUnit
+            measurementUnit,
+            // Discount configurations
+            isDiscountEnabled: p.isDiscountEnabled || false,
+            isDiscountApproved: p.isDiscountApproved || false,
+            discountType: p.discountType || 'PERCENTAGE',
+            maxAllowedDiscount: Number(p.maxAllowedDiscount || 0),
+            defaultDiscountValue: Number(p.defaultDiscountValue || 0),
           };
         });
 
+      console.log("[POS] Mapped products:", {
+        mappedStockProducts,
+        mappedNoStockProducts,
+      });
       setProductsList([...mappedStockProducts, ...mappedNoStockProducts]);
     } catch (err: any) {
       console.error('[POS] Failed to fetch products:', err);
@@ -311,6 +359,7 @@ export default function POSPage() {
 
   // Qty Popup state
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [selectedCartItemForDiscount, setSelectedCartItemForDiscount] = useState<CartItem | null>(null);
   const [isLabourModalOpen, setIsLabourModalOpen] = useState(false);
 
   // Checkout/sidebar state
@@ -326,6 +375,24 @@ export default function POSPage() {
   const [heldOrders, setHeldOrders] = useState<CartItem[][]>([]);
 
   // ── Cart helpers
+  const handleApplyItemDiscount = (itemId: string, val: number, type: 'PERCENTAGE' | 'FIXED_AMOUNT') => {
+    setCart((prev) => prev.map(item => {
+      if (item.id === itemId) {
+        let discountAmount = 0;
+        let discountPercentage = 0;
+        if (type === 'PERCENTAGE') {
+          discountPercentage = val;
+          discountAmount = (item.price * val) / 100;
+        } else {
+          discountAmount = val;
+          discountPercentage = (val / item.price) * 100;
+        }
+        return { ...item, discountAmount, discountPercentage };
+      }
+      return item;
+    }));
+  };
+
   const addToCartWithQty = (product: Product, qty: number) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
@@ -337,6 +404,20 @@ export default function POSPage() {
       if (existing) {
         return prev.map(item => item.id === product.id ? { ...item, qty } : item);
       }
+
+      let discountAmount = 0;
+      let discountPercentage = 0;
+      const defaultVal = Number(product.defaultDiscountValue ?? 0);
+      if (product.isDiscountEnabled && product.isDiscountApproved && defaultVal > 0) {
+        if (product.discountType === 'PERCENTAGE') {
+          discountPercentage = defaultVal;
+          discountAmount = (product.price * defaultVal) / 100;
+        } else {
+          discountAmount = defaultVal;
+          discountPercentage = (defaultVal / product.price) * 100;
+        }
+      }
+
       return [...prev, {
         id: product.id,
         name: product.name,
@@ -347,6 +428,13 @@ export default function POSPage() {
         branchId: product.branchId,
         sellType: product.sellType,
         measurementUnit: product.measurementUnit,
+        isDiscountEnabled: product.isDiscountEnabled,
+        isDiscountApproved: product.isDiscountApproved,
+        discountType: product.discountType,
+        maxAllowedDiscount: product.maxAllowedDiscount,
+        defaultDiscountValue: product.defaultDiscountValue,
+        discountAmount,
+        discountPercentage,
       }];
     });
     setActiveTab('items');
@@ -388,7 +476,7 @@ export default function POSPage() {
 
   const handlePrint = () => { window.print(); };
 
-  const subtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
+  const subtotal = cart.reduce((acc, item) => acc + (item.price - (item.discountAmount ?? 0)) * item.qty, 0);
   const discountAmount = discountType === 'percentage'
     ? (subtotal * (discountValue / 100))
     : discountValue;
@@ -712,7 +800,9 @@ export default function POSPage() {
                       )}
 
                       <div className="space-y-3">
-                        {cart.map((item) => (
+                        {cart.map((item) => {
+                          console.log("[POS Cart Item debug]:", item.name, "Enabled:", item.isDiscountEnabled, "Approved:", item.isDiscountApproved);
+                          return (
                             <div key={item.id} className="flex gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 relative group hover:bg-white hover:shadow-md transition-all">
                               <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-gray-200">
                                 <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
@@ -720,9 +810,44 @@ export default function POSPage() {
                               <div className="flex-1 flex flex-col justify-between">
                                 <div>
                                   <h4 className="text-[13px] font-bold text-gray-900 leading-tight">{item.name}</h4>
-                                  <p className="text-[11px] font-semibold text-[#059669]">Rs. {item.price.toLocaleString()}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {item.discountAmount && item.discountAmount > 0 ? (
+                                      <>
+                                        <span className="text-[11px] font-black text-emerald-600">
+                                          Rs. {(item.price - item.discountAmount).toLocaleString()}
+                                        </span>
+                                        <span className="text-[9.5px] font-semibold text-gray-400 line-through">
+                                          Rs. {item.price.toLocaleString()}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-[11px] font-semibold text-[#059669]">
+                                        Rs. {item.price.toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {/* Item discount triggers */}
+                                  {item.isDiscountEnabled && item.isDiscountApproved && (
+                                    <div className="mt-1.5">
+                                      {item.discountAmount && item.discountAmount > 0 ? (
+                                        <button
+                                          onClick={() => setSelectedCartItemForDiscount(item)}
+                                          className="text-[9px] font-black uppercase tracking-wider text-red-500 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+                                        >
+                                          Discount: -Rs. {item.discountAmount.toLocaleString()} ({item.discountPercentage?.toFixed(0)}%)
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => setSelectedCartItemForDiscount(item)}
+                                          className="text-[9px] font-black uppercase tracking-wider text-[#059669] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded transition-colors"
+                                        >
+                                          Apply Discount
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between mt-2">
                                   <div className="flex items-center gap-1.5">
                                     <button onClick={() => updateQty(item.id, -1)} className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-90 transition-all border border-gray-200">
                                       <Minus className="w-4 h-4" />
@@ -740,14 +865,17 @@ export default function POSPage() {
                                       <Plus className="w-4 h-4" />
                                     </button>
                                   </div>
-                                  <span className="text-[14px] font-black text-[#059669]">Rs. {(item.price * item.qty).toLocaleString()}</span>
+                                  <span className="text-[14px] font-black text-[#059669]">
+                                    Rs. {((item.price - (item.discountAmount ?? 0)) * item.qty).toLocaleString()}
+                                  </span>
                                 </div>
                               </div>
                               <button onClick={() => removeFromCart(item.id)} className="absolute top-2 right-2 p-1 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500">
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       <button
@@ -917,7 +1045,248 @@ export default function POSPage() {
         )}
 
         <SuccessModal isOpen={showSuccess} total={total} />
+        {selectedCartItemForDiscount && (
+          <ProductDiscountModal
+            item={selectedCartItemForDiscount}
+            onConfirm={(val, type) =>
+              handleApplyItemDiscount(
+                selectedCartItemForDiscount.id,
+                val,
+                type,
+              )
+            }
+            onClose={() => setSelectedCartItemForDiscount(null)}
+          />
+        )}
       </MainLayout>
     </>
+  );
+}
+
+// ── Product Discount Popup Modal ───────────────────────────────────────────────────
+function ProductDiscountModal({
+  item,
+  onConfirm,
+  onClose,
+}: {
+  item: CartItem;
+  onConfirm: (val: number, type: "PERCENTAGE" | "FIXED_AMOUNT") => void;
+  onClose: () => void;
+}) {
+  const [val, setVal] = useState<number | string>(
+    item.discountAmount && item.discountAmount > 0
+      ? item.discountPercentage && item.discountPercentage > 0
+        ? item.discountPercentage ?? 0
+        : item.discountAmount ?? 0
+      : "",
+  );
+  const [type, setType] = useState<"PERCENTAGE" | "FIXED_AMOUNT">(
+    item.discountType || "PERCENTAGE",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const originalPrice = item.price;
+  const maxAllowed = Number(item.maxAllowedDiscount ?? 0);
+
+  const parsedVal = parseFloat(String(val)) || 0;
+  const discountAmount =
+    type === "PERCENTAGE" ? (originalPrice * parsedVal) / 100 : parsedVal;
+  const discountedPrice = Math.max(0, originalPrice - discountAmount);
+  const totalAmount = discountedPrice * item.qty;
+
+  const handleApply = () => {
+    if (val === "" || isNaN(parsedVal) || parsedVal < 0) {
+      setError("Please enter a valid positive value.");
+      return;
+    }
+
+    if (type === "PERCENTAGE") {
+      if (item.discountType === "PERCENTAGE" && parsedVal > maxAllowed) {
+        setError(`Value exceeds maximum approved limit of ${maxAllowed}%`);
+        return;
+      }
+      if (item.discountType === "FIXED_AMOUNT") {
+        const limitInPercentage = (maxAllowed / originalPrice) * 100;
+        if (parsedVal > limitInPercentage) {
+          setError(
+            `Value exceeds maximum approved limit (Rs. ${maxAllowed} / ${limitInPercentage.toFixed(1)}%)`,
+          );
+          return;
+        }
+      }
+      if (parsedVal > 100) {
+        setError("Discount cannot exceed 100%");
+        return;
+      }
+    } else {
+      if (item.discountType === "FIXED_AMOUNT" && parsedVal > maxAllowed) {
+        setError(`Value exceeds maximum approved limit of Rs. ${maxAllowed}`);
+        return;
+      }
+      if (item.discountType === "PERCENTAGE") {
+        const limitInFixed = (originalPrice * maxAllowed) / 100;
+        if (parsedVal > limitInFixed) {
+          setError(
+            `Value exceeds maximum approved limit (Rs. ${limitInFixed.toLocaleString()} / ${maxAllowed}%)`,
+          );
+          return;
+        }
+      }
+      if (parsedVal > originalPrice) {
+        setError("Discount cannot exceed original unit price.");
+        return;
+      }
+    }
+
+    onConfirm(parsedVal, type);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+        {/* Header */}
+        <div className="p-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-black text-gray-900">
+              Configure Product Discount
+            </h3>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+              Eligibility: Approved
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          <div className="bg-emerald-50/60 border border-emerald-100 p-3.5 rounded-2xl">
+            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-0.5">
+              Product Details
+            </p>
+            <h4 className="text-[13px] font-black text-emerald-950 leading-snug">
+              {item.name}
+            </h4>
+            <div className="flex justify-between items-center mt-3 text-[12px] font-semibold text-emerald-900 border-t border-emerald-100/50 pt-2.5">
+              <span>Original Price: Rs. {originalPrice.toLocaleString()}</span>
+              <span>
+                Limit:{" "}
+                {item.discountType === "PERCENTAGE"
+                  ? `${maxAllowed}%`
+                  : `Rs. ${maxAllowed}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Type Selector */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Discount Type
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setType("PERCENTAGE")}
+                className={`flex-1 py-2.5 text-xs font-black uppercase rounded-lg border transition-all ${
+                  type === "PERCENTAGE"
+                    ? "bg-[#059669] text-white border-[#059669]"
+                    : "bg-white text-gray-400 border-gray-200"
+                }`}
+              >
+                % Percent
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("FIXED_AMOUNT")}
+                className={`flex-1 py-2.5 text-xs font-black uppercase rounded-lg border transition-all ${
+                  type === "FIXED_AMOUNT"
+                    ? "bg-[#059669] text-white border-[#059669]"
+                    : "bg-white text-gray-400 border-gray-200"
+                }`}
+              >
+                LKR Amount
+              </button>
+            </div>
+          </div>
+
+          {/* Input Value */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Discount Value
+            </label>
+            <div className="relative">
+              {type === "FIXED_AMOUNT" && (
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
+                  Rs.
+                </span>
+              )}
+              <input
+                type="number"
+                value={val}
+                onChange={(e) => {
+                  setVal(e.target.value);
+                  setError(null);
+                }}
+                placeholder={type === "PERCENTAGE" ? "e.g. 10" : "e.g. 100"}
+                className={`w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pr-4 text-base font-black text-gray-800 outline-none focus:bg-white focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all ${
+                  type === "FIXED_AMOUNT" ? "pl-10" : "pl-4"
+                }`}
+                min="0"
+              />
+            </div>
+            {error && (
+              <p className="text-[10px] text-red-500 font-semibold">{error}</p>
+            )}
+          </div>
+
+          {/* Dynamic Calculations */}
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-2">
+            <div className="flex justify-between text-xs font-medium text-gray-500">
+              <span>Discounted Unit Price:</span>
+              <span className="font-mono">
+                Rs. {discountedPrice.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs font-medium text-gray-500">
+              <span>Quantity:</span>
+              <span>{item.qty}</span>
+            </div>
+            <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200/50 pt-2">
+              <span>New Line Total:</span>
+              <span className="font-mono text-emerald-600">
+                Rs. {totalAmount.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleApply}
+              className="flex-1 py-3 text-xs font-black uppercase text-white bg-[#059669] hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
