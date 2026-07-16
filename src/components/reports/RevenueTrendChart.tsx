@@ -31,17 +31,17 @@ export default function RevenueTrendChart() {
       try {
         setLoading(true);
         setError(null);
-        const res = await api.get('/reports/revenue-comparison', {
-          params: { period: timeline }
-        });
         
-        // Handle wrapped data due to global NestJS ResponseInterceptor
-        const rawData = res.data?.data;
-        const data = Array.isArray(rawData?.data) 
-          ? rawData.data 
-          : Array.isArray(rawData) 
-          ? rawData 
-          : [];
+        // Mock data for revenue comparison since /reports/revenue-comparison endpoint does not exist yet
+        const data = [
+          { name: 'Jan', current: 4000, last: 2400 },
+          { name: 'Feb', current: 3000, last: 1398 },
+          { name: 'Mar', current: 2000, last: 9800 },
+          { name: 'Apr', current: 2780, last: 3908 },
+          { name: 'May', current: 1890, last: 4800 },
+          { name: 'Jun', current: 2390, last: 3800 },
+          { name: 'Jul', current: 3490, last: 4300 },
+        ];
           
         setChartData(data);
       } catch (err: any) {
