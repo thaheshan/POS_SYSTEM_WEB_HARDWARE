@@ -37,7 +37,8 @@ import AllTransactionsTable from '@/components/reports/AllTransactionsTable';
 
 export default function ReportsPage() {
   const router = useRouter();
-  const enableAllReports = process.env.NEXT_PUBLIC_ENABLE_ALL_PDF_REPORTS === 'true';
+  // Enable all reports cards navigation as requested by the user
+  const enableAllReports = true;
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
      from: new Date(),
