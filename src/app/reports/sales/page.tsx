@@ -15,8 +15,11 @@ const mockSales = [
   { id: 'INV-2026-001229', date: '2026-04-16', time: '09:10 AM', product: 'Nails 2kg', cashier: 'John Silva', amount: 850, status: 'Completed' },
 ];
 
+import api from '@/api/axiosInstance';
+
 export default function SalesReportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const handleExportCSV = () => {
     const rows = [
@@ -31,8 +34,27 @@ export default function SalesReportsPage() {
     a.click();
   };
 
-  const handleExportPDF = () => {
-    window.print();
+  const handleExportPDF = async () => {
+    if (isExportingPDF) return;
+    setIsExportingPDF(true);
+    try {
+      const response = await api.get('/reports/download?type=sales', {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `SALES_Report_${new Date().getTime()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[Report Export] PDF generation failed:', error);
+      alert('Failed to generate PDF report from backend. Make sure the API server is running.');
+    } finally {
+      setIsExportingPDF(false);
+    }
   };
 
   return (
@@ -63,8 +85,8 @@ export default function SalesReportsPage() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content align="end" className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 min-w-[180px] z-[100] animate-in fade-in zoom-in-95 print:hidden">
-                  <DropdownMenu.Item onClick={handleExportPDF} className="flex items-center gap-3 px-3 py-2.5 text-[12.5px] font-bold text-gray-700 cursor-pointer hover:bg-gray-50 outline-none rounded-lg transition-colors">
-                    <FileText className="w-4 h-4 text-red-500" /> Download PDF
+                  <DropdownMenu.Item disabled={isExportingPDF} onClick={handleExportPDF} className="flex items-center gap-3 px-3 py-2.5 text-[12.5px] font-bold text-gray-700 cursor-pointer hover:bg-gray-50 outline-none rounded-lg transition-colors disabled:opacity-50">
+                    <FileText className="w-4 h-4 text-red-500" /> {isExportingPDF ? 'Exporting PDF...' : 'Download PDF'}
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onClick={handleExportCSV} className="flex items-center gap-3 px-3 py-2.5 text-[12.5px] font-bold text-gray-700 cursor-pointer hover:bg-gray-50 outline-none rounded-lg transition-colors">
                     <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Download CSV
