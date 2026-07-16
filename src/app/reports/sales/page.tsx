@@ -3,26 +3,136 @@
 import MainLayout from '@/components/layout/MainLayout';
 import { Download, ChevronLeft, Search, Filter, FileSpreadsheet, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import api from '@/api/axiosInstance';
+import { format } from 'date-fns';
 
-const mockSales = [
-  { id: 'INV-2026-001234', date: '2026-04-18', time: '10:24 AM', customer: 'Walk-in Customer', product: 'Holcim Cement 50kg', cashier: 'John Silva', amount: 5450, status: 'Completed' },
-  { id: 'INV-2026-001233', date: '2026-04-18', time: '09:58 AM', customer: 'Kamal Perera', product: 'Steel Rod 12mm', cashier: 'John Silva', amount: 3200, status: 'Completed' },
-  { id: 'INV-2026-001232', date: '2026-04-17', time: '04:15 PM', customer: 'Walk-in Customer', product: 'PVC Pipe 1"×10ft', cashier: 'Amritha V.', amount: 12450, status: 'Completed' },
-  { id: 'INV-2026-001231', date: '2026-04-17', time: '02:30 PM', customer: 'Sunil Silva', product: 'Dulux Paint 4L', cashier: 'John Silva', amount: 8900, status: 'Refunded' },
-  { id: 'INV-2026-001230', date: '2026-04-16', time: '11:45 AM', customer: 'Walk-in Customer', product: 'Wire Roll 100m', cashier: 'Amritha V.', amount: 4500, status: 'Completed' },
-  { id: 'INV-2026-001229', date: '2026-04-16', time: '09:10 AM', customer: 'Ravin Perera', product: 'Nails 2kg', cashier: 'John Silva', amount: 850, status: 'Completed' },
-];
+export interface InvoiceItem {
+  productName?: string;
+  itemName?: string;
+  product?: {
+    name?: string;
+  };
+}
+
+export interface RawInvoicePayload {
+  id?: string;
+  invoiceNumber?: string;
+  createdAt?: string | Date;
+  customer?: { name?: string };
+  customerName?: string;
+  user?: { name?: string };
+  cashierName?: string;
+  staffName?: string;
+  totalAmount?: number | string;
+  amount?: number | string;
+  status?: string;
+  items?: InvoiceItem[];
+}
+
+export interface FormattedSale {
+  id: string;
+  date: string;
+  time: string;
+  customer: string;
+  product: string;
+  cashier: string;
+  amount: number;
+  status: string;
+}
 
 export default function SalesReportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [sales, setSales] = useState<FormattedSale[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    api.get('/sales', { params: { limit: 2000 } })
+      .then(res => {
+        let items: RawInvoicePayload[] = [];
+        const raw = res.data;
+        if (Array.isArray(raw?.data?.data?.items)) {
+          items = raw.data.data.items;
+        } else if (Array.isArray(raw?.data?.items)) {
+          items = raw.data.items;
+        } else if (Array.isArray(raw?.items)) {
+          items = raw.items;
+        } else if (Array.isArray(raw?.data)) {
+          items = raw.data;
+        } else if (Array.isArray(raw)) {
+          items = raw;
+        }
+
+        const formatted: FormattedSale[] = items.map((inv) => {
+          const id = inv.invoiceNumber || inv.id || 'N/A';
+          const dt = new Date(inv.createdAt || new Date());
+          const date = format(dt, 'yyyy-MM-dd');
+          const time = format(dt, 'hh:mm a');
+          const customer = inv.customer?.name || inv.customerName || 'Walk-in Customer';
+          const cashier = inv.user?.name || inv.cashierName || inv.staffName || 'System';
+          const amount = Number(inv.totalAmount || inv.amount || 0);
+          const status = inv.status ? (inv.status.charAt(0).toUpperCase() + inv.status.slice(1).toLowerCase()) : 'Completed';
+          
+          let product = 'Various Items';
+          if (Array.isArray(inv.items) && inv.items.length > 0) {
+            const firstItem = inv.items[0];
+            const firstProduct = firstItem?.productName || firstItem?.product?.name || firstItem?.itemName || 'Unknown Item';
+            if (inv.items.length === 1) {
+              product = firstProduct;
+            } else {
+              product = `${firstProduct} + ${inv.items.length - 1} more`;
+            }
+          }
+
+          return { id, date, time, customer, product, cashier, amount, status };
+        });
+
+        // Sort newest first
+        formatted.sort((a, b) => new Date(`${b.date} ${b.time}`).getTime() - new Date(`${a.date} ${a.time}`).getTime());
+
+        setSales(formatted);
+      })
+      .catch((err: unknown) => console.error('Failed to fetch sales', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredSales = sales.filter(s => 
+    s.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.product.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.cashier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.customer.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const currentSales = filteredSales.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const safeCsvCell = (value: string | number): string => {
+    const strValue = String(value);
+    if (strValue.includes(',') || strValue.includes('"')) {
+      return `"${strValue.replace(/"/g, '""')}"`;
+    }
+    return strValue;
+  };
 
   const handleExportCSV = () => {
     const rows = [
-      ['Transaction ID', 'Customer Name', 'Transaction Date', 'Type', 'Amount', 'Status'],
-      ...mockSales.map(s => [s.id, `"${s.customer}"`, `${s.date} ${s.time}`, 'Standard', s.amount, s.status])
-    ].map(e => e.join(",")).join("\n");
+      ['Transaction ID', 'Customer Name', 'Transaction Date', 'Product', 'Cashier', 'Amount', 'Status'],
+      ...sales.map(s => [
+        safeCsvCell(s.id),
+        safeCsvCell(s.customer),
+        safeCsvCell(`${s.date} ${s.time}`),
+        safeCsvCell(s.product),
+        safeCsvCell(s.cashier),
+        safeCsvCell(s.amount),
+        safeCsvCell(s.status)
+      ])
+    ].map(row => row.join(',')).join('\n');
+    
     const blob = new Blob([rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -34,6 +144,10 @@ export default function SalesReportsPage() {
   const handleExportPDF = () => {
     window.print();
   };
+
+  const totalSalesVolume = sales.reduce((sum, s) => sum + s.amount, 0);
+  const itemsSold = sales.length; // Approximate, as each transaction can have multiple items
+  const avgTicket = itemsSold > 0 ? totalSalesVolume / itemsSold : 0;
 
   return (
     <MainLayout>
@@ -79,15 +193,19 @@ export default function SalesReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 print:hidden">
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Total Sales Vol</span>
-              <span className="text-[28px] font-black tracking-tight">Rs. 845,900</span>
+              <span className="text-[28px] font-black tracking-tight">
+                Rs. {totalSalesVolume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
            </div>
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
-              <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Items Sold</span>
-              <span className="text-[28px] font-black tracking-tight">3,492</span>
+              <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Invoices</span>
+              <span className="text-[28px] font-black tracking-tight">{itemsSold.toLocaleString()}</span>
            </div>
            <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Avg Ticket</span>
-              <span className="text-[28px] font-black tracking-tight text-blue-600">Rs. 2,420</span>
+              <span className="text-[28px] font-black tracking-tight text-blue-600">
+                Rs. {avgTicket.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
            </div>
         </div>
 
@@ -98,10 +216,13 @@ export default function SalesReportsPage() {
                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                <input 
                  type="text" 
-                 placeholder="Search by ID, Product, or Cashier..." 
+                 placeholder="Search by ID, Product, Customer, or Cashier..." 
                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                  value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
+                 onChange={(e) => {
+                   setSearchTerm(e.target.value);
+                   setCurrentPage(1);
+                 }}
                />
              </div>
              <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors">
@@ -116,52 +237,79 @@ export default function SalesReportsPage() {
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Transaction ID</th>
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Customer Name</th>
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Transaction Date</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Product</th>
+                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="py-4 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {mockSales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-4 px-6 text-[13px] font-bold text-gray-600 font-mono tracking-tight">{sale.id}</td>
-                    <td className="py-4 px-6 text-[13.5px] font-semibold text-gray-800">{sale.customer}</td>
-                    <td className="py-4 px-6">
-                      <p className="text-[13.5px] font-bold text-gray-900">{sale.date}</p>
-                      <p className="text-[11px] font-semibold text-gray-400">{sale.time}</p>
-                    </td>
-                    <td className="py-4 px-6 text-[13px] font-semibold text-gray-700">
-                       <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                         Standard
-                       </span>
-                    </td>
-                    <td className="py-4 px-6 text-[14px] font-black text-gray-900 font-mono tracking-tighter">
-                      Rs. {sale.amount.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6">
-                       <span className={`inline-flex px-2.5 py-1 rounded-md text-[10.5px] font-black uppercase tracking-widest ${
-                         sale.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                       }`}>
-                         {sale.status}
-                       </span>
-                    </td>
-                    <td className="py-4 px-6 text-right text-[13px] font-semibold text-gray-400">
-                      —
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-[13px] font-bold text-gray-500">
+                      Loading sales data...
                     </td>
                   </tr>
-                ))}
+                ) : currentSales.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-[13px] font-bold text-gray-500">
+                      No sales found matching your criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  currentSales.map((sale) => (
+                    <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="py-4 px-6 text-[13px] font-bold text-gray-600 font-mono tracking-tight">{sale.id}</td>
+                      <td className="py-4 px-6 text-[13.5px] font-semibold text-gray-800">{sale.customer}</td>
+                      <td className="py-4 px-6">
+                        <p className="text-[13.5px] font-bold text-gray-900">{sale.date}</p>
+                        <p className="text-[11px] font-semibold text-gray-400">{sale.time}</p>
+                      </td>
+                      <td className="py-4 px-6 text-[13.5px] font-semibold text-gray-800 truncate max-w-[200px]" title={sale.product}>
+                        {sale.product}
+                      </td>
+                      <td className="py-4 px-6 text-[13px] font-semibold text-gray-700">
+                        {sale.cashier}
+                      </td>
+                      <td className="py-4 px-6 text-[14px] font-black text-gray-900 font-mono tracking-tighter">
+                        Rs. {sale.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-6">
+                         <span className={`inline-flex px-2.5 py-1 rounded-md text-[10.5px] font-black uppercase tracking-widest ${
+                           sale.status === 'Completed' || sale.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                         }`}>
+                           {sale.status}
+                         </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 print:hidden">
-             <span className="text-[12px] font-bold text-gray-500">Showing 6 of 3,842 results</span>
+             <span className="text-[12px] font-bold text-gray-500">
+               Showing {filteredSales.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredSales.length)} of {filteredSales.length} results
+             </span>
              <div className="flex items-center gap-2">
-                <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-[12px] font-bold text-gray-400 cursor-not-allowed">Prev</button>
-                <button className="px-3 py-1.5 bg-[#1e40af] text-white rounded-lg text-[12px] font-bold hover:bg-blue-800">1</button>
-                <button className="px-3 py-1.5 border border-gray-200 bg-white rounded-lg text-[12px] font-bold hover:bg-gray-50">2</button>
-                <button className="px-3 py-1.5 border border-gray-200 bg-white rounded-lg text-[12px] font-bold hover:bg-gray-50">Next</button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 disabled:text-gray-400 hover:bg-gray-50 disabled:hover:bg-transparent"
+                >
+                  Prev
+                </button>
+                <span className="text-[12px] font-bold text-gray-600 px-2">
+                  Page {currentPage} of {totalPages || 1}
+                </span>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 disabled:text-gray-400 hover:bg-gray-50 disabled:hover:bg-transparent"
+                >
+                  Next
+                </button>
              </div>
           </div>
         </div>

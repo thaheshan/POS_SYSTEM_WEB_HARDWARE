@@ -22,6 +22,7 @@ export interface RecentTransaction {
   invoiceNumber: string;
   customerName: string | null;
   date: string;
+  type: string;
   amount: number;
   status: string;
 }
@@ -96,6 +97,7 @@ export function useRecentTransactions() {
             invoiceNumber: tx.invoiceNumber,
             customerName: tx.customerName ?? tx.customer?.name ?? 'Walk-in Customer',
             date: tx.date ?? tx.createdAt,
+            type: tx.type ?? tx.saleType ?? tx.transactionType ?? tx.paymentMethod ?? 'Standard',
             amount: Number(tx.amount ?? tx.totalAmount ?? 0),
             status: tx.status ?? tx.paymentStatus ?? 'PAID',
           }))

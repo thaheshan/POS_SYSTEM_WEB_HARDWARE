@@ -147,10 +147,10 @@ export default function TransactionTable() {
                       : "—"}
                   </td>
                   <td className="py-5 text-[14px] font-medium text-[#64748b] text-center">
-                    {tx.type || "Standard"}
+                    {tx.type}
                   </td>
                   <td className="py-5 text-[14px] font-bold text-gray-900 text-center">
-                    LKR {(tx.amount || tx.totalAmount || 0).toLocaleString()}
+                    LKR {tx.amount.toLocaleString()}
                   </td>
                   <td className="py-5 text-center pr-2">
                     <span
