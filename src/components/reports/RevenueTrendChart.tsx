@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -10,26 +10,79 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import api from '@/api/axiosInstance';
 
-const data = [
-  { name: 'Jan', current: 380, last: 200 },
-  { name: 'Feb', current: 420, last: 250 },
-  { name: 'Mar', current: 390, last: 320 },
-  { name: 'Apr', current: 460, last: 350 },
-  { name: 'May', current: 487, last: 370 },
-  { name: 'Jun', current: 510, last: 380 },
-  { name: 'Jul', current: 540, last: 400 },
-  { name: 'Aug', current: 520, last: 390 },
-  { name: 'Sep', current: 580, last: 410 },
-  { name: 'Oct', current: 610, last: 440 },
-  { name: 'Nov', current: 650, last: 450 },
-  { name: 'Dec', current: 720, last: 480 },
-];
+interface ChartItem {
+  name: string;
+  current: number;
+  last: number;
+}
 
 export default function RevenueTrendChart() {
   const [timeline, setTimeline] = useState('This Year');
+  const [chartData, setChartData] = useState<ChartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTrendData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get('/reports/revenue-comparison', {
+          params: { period: timeline }
+        });
+        
+        // Handle wrapped data due to global NestJS ResponseInterceptor
+        const rawData = res.data?.data;
+        const data = Array.isArray(rawData?.data) 
+          ? rawData.data 
+          : Array.isArray(rawData) 
+          ? rawData 
+          : [];
+          
+        setChartData(data);
+      } catch (err: any) {
+        console.error('Failed to fetch revenue comparison data', err);
+        setError('Failed to load revenue data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendData();
+  }, [timeline]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-8 flex flex-col justify-center items-center h-full min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <p className="text-gray-400 text-[12px] font-bold mt-4">Loading revenue data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-8 flex flex-col justify-center items-center h-full min-h-[400px]">
+        <p className="text-red-500 text-[13px] font-black">{error}</p>
+        <p className="text-gray-400 text-[12px] mt-1">Please try again later.</p>
+      </div>
+    );
+  }
+
+  const hasData = chartData.some(d => (d.current ?? 0) > 0 || (d.last ?? 0) > 0);
+
+  if (!hasData) {
+    return (
+      <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-8 flex flex-col justify-center items-center h-full min-h-[400px]">
+        <h3 className="text-[16px] font-black text-gray-900 tracking-tight mb-2">Revenue Trend</h3>
+        <p className="text-gray-400 text-[12px] font-medium">No sales transactions found for this year or last year.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-8 flex flex-col h-full min-h-[400px]">
@@ -75,7 +128,7 @@ export default function RevenueTrendChart() {
       
       <div className="flex-1 w-full relative -left-4">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
             <XAxis 
               dataKey="name" 
