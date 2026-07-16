@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Inter_Tight } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { ReduxProvider } from '@/store/provider'
+import GlobalToaster from '@/components/shared/GlobalToaster'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${interTight.variable} font-sans antialiased`}>
         <ReduxProvider>
           {children}
+          <GlobalToaster />
         </ReduxProvider>
         <Analytics />
       </body>

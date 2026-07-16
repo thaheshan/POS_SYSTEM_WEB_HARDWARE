@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '@/api/axiosInstance';
 import ImageOptionsModal from './ImageOptionsModal';
 import CameraCaptureModal from './CameraCaptureModal';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 interface Product {
   sku?: string;
@@ -339,15 +340,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
       await api.post('/products', formData);
 
+      toastSuccess('Product saved successfully.');
       onSuccess();
       onClose();
     } catch (err: any) {
       console.error('Failed to create product', err);
-      const raw = err?.response?.data?.message;
-      const detail = Array.isArray(raw)
-        ? raw.join('\n')
-        : raw || 'Failed to create product. Please try again.';
-      alert(detail);
+      toastError(err, 'We couldn’t save the product. Please try again.');
     } finally {
       setSaving(false);
     }

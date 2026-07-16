@@ -1,6 +1,7 @@
 import { X, ArrowUpDown, ChevronDown } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 interface AdjustStockModalProps {
   isOpen: boolean;
@@ -106,11 +107,12 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
         [qtyKey]: Number(formData.quantity),
         reason: formData.reason || 'Manual adjustment',
       });
+      toastSuccess('Stock levels updated successfully.');
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Failed to adjust stock', error);
-      alert('Failed to adjust stock. Check if you have enough stock when deducting.');
+      toastError(error, 'We couldn’t update the stock. Please check the available quantity and try again.');
     } finally {
       setLoading(false);
     }
