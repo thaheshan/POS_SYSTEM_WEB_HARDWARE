@@ -2,7 +2,6 @@
 
 import MainLayout from '@/components/layout/MainLayout';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar,
@@ -30,10 +29,22 @@ import CategoryCReportModal from '@/components/sales/CategoryCReportModal';
 import CategoryPrintView from '@/components/sales/CategoryPrintView';
 import { useSalesData } from '@/hooks/useSales';
 
+const buildCategoryHref = (
+  category: 'category-a' | 'category-b' | 'category-c',
+  dateRange?: DateRange
+) => {
+  const params = new URLSearchParams();
+
+  if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+  if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+
+  const query = params.toString();
+  return `/sales/${category}${query ? `?${query}` : ''}`;
+};
+
 export default function SalesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role?.toLowerCase() === 'owner';
-  const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
     to: new Date(),
@@ -200,7 +211,7 @@ export default function SalesPage() {
 
             <Link
               href="/pos/select"
-              className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] flex items-center gap-2 shadow-sm transition-all active:scale-95"
+              className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] inline-flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" /> Add Sale
             </Link>
@@ -330,13 +341,8 @@ export default function SalesPage() {
                         Recent Transactions
                       </h5>
                       <Link
-                        href={`/sales/category-a?${
-                          new URLSearchParams([
-                            ...(dateRange?.from ? [['from', dateRange.from.toISOString()]] : []),
-                            ...(dateRange?.to ? [['to', dateRange.to.toISOString()]] : [])
-                          ]).toString()
-                        }`}
-                        className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                        href={buildCategoryHref('category-a', dateRange)}
+                        className="inline-flex items-center justify-center text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
                       >
                         View All
                       </Link>
@@ -457,13 +463,8 @@ export default function SalesPage() {
                         Top Non-Taxable Products
                       </h5>
                       <Link
-                        href={`/sales/category-b?${
-                          new URLSearchParams([
-                            ...(dateRange?.from ? [['from', dateRange.from.toISOString()]] : []),
-                            ...(dateRange?.to ? [['to', dateRange.to.toISOString()]] : [])
-                          ]).toString()
-                        }`}
-                        className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
+                        href={buildCategoryHref('category-b', dateRange)}
+                        className="inline-flex items-center justify-center text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
                       >
                         View All
                       </Link>
@@ -589,13 +590,8 @@ export default function SalesPage() {
                       Labour Type Breakdown
                     </h5>
                     <Link
-                      href={`/sales/category-c?${
-                        new URLSearchParams([
-                          ...(dateRange?.from ? [['from', dateRange.from.toISOString()]] : []),
-                          ...(dateRange?.to ? [['to', dateRange.to.toISOString()]] : [])
-                        ]).toString()
-                      }`}
-                      className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
+                      href={buildCategoryHref('category-c', dateRange)}
+                      className="inline-flex items-center justify-center text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
                     >
                       View All
                     </Link>
