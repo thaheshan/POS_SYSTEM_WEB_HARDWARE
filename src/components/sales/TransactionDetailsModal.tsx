@@ -32,7 +32,6 @@ function downloadInvoicePDF({
   items,
   subtotal,
   discount,
-  tax,
   totalAmount,
 }: {
   invoiceNo: string;
@@ -51,7 +50,6 @@ function downloadInvoicePDF({
   }[];
   subtotal: number;
   discount: number;
-  tax?: number;
   totalAmount: number;
 }) {
   const itemRows = items
@@ -103,7 +101,6 @@ function downloadInvoicePDF({
     .total-row { display:flex; justify-content:space-between; padding:7px 0; font-size:13px; font-weight:600; color:#374151; border-bottom:1px solid #f3f4f6; }
     .total-row:last-child { border-bottom:none; }
     .total-row.discount { color:#ef4444; }
-    .total-row.tax { color:#059669; }
     .grand-total { display:flex; justify-content:space-between; align-items:center; background:#2563eb; color:#fff; padding:14px 16px; border-radius:12px; margin-top:10px; }
     .grand-total span:first-child { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
     .grand-total span:last-child  { font-size:20px; font-weight:900; font-family:monospace; }
