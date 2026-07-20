@@ -61,7 +61,7 @@ export default function HoldSalesPage() {
             <div className="col-span-full bg-white p-12 rounded-2xl border text-center">
               <ShoppingCart className="w-16 h-16 text-slate-200 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-slate-800">No Held Sales</h2>
-              <p className="text-slate-500">You don't have any suspended carts right now.</p>
+              <p className="text-slate-500">You don&apos;t have any suspended carts right now.</p>
             </div>
           ) : (
             heldSales.map(sale => (

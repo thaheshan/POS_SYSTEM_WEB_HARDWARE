@@ -162,7 +162,7 @@ export function Step1ShopInfo({ onNext }: Step1ShopInfoProps) {
             Register Your Shop
           </h1>
           <p className="text-gray-600 text-lg">
-            Let's set up your hardware shop management system
+            Let&apos;s set up your hardware shop management system
           </p>
         </div>
 

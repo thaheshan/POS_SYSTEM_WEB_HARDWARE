@@ -39,7 +39,7 @@ export default function AddCategoryAModal({ isOpen, onClose }: ModalProps) {
            {/* Today's Threshold Tracker inside Header Area */}
            <div className="mt-6 bg-white/10 border border-white/20 rounded-xl p-4">
               <div className="flex justify-between items-center mb-2 text-[12px] font-bold">
-                 <span>Today's Category A Total:</span>
+                 <span>Today&apos;s Category A Total:</span>
                  <span className="text-[14px] font-black">Rs. 145,650 / Rs. 200,000</span>
               </div>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">

@@ -76,7 +76,7 @@ export default function SuspendedPage() {
               <CreditCard className="w-4 h-4 text-gray-500" /> How to restore access?
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Please complete your pending payment. Once you've paid, click the button below to reactivate your account instantly.
+              Please complete your pending payment. Once you&apos;ve paid, click the button below to reactivate your account instantly.
             </p>
           </div>
 

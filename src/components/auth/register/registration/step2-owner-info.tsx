@@ -152,7 +152,7 @@ export function Step2OwnerInfo({ onNext }: Step2OwnerInfoProps) {
                 </p>
               )}
               <p className="text-gray-600 text-xs mt-1.5">
-                We'll send verification link to this email
+                We&apos;ll send verification link to this email
               </p>
             </div>
 

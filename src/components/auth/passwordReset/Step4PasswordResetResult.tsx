@@ -28,7 +28,7 @@ export default function Step4PasswordResetResult({ status }: Step4Props) {
 
         <div className="mb-10 text-left max-w-md mx-auto">
           <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
-            What's Next?
+            What&apos;s Next?
           </h3>
 
           <div className="space-y-5">

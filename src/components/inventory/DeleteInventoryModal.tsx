@@ -36,7 +36,7 @@ export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item,
 
         <h2 className="text-xl font-bold text-gray-900 mb-2">Delete Inventory Item</h2>
         <p className="text-sm text-gray-500 mb-6">
-          Are you sure you want to delete <span className="font-bold text-gray-700">"{item.name}"</span> from your inventory? This action cannot be undone.
+          Are you sure you want to delete <span className="font-bold text-gray-700">&quot;{item.name}&quot;</span> from your inventory? This action cannot be undone.
         </p>
 
         {/* Item Preview Card */}

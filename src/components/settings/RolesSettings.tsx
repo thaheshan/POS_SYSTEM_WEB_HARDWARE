@@ -32,7 +32,7 @@ export default function RolesSettings({ setHasUnsavedChanges }: Props) {
         <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex gap-3 mb-8">
           <Info className="w-5 h-5 text-indigo-600 shrink-0" />
           <p className="text-[12px] font-bold text-indigo-900 leading-relaxed">
-            By default, new staff are assigned the "Cashier" role. Changes to role permissions affect all users currently assigned to that role. Users must log out and log back in for changes to take effect.
+            By default, new staff are assigned the &quot;Cashier&quot; role. Changes to role permissions affect all users currently assigned to that role. Users must log out and log back in for changes to take effect.
           </p>
         </div>
 

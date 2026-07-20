@@ -79,7 +79,7 @@ export default function CategoryAReportModal({ isOpen, onClose, onPrintPDF, data
 
           <div className="mt-5 bg-white/15 rounded-2xl p-4 flex justify-between items-center">
             <div>
-              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Today's Category A Total</p>
+              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-1">Today&apos;s Category A Total</p>
               <p className="text-[16px] font-black text-white">Rs. {data.catA?.core.toLocaleString()} / Rs. 200,000</p>
             </div>
             <div className="text-right">

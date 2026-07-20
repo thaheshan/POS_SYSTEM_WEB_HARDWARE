@@ -22,7 +22,7 @@ export default function Step2Verification({
           Check Your Email
         </h2>
         <p className="text-base text-gray-600 mb-5">
-          We've sent a verification link to:
+          We&apos;ve sent a verification link to:
         </p>
 
         <div className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 rounded-lg mb-8 border border-blue-100">
@@ -39,7 +39,7 @@ export default function Step2Verification({
 
         {/* Resend Link */}
         <div className="text-base text-gray-600 mb-8 mt-6">
-          Didn't receive the email?{" "}
+          Didn&apos;t receive the email?{" "}
           <button
             onClick={onResend}
             disabled={loading}
@@ -52,7 +52,7 @@ export default function Step2Verification({
         <div className="bg-amber-50 rounded-lg p-4 max-w-md mx-auto flex items-start text-left gap-3 mb-8 border border-amber-100">
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800 leading-relaxed">
-            Check your spam or junk folder if you don't see the email within a
+            Check your spam or junk folder if you don&apos;t see the email within a
             few minutes.
           </p>
         </div>

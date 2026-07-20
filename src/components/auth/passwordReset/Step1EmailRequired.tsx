@@ -44,7 +44,7 @@ export default function Step1EmailRequired({
           Forgot your password?
         </h2>
         <p className="text-base text-gray-600 mb-8 mx-auto leading-relaxed max-w-md">
-          Enter your email address and we'll send you a link to reset your
+          Enter your email address and we&apos;ll send you a link to reset your
           password.
         </p>
 
@@ -106,7 +106,7 @@ export default function Step1EmailRequired({
         </form>
 
         <div className="mt-8 text-sm text-gray-600">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/auth/register/staff"
             className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"

@@ -19,7 +19,7 @@ export default function RequestRejectedPage() {
           Registration Rejected
         </h1>
         <p className="text-gray-500 text-base leading-relaxed max-w-sm mx-auto mb-8">
-          We're sorry, but your shop registration request has been declined by the administration. If you believe this is an error, please contact support.
+          We&apos;re sorry, but your shop registration request has been declined by the administration. If you believe this is an error, please contact support.
         </p>
 
         <Link href="/auth/login" className="block w-full">

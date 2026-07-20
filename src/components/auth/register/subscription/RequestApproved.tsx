@@ -88,7 +88,7 @@ export const RequestApproved: React.FC<RequestApprovedProps> = ({ selectedPlan }
         {/* Success Message Box */}
         <div className="bg-teal-50 border-l-4 border-teal-600 rounded-lg p-4 mb-8">
           <p className="text-teal-800">
-            <span className="font-semibold">You're all set!</span> Your {selectedPlan} Plan is ready to activate. Complete the payment setup to get started immediately.
+            <span className="font-semibold">You&apos;re all set!</span> Your {selectedPlan} Plan is ready to activate. Complete the payment setup to get started immediately.
           </p>
         </div>
       </div>
