@@ -26,6 +26,7 @@ import InventoryAlertsAction from "@/components/inventory/InventoryAlertsAction"
 import EditInventoryModal from "@/components/inventory/EditInventoryModal";
 import DeleteInventoryModal from "@/components/inventory/DeleteInventoryModal";
 import AddProductModal from "@/components/inventory/AddProductModal";
+import AddWarehouseModal from "@/components/inventory/AddWarehouseModal";
 import AdjustStockModal from "@/components/inventory/AdjustStockModal";
 import PhysicalStockCountModal from "@/components/inventory/PhysicalStockCountModal";
 import TransferStockModal from "@/components/inventory/TransferStockModal";
@@ -58,15 +59,14 @@ export default function InventoryPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
-  const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] =
-    useState(false);
-  const [isTransferStockModalOpen, setIsTransferStockModalOpen] =
-    useState(false);
-  const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] =
-    useState(false);
+  const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] = useState(false);
+  const [isTransferStockModalOpen, setIsTransferStockModalOpen] = useState(false);
+  const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+  const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [inventoryData, setInventoryData] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -249,10 +249,11 @@ export default function InventoryPage() {
     try {
       setIsLoading(true);
 
-      // Fetch both stock records and all products in parallel
-      const [stockRes, productsRes] = await Promise.allSettled([
+      // Fetch stock records, all products, and warehouses in parallel
+      const [stockRes, productsRes, warehousesRes] = await Promise.allSettled([
         api.get("/stock"),
         api.get("/products"),
+        api.get("/warehouses"),
       ]);
 
       const stockItems: any[] =
@@ -264,6 +265,11 @@ export default function InventoryPage() {
         productsRes.status === "fulfilled"
           ? productsRes.value.data?.data || productsRes.value.data || []
           : [];
+
+      if (warehousesRes.status === 'fulfilled') {
+        const whData = warehousesRes.value.data?.data || warehousesRes.value.data || [];
+        setWarehouses(whData);
+      }
 
       // Build a set of productIds that already have stock records
       const stockProductIds = new Set(
@@ -455,6 +461,11 @@ export default function InventoryPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleTransfer = (item: any) => {
+    setSelectedItem(item);
+    setIsTransferStockModalOpen(true);
+  };
+
   const handleDelete = (item: any) => {
     setSelectedItem(item);
     setIsDeleteModalOpen(true);
@@ -620,35 +631,56 @@ export default function InventoryPage() {
           <>
             {/* 1. KPI CARDS - Now Dynamic */}
             <InventoryKPICards data={filteredData} />
-
+            
             {/* 2. ACTION ROW - Re-implemented */}
-            <InventoryActionRow
+            <InventoryActionRow 
               onAddProduct={() => setIsAddProductModalOpen(true)}
               onAdjustStock={() => setIsAdjustStockModalOpen(true)}
               onPhysicalStockCount={() => setIsPhysicalStockModalOpen(true)}
               onTransferStock={() => setIsTransferStockModalOpen(true)}
               onPurchaseOrder={() => setIsPurchaseOrderModalOpen(true)}
-              onImportExport={() => setIsImportExportModalOpen(true)}
+              onAddWarehouse={() => setIsAddWarehouseModalOpen(true)}
             />
 
-            {/* 3. INVENTORY TABLE */}
-            {isLoading ? (
-              <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            {/* 3. WAREHOUSE SELECTOR & INVENTORY TABLE */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedWarehouse(null)}
+                  className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${!selectedWarehouse ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                >
+                  All Warehouses
+                </button>
+                {warehouses.map(wh => (
+                  <button
+                    key={wh.id}
+                    onClick={() => setSelectedWarehouse(wh.name)}
+                    className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${selectedWarehouse === wh.name ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    {wh.name}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <InventoryTable
-                data={filteredData}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                onFilterToggle={() => setIsFilterModalOpen(true)}
-                hasActiveFilters={hasActiveFilters}
-                onClearFilters={handleClearAllFilters}
-                activeFilterCount={activeFilterCount}
-              />
-            )}
+
+              {isLoading ? (
+                <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <InventoryTable 
+                  data={filteredData}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onTransfer={handleTransfer}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  onFilterToggle={() => setIsFilterModalOpen(true)}
+                  hasActiveFilters={hasActiveFilters}
+                  onClearFilters={handleClearAllFilters}
+                  activeFilterCount={activeFilterCount}
+                />
+              )}
+            </div>
 
             {/* 4. ANALYSIS SECTION */}
             <div className="space-y-10">
@@ -898,11 +930,16 @@ export default function InventoryPage() {
 
       <TransferStockModal
         isOpen={isTransferStockModalOpen}
-        onClose={() => setIsTransferStockModalOpen(false)}
+        onClose={() => {
+          setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
+        }}
         onSuccess={() => {
           setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
           fetchInventory();
         }}
+        initialProductId={selectedItem?.productId || selectedItem?.id}
       />
 
       <PurchaseOrderModal
@@ -919,14 +956,13 @@ export default function InventoryPage() {
         prefillProductIds={prefillItems}
       />
 
-      <ImportExportModal
-        isOpen={isImportExportModalOpen}
-        onClose={() => setIsImportExportModalOpen(false)}
+      <AddWarehouseModal
+        isOpen={isAddWarehouseModalOpen}
+        onClose={() => setIsAddWarehouseModalOpen(false)}
         onSuccess={() => {
-          setIsImportExportModalOpen(false);
+          setIsAddWarehouseModalOpen(false);
           fetchInventory();
         }}
-        inventoryData={inventoryData}
       />
 
       {editingApproval && (

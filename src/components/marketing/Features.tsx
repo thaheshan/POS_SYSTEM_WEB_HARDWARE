@@ -25,9 +25,9 @@ const features = [
   },
   {
     icon: BarChart3,
-    title: "Comprehensive Analytics",
+    title: "Comprehensive VAT Analysis",
     description:
-      "In-depth reports on sales, inventory, customers, and financial performance to guide business decisions.",
+      "Stay compliant with the latest July 1st Sri Lankan VAT regulations. In-depth reports on taxable sales, exemptions, and financial performance.",
   },
   {
     icon: Users,

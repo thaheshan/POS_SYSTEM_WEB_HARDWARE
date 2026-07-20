@@ -6,7 +6,7 @@ interface InventoryActionRowProps {
   onPhysicalStockCount: () => void;
   onTransferStock: () => void;
   onPurchaseOrder: () => void;
-  onImportExport: () => void;
+  onAddWarehouse: () => void;
 }
 
 export default function InventoryActionRow({ 
@@ -15,7 +15,7 @@ export default function InventoryActionRow({
   onPhysicalStockCount,
   onTransferStock,
   onPurchaseOrder,
-  onImportExport
+  onAddWarehouse
 }: InventoryActionRowProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 mt-8 mb-4">
@@ -40,9 +40,9 @@ export default function InventoryActionRow({
         Create Purchase Order
       </button>
 
-      <button onClick={onImportExport} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-black text-[13px] font-black transition-all shadow-sm uppercase tracking-tight">
+      <button onClick={onAddWarehouse} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-black text-[13px] font-black transition-all shadow-sm uppercase tracking-tight">
         <CloudUpload className="w-4 h-4 text-emerald-600" />
-        Import/Export
+        Add Warehouse
       </button>
     </div>
   );
