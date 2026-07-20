@@ -382,10 +382,10 @@ export default function POSPage() {
         let discountPercentage = 0;
         if (type === 'PERCENTAGE') {
           discountPercentage = val;
-          discountAmount = (item.price * val) / 100;
+          discountAmount = Number(((item.price * val) / 100).toFixed(2));
         } else {
           discountAmount = val;
-          discountPercentage = (val / item.price) * 100;
+          discountPercentage = Number(((val / item.price) * 100).toFixed(2));
         }
         return { ...item, discountAmount, discountPercentage };
       }
@@ -411,10 +411,10 @@ export default function POSPage() {
       if (product.isDiscountEnabled && product.isDiscountApproved && defaultVal > 0) {
         if (product.discountType === 'PERCENTAGE') {
           discountPercentage = defaultVal;
-          discountAmount = (product.price * defaultVal) / 100;
+          discountAmount = Number(((product.price * defaultVal) / 100).toFixed(2));
         } else {
           discountAmount = defaultVal;
-          discountPercentage = (defaultVal / product.price) * 100;
+          discountPercentage = Number(((defaultVal / product.price) * 100).toFixed(2));
         }
       }
 
@@ -476,12 +476,12 @@ export default function POSPage() {
 
   const handlePrint = () => { window.print(); };
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price - (item.discountAmount ?? 0)) * item.qty, 0);
-  const discountAmount = discountType === 'percentage'
+  const subtotal = Number(cart.reduce((acc, item) => acc + (item.price - Number((item.discountAmount ?? 0).toFixed(2))) * item.qty, 0).toFixed(2));
+  const discountAmount = Number((discountType === 'percentage'
     ? (subtotal * (discountValue / 100))
-    : discountValue;
+    : discountValue).toFixed(2));
   const tax = 0;
-  const total = subtotal - discountAmount;
+  const total = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
 
   const hasLowStockItems = useMemo(() => {
     return cart.some(item => {
@@ -1089,10 +1089,11 @@ function ProductDiscountModal({
   const maxAllowed = Number(item.maxAllowedDiscount ?? 0);
 
   const parsedVal = parseFloat(String(val)) || 0;
-  const discountAmount =
-    type === "PERCENTAGE" ? (originalPrice * parsedVal) / 100 : parsedVal;
-  const discountedPrice = Math.max(0, originalPrice - discountAmount);
-  const totalAmount = discountedPrice * item.qty;
+  const discountAmount = Number((
+    type === "PERCENTAGE" ? (originalPrice * parsedVal) / 100 : parsedVal
+  ).toFixed(2));
+  const discountedPrice = Math.max(0, Number((originalPrice - discountAmount).toFixed(2)));
+  const totalAmount = Number((discountedPrice * item.qty).toFixed(2));
 
   const handleApply = () => {
     if (val === "" || isNaN(parsedVal) || parsedVal < 0) {
