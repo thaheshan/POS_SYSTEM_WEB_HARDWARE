@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import {
   Clock,
@@ -23,6 +23,7 @@ import PhysicalStockCountModal from "@/components/inventory/PhysicalStockCountMo
 import TransferStockModal from "@/components/inventory/TransferStockModal";
 import PurchaseOrderModal from "@/components/inventory/PurchaseOrderModal";
 import ImportExportModal from "@/components/inventory/ImportExportModal";
+import AddWarehouseModal from "@/components/inventory/AddWarehouseModal";
 import { DateRange } from "react-day-picker";
 import api from "@/api/axiosInstance";
 import {
@@ -49,14 +50,19 @@ export default function InventoryPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
-  const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] =
-    useState(false);
-  const [isTransferStockModalOpen, setIsTransferStockModalOpen] =
-    useState(false);
-  const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] =
-    useState(false);
+  const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] = useState(false);
+  const [isTransferStockModalOpen, setIsTransferStockModalOpen] = useState(false);
+  const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+  const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/warehouses')
+      .then(res => setWarehouses(res.data?.data || res.data || []))
+      .catch(err => console.error('Failed to fetch warehouses:', err));
+  }, []);
   const [isDeleting, setIsDeleting] = useState(false);
   const [prefillItems, setPrefillItems] = useState<string[]>([]);
 
@@ -244,6 +250,11 @@ export default function InventoryPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleTransfer = (item: any) => {
+    setSelectedItem(item);
+    setIsTransferStockModalOpen(true);
+  };
+
   const handleDelete = (item: any) => {
     setSelectedItem(item);
     setIsDeleteModalOpen(true);
@@ -361,33 +372,54 @@ export default function InventoryPage() {
           onPhysicalStockCount={() => setIsPhysicalStockModalOpen(true)}
           onTransferStock={() => setIsTransferStockModalOpen(true)}
           onPurchaseOrder={() => setIsPurchaseOrderModalOpen(true)}
-          onImportExport={() => setIsImportExportModalOpen(true)}
+          onAddWarehouse={() => setIsAddWarehouseModalOpen(true)}
         />
 
-        {/* 3. INVENTORY TABLE with RTK Error Handling */}
-        {isLoading ? (
-          <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        {/* 3. WAREHOUSE SELECTOR & INVENTORY TABLE */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedWarehouse(null)}
+              className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${!selectedWarehouse ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+            >
+              All Warehouses
+            </button>
+            {warehouses.map(wh => (
+              <button
+                key={wh.id}
+                onClick={() => setSelectedWarehouse(wh.name)}
+                className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${selectedWarehouse === wh.name ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                {wh.name}
+              </button>
+            ))}
           </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-600 p-8 rounded-[24px] text-center font-bold">
-            Failed to load inventory data from the server.
-          </div>
-        ) : (
-          <InventoryTable
-            data={filteredData}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onFilterToggle={() => setIsFilterModalOpen(true)}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={handleClearAllFilters}
-            activeFilterCount={activeFilterCount}
-            onIncrement={handleIncrement}
-            onDecrement={handleDecrement}
-          />
-        )}
+
+          {isLoading ? (
+            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 text-red-600 p-8 rounded-[24px] text-center font-bold">
+              Failed to load inventory data from the server.
+            </div>
+          ) : (
+            <InventoryTable
+              data={filteredData}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onTransfer={handleTransfer}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onFilterToggle={() => setIsFilterModalOpen(true)}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={handleClearAllFilters}
+              activeFilterCount={activeFilterCount}
+              onIncrement={handleIncrement}
+              onDecrement={handleDecrement}
+            />
+          )}
+        </div>
 
         {/* 4. ANALYSIS SECTION */}
         <div className="space-y-10">
@@ -454,11 +486,16 @@ export default function InventoryPage() {
 
       <TransferStockModal
         isOpen={isTransferStockModalOpen}
-        onClose={() => setIsTransferStockModalOpen(false)}
+        onClose={() => {
+          setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
+        }}
         onSuccess={() => {
           setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
           refetch();
         }}
+        initialProductId={selectedItem?.productId || selectedItem?.id}
       />
 
       <PurchaseOrderModal
@@ -475,14 +512,13 @@ export default function InventoryPage() {
         prefillProductIds={prefillItems}
       />
 
-      <ImportExportModal
-        isOpen={isImportExportModalOpen}
-        onClose={() => setIsImportExportModalOpen(false)}
+      <AddWarehouseModal
+        isOpen={isAddWarehouseModalOpen}
+        onClose={() => setIsAddWarehouseModalOpen(false)}
         onSuccess={() => {
-          setIsImportExportModalOpen(false);
-          refetch();
+          setIsAddWarehouseModalOpen(false);
+          api.get('/warehouses').then(res => setWarehouses(res.data?.data || res.data || []));
         }}
-        inventoryData={inventoryData}
       />
 
       <InventoryReportView data={filteredData} dateRange={dateRange} />

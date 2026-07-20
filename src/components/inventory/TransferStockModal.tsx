@@ -9,6 +9,7 @@ interface TransferStockModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialProductId?: string;
 }
 
 interface StockItem {
@@ -27,7 +28,7 @@ interface Warehouse {
   name: string;
 }
 
-export default function TransferStockModal({ isOpen, onClose, onSuccess }: TransferStockModalProps) {
+export default function TransferStockModal({ isOpen, onClose, onSuccess, initialProductId }: TransferStockModalProps) {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ export default function TransferStockModal({ isOpen, onClose, onSuccess }: Trans
   const [done, setDone] = useState(false);
   const [search, setSearch] = useState('');
 
-  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState(initialProductId || '');
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -46,8 +47,9 @@ export default function TransferStockModal({ isOpen, onClose, onSuccess }: Trans
       fetchData();
       setDone(false);
       resetForm();
+      if (initialProductId) setSelectedProductId(initialProductId);
     }
-  }, [isOpen]);
+  }, [isOpen, initialProductId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -113,25 +115,12 @@ export default function TransferStockModal({ isOpen, onClose, onSuccess }: Trans
 
     setSubmitting(true);
     try {
-      const destItem = stockItems.find(i => i.productId === selectedProductId && i.warehouseId === toWarehouseId);
-      const branchId = selectedStockItem?.branchId || destItem?.branchId || '00000000-0000-0000-0000-000000000000';
-
-      // Deduct from source
-      await api.post('/stock/deduct', {
-        product_id: selectedProductId,
-        warehouse_id: fromWarehouseId,
-        branch_id: branchId,
-        deduct_quantity: qty,
-        reason: notes || `Transfer to ${warehouses.find(w => w.id === toWarehouseId)?.name}`,
-      });
-
-      // Add to destination
-      await api.post('/stock/add', {
-        product_id: selectedProductId,
-        warehouse_id: toWarehouseId,
-        branch_id: branchId,
-        add_quantity: qty,
-        reason: notes || `Transfer from ${warehouses.find(w => w.id === fromWarehouseId)?.name}`,
+      await api.post('/stock/transfer', {
+        productId: selectedProductId,
+        sourceWarehouseId: fromWarehouseId,
+        destinationWarehouseId: toWarehouseId,
+        quantity: qty,
+        reason: notes || `Transfer from ${warehouses.find(w => w.id === fromWarehouseId)?.name} to ${warehouses.find(w => w.id === toWarehouseId)?.name}`,
       });
 
       toast.success(`${qty} unit(s) transferred successfully.`);
