@@ -27,8 +27,8 @@ const modules = [
   {
     icon: LineChart,
     title: 'Reports & Analytics',
-    description: 'Comprehensive reports on sales, inventory, and financial performance',
-    features: ['Sales reports', 'Profit & Loss statements', 'Inventory analytics', 'Custom reports'],
+    description: 'Comprehensive reports on sales, inventory, VAT compliance, and financial performance',
+    features: ['Sales & VAT (July 1st) reports', 'Profit & Loss statements', 'Inventory analytics', 'Custom reports'],
   },
   {
     icon: Users,

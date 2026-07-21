@@ -2,6 +2,7 @@
 
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface StatsCardProps {
   title: string;
@@ -31,13 +32,6 @@ export default function StatsCard({
   viewAllHref = '#',
   onClick
 }: StatsCardProps) {
-  const handleViewAllClick = (e: React.MouseEvent) => {
-    if (onClick) {
-      e.preventDefault();
-      onClick();
-    }
-  };
-
   return (
     <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-between min-h-[220px] transition-all duration-300 hover:shadow-md hover:-translate-y-1">
       <div className="flex justify-between items-start">
@@ -76,13 +70,22 @@ export default function StatsCard({
       </div>
 
       <div className="pt-4 mt-4 border-t border-gray-50 flex justify-center">
-         <a 
-           href={viewAllHref} 
-           onClick={handleViewAllClick}
-           className="text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
-         >
+        {onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center justify-center text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
+          >
             View All →
-         </a>
+          </button>
+        ) : (
+          <Link
+            href={viewAllHref}
+            className="inline-flex items-center justify-center text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
+          >
+            View All →
+          </Link>
+        )}
       </div>
     </div>
   );
