@@ -144,6 +144,27 @@ export function useNotifications() {
     }
   };
 
+  const markAsRead = async (id: string) => {
+    try {
+      const notif = notifications.find(n => n.id === id);
+      if (!notif || notif.isRead) return;
+
+      if (id.startsWith('tx-') || id.startsWith('stock-') || id.startsWith('sub-alert-')) {
+        const currentReadIds = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+        const newReadIds = [...new Set([...currentReadIds, id])];
+        localStorage.setItem('readNotifications', JSON.stringify(newReadIds));
+      } else {
+        await api.patch(`/notifications/${id}/read`);
+      }
+
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
+  };
+
   const clearAll = async () => {
     try {
       // Clear synthesized locally
@@ -174,5 +195,6 @@ export function useNotifications() {
     refresh: fetchNotifications,
     markAllAsRead,
     clearAll,
+    markAsRead,
   };
 }

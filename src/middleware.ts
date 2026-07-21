@@ -20,6 +20,7 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
     "/sales", 
     "/reports", 
     "/staff-management", 
+    "/activity-log",
     "/settings",
     "/payment"
   ],
@@ -32,6 +33,7 @@ const ROLE_ACCESS_MAP: Record<string, string[]> = {
     "/sales", 
     "/reports", 
     "/staff-management", 
+    "/activity-log",
     "/settings",
     "/payment"
   ],
@@ -85,7 +87,7 @@ export function middleware(request: NextRequest) {
   // 1. Unauthenticated users
   if (!token) {
     // Allow root (/), login, register, forgot-password, approval-waiting, request-successful, request-rejected without authentication
-    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/approval-waiting") || pathname.startsWith("/auth/request-successful") || pathname.startsWith("/auth/request-rejected") || pathname.startsWith("/payment");
+    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/approval-waiting") || pathname.startsWith("/auth/request-successful") || pathname.startsWith("/auth/request-rejected") || pathname.startsWith("/payment") || pathname.startsWith("/receipt");
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
@@ -117,14 +119,16 @@ export function middleware(request: NextRequest) {
   const isAllowed = allowedPaths.some((path) => pathname.startsWith(path));
 
   // 4a. Specific Isolation for Sales Categories
-  // Only Admins can see Category A and B. Others (Managers, etc.) are blocked.
+  // Only Owners and Admins can see Category A/B and detailed reports.
   const isSensitiveSalesRoute = 
     pathname.startsWith("/sales/category-a") || 
     pathname.startsWith("/sales/category-b") ||
     pathname.startsWith("/sales/dashboard") ||
-    pathname.startsWith("/reports/sales"); // Hide full reports too
+    pathname.startsWith("/reports/sales") ||
+    pathname.startsWith("/reports/tax") ||
+    pathname.startsWith("/reports/inventory");
 
-  if (isSensitiveSalesRoute && role !== "admin") {
+  if (isSensitiveSalesRoute && role !== "admin" && role !== "owner") {
     const home = ROLE_HOME_MAP[role] || "/dashboard";
     return NextResponse.redirect(new URL(home, request.url));
   }

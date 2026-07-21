@@ -2,7 +2,7 @@
 
 import MainLayout from '@/components/layout/MainLayout';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Calendar,
   Plus,
@@ -29,10 +29,22 @@ import CategoryCReportModal from '@/components/sales/CategoryCReportModal';
 import CategoryPrintView from '@/components/sales/CategoryPrintView';
 import { useSalesData } from '@/hooks/useSales';
 
+const buildCategoryHref = (
+  category: 'category-a' | 'category-b' | 'category-c',
+  dateRange?: DateRange
+) => {
+  const params = new URLSearchParams();
+
+  if (dateRange?.from) params.set('from', dateRange.from.toISOString());
+  if (dateRange?.to) params.set('to', dateRange.to.toISOString());
+
+  const query = params.toString();
+  return `/sales/${category}${query ? `?${query}` : ''}`;
+};
+
 export default function SalesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role?.toLowerCase() === 'owner';
-  const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
     to: new Date(),
@@ -115,12 +127,12 @@ export default function SalesPage() {
             </div>
             <div className="flex items-center gap-4">
               {isAdmin && (
-                <button
-                  onClick={() => router.push('/sales/dashboard')}
-                  className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg font-bold text-[13.5px] transition-all shadow-sm"
+                <Link
+                  href="/sales/dashboard"
+                  className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg font-bold text-[13.5px] transition-all shadow-sm flex items-center justify-center"
                 >
                   Sales Dashboard
-                </button>
+                </Link>
               )}
             </div>
           </div>
@@ -197,12 +209,12 @@ export default function SalesPage() {
               </Popover.Portal>
             </Popover.Root>
 
-            <button
-              onClick={() => router.push('/pos/select')}
-              className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] flex items-center gap-2 shadow-sm transition-all active:scale-95"
+            <Link
+              href="/pos/select"
+              className="bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] inline-flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" /> Add Sale
-            </button>
+            </Link>
 
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
@@ -328,17 +340,12 @@ export default function SalesPage() {
                       <h5 className="text-[13px] font-black uppercase tracking-widest text-gray-900">
                         Recent Transactions
                       </h5>
-                      <button
-                        onClick={() => {
-                          const params = new URLSearchParams();
-                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
-                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
-                          router.push(`/sales/category-a?${params.toString()}`);
-                        }}
-                        className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                      <Link
+                        href={buildCategoryHref('category-a', dateRange)}
+                        className="inline-flex items-center justify-center text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline"
                       >
                         View All
-                      </button>
+                      </Link>
                     </div>
                     <div className="space-y-4">
                       {(data.catA.recentTxns || []).length > 0 ? (
@@ -455,17 +462,12 @@ export default function SalesPage() {
                       <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                         Top Non-Taxable Products
                       </h5>
-                      <button
-                        onClick={() => {
-                          const params = new URLSearchParams();
-                          if (dateRange?.from) params.set('from', dateRange.from.toISOString());
-                          if (dateRange?.to) params.set('to', dateRange.to.toISOString());
-                          router.push(`/sales/category-b?${params.toString()}`);
-                        }}
-                        className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
+                      <Link
+                        href={buildCategoryHref('category-b', dateRange)}
+                        className="inline-flex items-center justify-center text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
                       >
                         View All
-                      </button>
+                      </Link>
                     </div>
                     <div className="space-y-4 mb-8">
                       {(data.catB.topProducts || []).length > 0 ? (
@@ -587,17 +589,12 @@ export default function SalesPage() {
                     <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
                       Labour Type Breakdown
                     </h5>
-                    <button
-                      onClick={() => {
-                        const params = new URLSearchParams();
-                        if (dateRange?.from) params.set('from', dateRange.from.toISOString());
-                        if (dateRange?.to) params.set('to', dateRange.to.toISOString());
-                        router.push(`/sales/category-c?${params.toString()}`);
-                      }}
-                      className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
+                    <Link
+                      href={buildCategoryHref('category-c', dateRange)}
+                      className="inline-flex items-center justify-center text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
                     >
                       View All
-                    </button>
+                    </Link>
                   </div>
                   <div className="space-y-4 mb-10">
                     {(data.catC.breakdown || []).length > 0 ? (
