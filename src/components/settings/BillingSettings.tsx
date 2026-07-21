@@ -1,11 +1,7 @@
 import { CreditCard, Edit2, Download, Loader2, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
-
-export default function BillingSettings({ setHasUnsavedChanges }: Props) {
+export default function BillingSettings() {
   const [subStatus, setSubStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reporting, setReporting] = useState(false);

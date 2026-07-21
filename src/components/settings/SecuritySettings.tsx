@@ -1,10 +1,7 @@
 import { Lock, Smartphone, Key } from 'lucide-react';
 
-interface Props {
-  setHasUnsavedChanges: (val: boolean) => void;
-}
 
-export default function SecuritySettings({ setHasUnsavedChanges }: Props) {
+export default function SecuritySettings() {
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#fef2f2]">
@@ -56,7 +53,7 @@ export default function SecuritySettings({ setHasUnsavedChanges }: Props) {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" defaultChecked className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+              <input type="checkbox" defaultChecked className="sr-only peer"  />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
             </label>
           </div>
@@ -70,7 +67,7 @@ export default function SecuritySettings({ setHasUnsavedChanges }: Props) {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+              <input type="checkbox" className="sr-only peer" />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
             </label>
           </div>
@@ -84,7 +81,7 @@ export default function SecuritySettings({ setHasUnsavedChanges }: Props) {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" onChange={() => setHasUnsavedChanges(true)} />
+              <input type="checkbox" className="sr-only peer" />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
             </label>
           </div>
