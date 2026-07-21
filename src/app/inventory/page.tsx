@@ -103,7 +103,10 @@ export default function InventoryPage() {
         }
         setIsPurchaseOrderModalOpen(true);
         // Clean up URL without reloading
-        window.history.replaceState({}, "", "/inventory");
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("po");
+        newUrl.searchParams.delete("items");
+        window.history.replaceState({}, "", newUrl.pathname + newUrl.search);
       }
     }
   }, [user, isOwnerOrAdmin]);
@@ -245,6 +248,28 @@ export default function InventoryPage() {
     }
   };
 
+  React.useEffect(() => {
+    if (inventoryData.length > 0 && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("editId");
+      if (editId) {
+        const item = inventoryData.find(
+          (i) => String(i.id) === editId || String(i.productId) === editId,
+        );
+        if (item) {
+          setSelectedItem(item);
+          setIsEditModalOpen(true);
+        } else {
+          toast.error("The requested item is no longer available.");
+        }
+        // Clean up URL without reloading
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("editId");
+        window.history.replaceState({}, "", newUrl.pathname + newUrl.search);
+      }
+    }
+  }, [inventoryData]);
+
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
@@ -266,7 +291,7 @@ export default function InventoryPage() {
           ? productsRes.value.data?.data || productsRes.value.data || []
           : [];
 
-      if (warehousesRes.status === 'fulfilled') {
+      if (warehousesRes.status === "fulfilled") {
         const whData = warehousesRes.value.data?.data || warehousesRes.value.data || [];
         setWarehouses(whData);
       }
@@ -354,7 +379,7 @@ export default function InventoryPage() {
             productId: p.id,
             isDiscountEnabled: p.isDiscountEnabled || false,
             isDiscountApproved: p.isDiscountApproved || false,
-            discountType: p.discountType || 'PERCENTAGE',
+            discountType: p.discountType || "PERCENTAGE",
             maxAllowedDiscount: Number(p.maxAllowedDiscount || 0),
             defaultDiscountValue: Number(p.defaultDiscountValue || 0),
           };
@@ -507,7 +532,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh inventory data list
     } catch (error: any) {
       console.error("Failed to update product details:", error);
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           "Failed to update product. Please try again.",
       );
@@ -524,7 +549,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh from server
     } catch (error: any) {
       console.error("Failed to delete product:", error);
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           "Failed to delete product. Please try again.",
       );

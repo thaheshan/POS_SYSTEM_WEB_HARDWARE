@@ -43,7 +43,6 @@ type PaymentConfirmationProps = {
   change: number;
   subtotal: number;
   discount: number;
-  tax: number;
   total: number;
   notes?: string;
 };
@@ -59,7 +58,6 @@ function downloadInvoicePDF({
   change,
   subtotal,
   discount,
-  tax,
   total,
   notes,
 }: Omit<PaymentConfirmationProps, "onBack" | "onProcess">) {
@@ -220,15 +218,13 @@ function downloadInvoicePDF({
     <tbody>${itemRows}</tbody>
   </table>
 
-  <!-- Totals -->
-  <div class="totals">
+      <div class="totals">
     <div class="totals-box">
       <div class="total-row">
         <span>Subtotal</span>
         <span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span>
       </div>
       ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ""}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax (15%)</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ""}
       <div class="grand-total">
         <span>Grand Total</span>
         <span>Rs. ${total.toLocaleString()}</span>
@@ -301,7 +297,6 @@ export default function PaymentConfirmation({
   change,
   subtotal,
   discount,
-  tax,
   total,
   notes,
 }: PaymentConfirmationProps) {
@@ -340,7 +335,6 @@ export default function PaymentConfirmation({
         })),
         subtotal,
         discount,
-        tax,
         total,
         paidAmount: amountTendered,
         change,
@@ -417,7 +411,6 @@ export default function PaymentConfirmation({
                     change,
                     subtotal,
                     discount,
-                    tax,
                     total,
                     notes,
                   })
@@ -534,10 +527,6 @@ export default function PaymentConfirmation({
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Subtotal</span>
                 <span>Rs. {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-[13px] font-bold text-gray-600">
-                <span>Tax (15%)</span>
-                <span>Rs. {tax.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-red-500">
                 <span>Discount</span>
@@ -673,7 +662,6 @@ export default function PaymentConfirmation({
               change,
               subtotal,
               discount,
-              tax,
               total,
               notes,
             })

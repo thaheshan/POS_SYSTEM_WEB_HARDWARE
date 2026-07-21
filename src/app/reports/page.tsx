@@ -397,7 +397,7 @@ export default function ReportsPage() {
             iconBgClass="bg-[#2563eb]"
             badge={{ text: "8 Reports", colorClass: "bg-[#eff6ff] text-[#2563eb]" }}
             reports={["Daily Sales Summary", "Sales by Product", "Sales by Cashier"]}
-            onButtonClick={() => router.push('/reports/sales')}
+            href="/reports/sales"
             buttonText="View All Sales Reports"
             buttonColorClass="bg-[#1e40af] hover:bg-blue-800"
             disabled={!enableAllReports}
@@ -418,7 +418,7 @@ export default function ReportsPage() {
             onReportClick={(r) => { 
                 if(r === 'Category A Report') setReportModal('A');
             }}
-            onButtonClick={() => router.push('/reports/tax')}
+            href="/reports/tax"
             buttonText="View All Tax Reports"
             buttonColorClass="bg-[#8b5cf6] hover:bg-purple-600"
             disabled={!enableAllReports}
@@ -430,7 +430,7 @@ export default function ReportsPage() {
             iconBgClass="bg-[#059669]"
             badge={{ text: "7 Reports", colorClass: "bg-[#ecfdf5] text-[#059669]" }}
             reports={["Current Stock Overview", "Low Stock Report", "Inventory Valuation"]}
-            onButtonClick={() => router.push('/reports/inventory')}
+            href="/reports/inventory"
             buttonText="View All Inventory Reports"
             buttonColorClass="bg-[#059669] hover:bg-green-700"
           />

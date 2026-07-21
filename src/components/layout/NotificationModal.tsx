@@ -4,7 +4,8 @@ import { X, CheckCircle2, Trash2, AlertTriangle, Info, AlertCircle, Bell } from 
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
+import { KeyboardEvent, MouseEvent, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface NotificationModalProps {
   isOpen: boolean;
@@ -12,7 +13,50 @@ interface NotificationModalProps {
 }
 
 export default function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
-  const { notifications, unreadCount, markAllAsRead, clearAll } = useNotifications();
+  const router = useRouter();
+  const { notifications, unreadCount, markAllAsRead, clearAll, markAsRead } = useNotifications();
+
+  const getNotificationHref = (notif: Notification) => {
+    if (notif.link) return notif.link;
+    if (notif.id.startsWith('tx-')) return `/receipt/${notif.id.replace('tx-', '')}`;
+    if (notif.id.startsWith('stock-')) return `/inventory?editId=${notif.id.replace('stock-', '')}`;
+    if (notif.id.startsWith('sub-alert-')) return '/settings';
+    return null;
+  };
+
+  const handleNotificationClick = async (notif: Notification, href: string | null) => {
+    // 1. Mark as read if unread
+    if (!notif.isRead) {
+      await markAsRead(notif.id);
+    }
+
+    if (href) {
+      router.push(href);
+      onClose();
+      return;
+    }
+
+    console.warn(`No navigation destination found for notification "${notif.id}".`);
+    onClose();
+  };
+
+  const handleLinkClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    notif: Notification,
+    href: string
+  ) => {
+    // Preserve native new-tab/window behavior for modified clicks.
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    event.preventDefault();
+    void handleNotificationClick(notif, href);
+  };
+
+  const handleUnmatchedKeyDown = (event: KeyboardEvent<HTMLDivElement>, notif: Notification) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    void handleNotificationClick(notif, null);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -101,15 +145,9 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
             </div>
           ) : (
             <div className="space-y-2">
-              {notifications.map((notif) => (
-                <div 
-                  key={notif.id} 
-                  className={cn(
-                    'p-5 rounded-xl border border-gray-100/50 transition-colors', 
-                    getBg(notif.type, notif.isRead),
-                    notif.isRead ? 'shadow-sm' : 'shadow-md border-transparent'
-                  )}
-                >
+              {notifications.map((notif) => {
+                const href = getNotificationHref(notif);
+                const content = (
                   <div className="flex gap-4">
                     <div className="mt-1 flex-shrink-0">{getIcon(notif.type)}</div>
                     <div className="flex-1 min-w-0">
@@ -124,17 +162,43 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
                       <p className="text-sm text-gray-600 mt-1 leading-relaxed">{notif.message}</p>
                       
                       {notif.link && (
-                        <a 
-                          href={notif.link}
+                        <span 
                           className="inline-block mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                         >
                           View Details &rarr;
-                        </a>
+                        </span>
                       )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+                const className = cn(
+                  'block p-5 rounded-xl border border-gray-100/50 transition-colors cursor-pointer',
+                  getBg(notif.type, notif.isRead),
+                  notif.isRead ? 'shadow-sm' : 'shadow-md border-transparent hover:shadow-lg'
+                );
+
+                return href ? (
+                  <a
+                    key={notif.id}
+                    href={href}
+                    onClick={(event) => handleLinkClick(event, notif, href)}
+                    className={className}
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <div
+                    key={notif.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void handleNotificationClick(notif, null)}
+                    onKeyDown={(event) => handleUnmatchedKeyDown(event, notif)}
+                    className={className}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
