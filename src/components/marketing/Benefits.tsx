@@ -31,7 +31,7 @@ const benefits = [
     icon: Lock,
     title: 'Secure Operations',
     description:
-      'Enterprise-grade security protects sensitive data with automatic backups and compliance.',
+      'Enterprise-grade security protects sensitive data with automatic backups and full July 1st VAT compliance.',
   },
   {
     icon: Phone,

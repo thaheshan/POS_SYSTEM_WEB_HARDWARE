@@ -37,6 +37,9 @@ import AllTransactionsTable from '@/components/reports/AllTransactionsTable';
 
 export default function ReportsPage() {
   const router = useRouter();
+  // Enable all reports cards navigation as requested by the user
+  const enableAllReports = true;
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
      from: new Date(),
      to: new Date()
@@ -323,7 +326,8 @@ export default function ReportsPage() {
                   <div className="p-2">
                     <button
                       onClick={exportPdf}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left group"
+                      disabled={!enableAllReports}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition-colors">
                         <Printer className="w-4 h-4 text-red-600" />
@@ -396,6 +400,7 @@ export default function ReportsPage() {
             href="/reports/sales"
             buttonText="View All Sales Reports"
             buttonColorClass="bg-[#1e40af] hover:bg-blue-800"
+            disabled={!enableAllReports}
           />
           <ReportCategoryCard 
             title="Tax & Compliance"
@@ -416,6 +421,7 @@ export default function ReportsPage() {
             href="/reports/tax"
             buttonText="View All Tax Reports"
             buttonColorClass="bg-[#8b5cf6] hover:bg-purple-600"
+            disabled={!enableAllReports}
           />
           <ReportCategoryCard 
             title="Inventory Reports"

@@ -38,6 +38,7 @@ export interface ChartPoint {
   revenue: number;
   sales: number;
   cost: number;
+  profit: number;
 }
 
 // ─── Dashboard KPI Stats ───────────────────────────────────────────────────────
@@ -117,13 +118,14 @@ export function useRecentTransactions() {
 }
 
 // ─── Weekly Revenue Chart ─────────────────────────────────────────────────────
-export function useWeeklyChart() {
+export function useWeeklyChart(days = 7) {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     api
-      .get('/dashboard/weekly-chart')
+      .get('/dashboard/weekly-chart', { params: { days } })
       .then((res) => {
         const raw = res.data;
         const items: any[] = Array.isArray(raw)
@@ -161,7 +163,7 @@ export function useWeeklyChart() {
       })
       .catch(() => setChartData([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [days]);
 
   return { chartData, loading };
 }
