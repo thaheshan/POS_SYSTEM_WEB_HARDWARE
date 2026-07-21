@@ -1,19 +1,20 @@
 'use client';
 
 import MainLayout from '@/components/layout/MainLayout';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Calendar, 
   Download, 
-  Clock, 
   FileText,
   BarChart2,
   Boxes,
   Coins,
   ShieldCheck,
   ChevronDown,
-  X
+  X,
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
 import { DateRange } from 'react-day-picker';
@@ -36,6 +37,9 @@ import AllTransactionsTable from '@/components/reports/AllTransactionsTable';
 
 export default function ReportsPage() {
   const router = useRouter();
+  // Enable all reports cards navigation as requested by the user
+  const enableAllReports = true;
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
      from: new Date(),
      to: new Date()
@@ -45,6 +49,193 @@ export default function ReportsPage() {
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
 
   const { data, loading } = useSalesData(dateRange);
+
+  // ── Export All dropdown ────────────────────────────────────────
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const dateLabel = dateRange?.from
+    ? `${format(dateRange.from, 'MMM d yyyy')}${dateRange.to ? ` - ${format(dateRange.to, 'MMM d yyyy')}` : ''}`
+    : 'All Dates';
+
+  // Build flat transaction rows (same logic as AllTransactionsTable)
+  function getAllRows() {
+    const catA = (data?.catA?.allTxns ?? []).map((t: any) => ({ ...t, category: 'Cat A (Taxable)' }));
+    const catB = (data?.catB?.allTxns ?? []).map((t: any) => ({ ...t, category: 'Cat B (Non-Tax)' }));
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const r of [...catA, ...catB]) {
+      if (!seen.has(r.id)) { seen.add(r.id); merged.push(r); }
+    }
+    return merged;
+  }
+
+  const exportCsv = () => {
+    const rows = getAllRows();
+    const headers = ['Invoice #', 'Time', 'Mode', 'Category', 'Amount (Rs.)'];
+    const csvRows = [
+      headers.join(','),
+      ...rows.map(r => [
+        `"${r.id}"`,
+        `"${r.time ?? ''}"`  ,
+        `"${r.mode ?? ''}"`  ,
+        `"${r.category}"`,
+        r.rawAmount ?? r.amount,
+      ].join(',')),
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `reports-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExportOpen(false);
+  };
+
+  const exportPdf = () => {
+    const rows = getAllRows();
+    const catATotal    = data.catA?.core     || 0;
+    const catBTotal    = data.catB?.core     || 0;
+    const catCTotal    = data.catC?.core     || 0;
+    const vatAmt       = data.catA?.vat      || 0;
+    const catANet      = catATotal - vatAmt;           // Net ex-VAT
+    const totalRevenue = (data.summary?.totalSales || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+    const grossProfit  = (data.summary?.netProfit  || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+    const vatCollected = vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 });
+    const txnCount     = (data.catA?.txns || 0) + (data.catB?.txns || 0);
+    const margin       = data.summary?.totalSales > 0
+      ? Math.round(((data.summary?.netProfit || 0) / data.summary.totalSales) * 100)
+      : 0;
+
+    const rowsHtml = rows.map((r, i) => `
+      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+        <td>${r.id}</td>
+        <td>${r.time ?? ''}</td>
+        <td>${r.mode ?? ''}</td>
+        <td>${r.category}</td>
+        <td style="text-align:right;font-weight:700;">Rs. ${(r.rawAmount ?? 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+      </tr>`).join('');
+
+    const html = `
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Business Analytics Report — ${dateLabel}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1e293b;background:#fff;padding:32px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:18px;margin-bottom:24px;}
+  .brand{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:-1px;}  
+  .brand-sub{font-size:11px;color:#64748b;font-weight:500;margin-top:2px;}
+  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.7;}
+  .meta strong{color:#1e293b;}
+  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin:22px 0 10px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:10px;}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
+  .kpi-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .kpi-value{font-size:18px;font-weight:900;color:#1e40af;}
+  .kpi-sub{font-size:10px;color:#94a3b8;margin-top:3px;}
+  .kpi.green .kpi-value{color:#059669;}
+  .kpi.amber .kpi-value{color:#b45309;}
+  .kpi.purple .kpi-value{color:#7c3aed;}
+  table{width:100%;border-collapse:collapse;margin-top:4px;}
+  thead tr{background:#1e40af;color:#fff;}
+  thead th{padding:9px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
+  thead th:last-child{text-align:right;}
+  tbody tr.even{background:#f8fafc;}
+  tbody tr.odd{background:#fff;}
+  tbody td{padding:8px 12px;font-size:11px;border-bottom:1px solid #f1f5f9;color:#374151;}
+  tbody tr:last-child td{border-bottom:none;}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
+  .badge{display:inline-block;background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;}
+  @media print{body{padding:20px;}}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="brand">Futura Hardware POS</div>
+    <div class="brand-sub">Business Analytics &amp; Financial Report</div>
+  </div>
+  <div class="meta">
+    <div><strong>Report Period:</strong> ${dateLabel}</div>
+    <div><strong>Generated:</strong> ${format(new Date(), 'MMM d, yyyy — h:mm a')}</div>
+    <div><strong>Status:</strong> <span class="badge">IRD Compliant</span></div>
+  </div>
+</div>
+
+<div class="section-title">Performance Summary</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value">Rs. ${totalRevenue}</div>
+    <div class="kpi-sub">All categories combined</div>
+  </div>
+  <div class="kpi green">
+    <div class="kpi-label">Gross Profit</div>
+    <div class="kpi-value">Rs. ${grossProfit}</div>
+    <div class="kpi-sub">${margin}% gross margin</div>
+  </div>
+  <div class="kpi amber">
+    <div class="kpi-label">Transactions</div>
+    <div class="kpi-value">${txnCount}</div>
+    <div class="kpi-sub">Invoices in period</div>
+  </div>
+  <div class="kpi purple">
+    <div class="kpi-label">VAT Collected</div>
+    <div class="kpi-value">Rs. ${vatCollected}</div>
+    <div class="kpi-sub">Remittable to IRD</div>
+  </div>
+</div>
+
+<div class="section-title">Tax Category Breakdown</div>
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi">
+    <div class="kpi-label">Category A — Taxable (18% VAT)</div>
+    <div class="kpi-value">Rs. ${catATotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="kpi-sub">Net (ex-VAT): Rs. ${catANet.toLocaleString('en-LK', { minimumFractionDigits: 2 })} &nbsp;|&nbsp; VAT: Rs. ${vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="kpi-sub">${data.catA?.txns || 0} transactions</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Category B — Non-Taxable</div>
+    <div class="kpi-value">Rs. ${catBTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="kpi-sub">${data.catB?.txns || 0} transactions</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Category C — Labour / Services</div>
+    <div class="kpi-value">Rs. ${catCTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="kpi-sub">${data.catC?.entries || 0} entries</div>
+  </div>
+</div>
+
+<div class="section-title">All Transactions Ledger (${rows.length} records)</div>
+<table>
+  <thead><tr>
+    <th>Invoice #</th><th>Time</th><th>Mode</th><th>Category</th><th style="text-align:right">Amount</th>
+  </tr></thead>
+  <tbody>${rowsHtml}</tbody>
+</table>
+
+<div class="footer">
+  <span>Futura Hardware POS &mdash; Confidential Business Report</span>
+  <span>Page 1 &mdash; Generated by Futura POS Analytics Engine</span>
+</div>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 400);
+    setExportOpen(false);
+  };
 
   return (
     <MainLayout>
@@ -117,15 +308,51 @@ export default function ReportsPage() {
               </Popover.Portal>
             </Popover.Root>
 
-            <button className="flex items-center gap-2 bg-white border border-gray-200 rounded-[12px] px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-700">
-              <Clock className="w-4 h-4 text-gray-400" />
-              Scheduled
-            </button>
 
-            <button className="flex items-center gap-2 bg-[#1e40af] text-white rounded-[12px] px-6 py-2.5 shadow-sm hover:bg-blue-800 transition-colors text-[13px] font-black tracking-wide">
-              <Download className="w-4 h-4" />
-              Export All
-            </button>
+
+            {/* Export All Dropdown */}
+            <div className="relative" ref={exportRef}>
+              <button
+                onClick={() => setExportOpen(o => !o)}
+                className="flex items-center gap-2 bg-[#1e40af] text-white rounded-[12px] px-5 py-2.5 shadow-sm hover:bg-blue-800 transition-colors text-[13px] font-black tracking-wide"
+              >
+                <Download className="w-4 h-4" />
+                Export All
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${exportOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {exportOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[999] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-2">
+                    <button
+                      onClick={exportPdf}
+                      disabled={!enableAllReports}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                        <Printer className="w-4 h-4 text-red-600" />
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-bold text-gray-800">Export as PDF</div>
+                        <div className="text-[11px] text-gray-400">Full structured report</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={exportCsv}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 transition-colors text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-bold text-gray-800">Export as CSV</div>
+                        <div className="text-[11px] text-gray-400">Raw data spreadsheet</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -133,15 +360,14 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <ReportStatCard 
              title="Total Revenue"
-             value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString()}`}
+             value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Coins className="w-5 h-5 text-white" /></div>}
              variant="blue"
-             trend="+18.5%"
-             trendText="vs last month"
+             trendText={`${(data.catA?.txns || 0) + (data.catB?.txns || 0)} transactions`}
           />
           <ReportStatCard 
              title="Gross Profit"
-             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString()}`}
+             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
              marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
@@ -151,12 +377,11 @@ export default function ReportsPage() {
              value={loading ? '...' : (data.catA.txns + data.catB.txns).toLocaleString()}
              icon={<div className="w-9 h-9 rounded-xl bg-[#fef08a] flex items-center justify-center"><FileText className="w-5 h-5 text-[#854d0e]" /></div>}
              variant="white"
-             trend="+8.2%"
-             trendText="vs last month"
+             trendText={`Cat A: ${data.catA?.txns || 0}  •  Cat B: ${data.catB?.txns || 0}`}
           />
           <ReportStatCard 
              title="VAT Collected"
-             value={loading ? '...' : `Rs. ${data.catA.vat.toLocaleString()}`}
+             value={loading ? '...' : `Rs. ${(data.catA.vat || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
              icon={<div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center"><FileText className="w-5 h-5 text-[#9333ea]" /></div>}
              variant="white"
              badge="IRD Compliant"
@@ -175,6 +400,7 @@ export default function ReportsPage() {
             onButtonClick={() => router.push('/reports/sales')}
             buttonText="View All Sales Reports"
             buttonColorClass="bg-[#1e40af] hover:bg-blue-800"
+            disabled={!enableAllReports}
           />
           <ReportCategoryCard 
             title="Tax & Compliance"
@@ -195,6 +421,7 @@ export default function ReportsPage() {
             onButtonClick={() => router.push('/reports/tax')}
             buttonText="View All Tax Reports"
             buttonColorClass="bg-[#8b5cf6] hover:bg-purple-600"
+            disabled={!enableAllReports}
           />
           <ReportCategoryCard 
             title="Inventory Reports"

@@ -8,7 +8,10 @@ import { DateRange } from "react-day-picker";
 import {
   ArrowLeft, Download, FileText, FileSpreadsheet,
   TrendingUp, Receipt, Percent, MoreVertical, Trash2, AlertCircle,
+  Calendar, ChevronDown, X
 } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import SalesDatePicker from "@/components/sales/SalesDatePicker";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
 import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
@@ -21,7 +24,7 @@ function CategoryAReportPageContent() {
   // Restore date range from query params if present
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const [dateRange] = useState<DateRange | undefined>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: fromParam ? new Date(fromParam) : today,
     to: toParam ? new Date(toParam) : today,
   });
@@ -58,9 +61,103 @@ function CategoryAReportPageContent() {
     setShowExportMenu(false);
   };
 
+  const dateLabel =
+    dateRange?.from && dateRange.to
+      ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
+      : dateRange?.from
+      ? format(dateRange.from, "MMMM d, yyyy")
+      : "All Dates";
+
   const handlePDF = () => {
     setShowExportMenu(false);
-    window.print();
+    const txns = catA.allTxns || [];
+    const rowsHtml = txns.map((t: any, i: number) => `
+      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+        <td>${t.id}</td>
+        <td>${t.time}</td>
+        <td>${t.mode}</td>
+        <td>${t.customerName || 'Walk-in'}</td>
+        <td style="text-align:right">Rs. ${Number(t.rawAmount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+        <td style="text-align:right">Rs. ${Math.round((t.rawAmount || 0) * 0.18).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Category A Taxable Sales — ${dateLabel}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1e293b;background:#fff;padding:32px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:18px;margin-bottom:24px;}
+  .brand{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:-1px;}  
+  .brand-sub{font-size:11px;color:#64748b;font-weight:500;margin-top:2px;}
+  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.7;}
+  .meta strong{color:#1e293b;}
+  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin:22px 0 10px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:10px;}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
+  .kpi-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .kpi-value{font-size:18px;font-weight:900;color:#1e40af;}
+  table{width:100%;border-collapse:collapse;margin-top:4px;}
+  thead tr{background:#1e40af;color:#fff;}
+  thead th{padding:9px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
+  tbody tr.even{background:#f8fafc;}
+  tbody tr.odd{background:#fff;}
+  tbody td{padding:8px 12px;font-size:11px;border-bottom:1px solid #f1f5f9;color:#374151;}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
+  .badge{display:inline-block;background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="brand">Futura Hardware POS</div>
+    <div class="brand-sub">Category A Taxable Sales Report</div>
+  </div>
+  <div class="meta">
+    <div><strong>Report Period:</strong> ${dateLabel}</div>
+    <div><strong>Generated:</strong> ${format(new Date(), 'MMM d, yyyy — h:mm a')}</div>
+    <div><strong>Status:</strong> <span class="badge">IRD Compliant</span></div>
+  </div>
+</div>
+
+<div class="section-title">Performance Summary</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Total Taxable Sales</div>
+    <div class="kpi-value">Rs. ${(catA.core || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">VAT Collected (18%)</div>
+    <div class="kpi-value">Rs. ${(catA.vat || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total Transactions</div>
+    <div class="kpi-value">${catA.txns || 0} records</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Average Bill</div>
+    <div class="kpi-value">Rs. ${(catA.avg || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+</div>
+
+<div class="section-title">Transactions Ledger (${txns.length} records)</div>
+<table>
+  <thead><tr>
+    <th>Invoice #</th><th>Time</th><th>Mode</th><th>Customer</th><th style="text-align:right">Amount</th><th style="text-align:right">VAT (18%)</th>
+  </tr></thead>
+  <tbody>${rowsHtml}</tbody>
+</table>
+
+<div class="footer">
+  <span>Futura Hardware POS &mdash; Confidential Business Report</span>
+  <span>Page 1</span>
+</div>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 400);
   };
 
   // Opens the dropdown for a row
@@ -92,12 +189,7 @@ function CategoryAReportPageContent() {
     }
   };
 
-  const dateLabel =
-    dateRange?.from && dateRange.to
-      ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
-      : dateRange?.from
-      ? format(dateRange.from, "MMMM d, yyyy")
-      : "Today";
+
 
   return (
     <MainLayout>
@@ -129,8 +221,56 @@ function CategoryAReportPageContent() {
             </div>
           </div>
 
-          {/* Export */}
-          <div className="relative">
+          {/* Export & Date Filter */}
+          <div className="flex items-center gap-3">
+             <Popover.Root>
+              <Popover.Trigger asChild>
+                <button className="flex items-center justify-between gap-4 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors min-w-[200px]">
+                   <div className="flex items-center gap-2.5">
+                     <Calendar className="w-4 h-4 text-gray-500" />
+                     <span className="text-[13px] font-bold text-gray-700">
+                       {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'Select Date...'}
+                     </span>
+                   </div>
+                   <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                   className="bg-white p-7 rounded-[32px] shadow-2xl border border-gray-100 z-50 animate-in fade-in zoom-in w-[380px]"
+                   sideOffset={12}
+                   align="end"
+                >
+                   <div className="flex flex-col min-h-[460px]">
+                      <div className="flex justify-between items-center mb-6 pl-2">
+                         <h4 className="text-[17px] font-black text-blue-900 tracking-tight">Select Time Period</h4>
+                         <Popover.Close className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-50 text-gray-400 hover:text-gray-900 transition-all">
+                            <X className="w-5 h-5" />
+                         </Popover.Close>
+                      </div>
+                      <div className="flex-1 py-2">
+                        <SalesDatePicker dateRange={dateRange} onSelect={setDateRange} />
+                      </div>
+                      <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between pl-1">
+                         <div className="flex flex-col gap-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest text-left">Selected Range</span>
+                            <div className="text-[13px] font-black text-blue-700 flex items-center gap-2">
+                               {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : '---'}
+                               {dateRange?.to && (<><span className="text-gray-300 font-light">—</span>{format(dateRange.to, 'MMM d, yyyy')}</>)}
+                            </div>
+                         </div>
+                         <Popover.Close asChild>
+                            <button className="bg-blue-900 hover:bg-blue-800 text-white px-7 py-3 rounded-2xl font-black text-[13px] shadow-lg shadow-blue-100 transition-all active:scale-95">
+                               Apply
+                            </button>
+                         </Popover.Close>
+                      </div>
+                   </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+
+            <div className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
               className="flex items-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
@@ -148,6 +288,7 @@ function CategoryAReportPageContent() {
               </div>
             )}
           </div>
+        </div>
         </div>
 
         {/* PROGRESS BANNER */}

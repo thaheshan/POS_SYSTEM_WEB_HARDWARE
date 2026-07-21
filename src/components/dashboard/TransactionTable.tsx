@@ -36,7 +36,7 @@ export default function TransactionTable() {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-          <Link href="/sales" className="text-[14px] font-bold text-blue-600 hover:text-blue-700 transition-colors">
+          <Link href="/reports" className="text-[14px] font-bold text-blue-600 hover:text-blue-700 transition-colors">
             View All
           </Link>
         </div>

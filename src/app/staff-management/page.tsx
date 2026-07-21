@@ -237,29 +237,35 @@ export default function StaffManagementPage() {
             <h1 className="text-[28px] md:text-[32px] font-black text-gray-900 tracking-tighter leading-tight">Staff Management</h1>
             <p className="text-[14px] font-medium text-gray-500 tracking-wide mt-1">Manage roles, permissions, attendance, and staff accounts</p>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Button group — 2-col grid on mobile, single row on md+ */}
+          <div className="grid grid-cols-2 md:flex md:flex-row items-center gap-2 md:gap-3">
             <button
               onClick={fetchAll}
-              className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
+              className="flex items-center justify-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
             >
-              <RefreshCcw className="w-4 h-4 text-gray-400" /> Refresh
+              <RefreshCcw className="w-4 h-4 text-gray-400" />
+              <span>Refresh</span>
             </button>
             {isAdmin && (
               <>
-                <button 
+                <button
                   onClick={() => setIsManageRolesOpen(true)}
-                  className="flex items-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
+                  className="flex items-center justify-center gap-2 border border-gray-200 px-4 py-2.5 rounded-[12px] text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors bg-white shadow-sm"
                 >
-                  <Shield className="w-4 h-4 text-gray-400" /> Manage Roles
+                  <Shield className="w-4 h-4 text-gray-400" />
+                  <span>Manage Roles</span>
                 </button>
-                <button className="flex items-center gap-2 border border-[#059669] text-[#059669] px-5 py-2.5 rounded-[12px] text-[13px] font-black hover:bg-[#ecfdf5] transition-colors bg-white shadow-sm">
-                  <Mail className="w-4 h-4" /> Invite Staff
+                <button className="flex items-center justify-center gap-2 border border-[#059669] text-[#059669] px-4 py-2.5 rounded-[12px] text-[13px] font-black hover:bg-[#ecfdf5] transition-colors bg-white shadow-sm">
+                  <Mail className="w-4 h-4" />
+                  <span>Invite Staff</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200"
+                  className="flex items-center justify-center gap-2 bg-[#4f46e5] hover:bg-indigo-700 text-white px-4 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-indigo-200"
                 >
-                  <Plus className="w-4 h-4" /> Add Staff
+                  <Plus className="w-4 h-4" />
+                  <span>Add Staff</span>
                 </button>
               </>
             )}

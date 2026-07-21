@@ -118,6 +118,30 @@ export default function DashboardPage() {
             </Link>
           </div>
 
+          {/* Subscription Alert Banner */}
+          {isAdmin && subStatus && !subStatus.selfReportedPaid && subStatus.paymentStatus === 'OVERDUE' && (
+            <div className="mb-6">
+              <AlertBanner
+                type="critical"
+                title="Subscription Payment Overdue"
+                message="Your subscription payment is overdue. Please complete the payment immediately to avoid account suspension."
+                actionText="Mark as Paid"
+                onActionClick={handleSelfReportPayment}
+              />
+            </div>
+          )}
+          {isAdmin && subStatus && !subStatus.selfReportedPaid && subStatus.paymentStatus === 'PENDING' && subStatus.daysUntilDue !== null && subStatus.daysUntilDue <= 7 && (
+            <div className="mb-6">
+              <AlertBanner
+                type="warning"
+                title="Subscription Payment Due"
+                message={`Please complete your subscription payment before ${new Date(subStatus.nextPaymentDue!).toLocaleDateString()} to avoid account suspension.`}
+                actionText="Mark as Paid"
+                onActionClick={handleSelfReportPayment}
+              />
+            </div>
+          )}
+
           {/* Stats Grid - Role Based Access */}
           <div
             className={cn(

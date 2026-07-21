@@ -50,29 +50,32 @@ export default function LowStockAlertModal({
       setIsLoading(true);
       try {
         const res = await api.get('/stock?low_stock=true&out_of_stock=true');
-        const items = res.data?.data || res.data || [];
-        const mapped: LowStockProduct[] = items.map(
-          (item: any, index: number) => ({
-            id: item.product_id || item.id || `ls-${index}`,
-            name: item.product_name || item.product?.name || "Unknown",
-            sku: item.sku || item.product?.sku || "N/A",
-            category:
-              item.category_name ||
-              item.product?.category?.name ||
-              "Uncategorized",
-            currentStock: item.available_quantity ?? 0,
-            reorderLevel: item.minimum_stock_level ?? 20,
-            reorderQty: Math.max(
-              0,
-              (item.minimum_stock_level ?? 20) - (item.available_quantity ?? 0),
-            ),
-            lastSale: "Recently",
-            unitsSold: 0,
-            unitCost: item.selling_price ?? item.product?.sellingPrice ?? 0,
-            warehouseId: item.warehouse_id,
-            warehouseName: item.warehouse_name,
-          }),
-        );
+
+        // Handle NestJS ResponseInterceptor double-wrapping
+        const payload = res.data?.data;
+        const items: any[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+        const mapped: LowStockProduct[] = items.map((item: any, index: number) => ({
+          id: item.product_id || item.id || `ls-${index}`,
+          name: item.product_name || item.product?.name || item.name || "Unknown",
+          sku: item.sku || item.product?.sku || "N/A",
+          category: item.category_name || item.product?.category?.name || item.category || "Uncategorized",
+          currentStock: Number(item.available_quantity ?? item.quantity ?? 0),
+          reorderLevel: Number(item.minimum_stock_level ?? 20),
+          reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 20) - Number(item.available_quantity ?? 0)),
+          lastSale: "Recently",
+          unitsSold: 0,
+          unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
+          warehouseId: item.warehouse_id,
+          warehouseName: item.warehouse_name,
+        }));
+
         setLiveProducts(mapped);
       } catch (err) {
         console.error("Failed to fetch low stock data", err);
@@ -188,7 +191,7 @@ export default function LowStockAlertModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-2 py-2 sm:px-6 sm:py-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <button
         type="button"
         aria-label="Close modal"
@@ -196,7 +199,9 @@ export default function LowStockAlertModal({
         onClick={onClose}
       />
 
-      <div className="stock-modal-enter relative z-10 flex h-[98vh] w-full max-w-[940px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_40px_120px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 sm:h-[95vh] sm:rounded-[30px]">
+      <div className="stock-modal-enter relative z-10 flex w-full flex-col overflow-hidden bg-white shadow-[0_40px_120px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70
+        rounded-t-3xl h-[92vh]
+        sm:rounded-[30px] sm:h-[95vh] sm:max-w-[940px] sm:mx-4">
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0f2f83] via-[#123b9e] to-[#1b48b6]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15)_0%,transparent_50%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08)_0%,transparent_50%)]" />
 

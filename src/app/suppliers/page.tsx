@@ -396,8 +396,9 @@ export default function SuppliersPage() {
         {/* SUPPLIER TABLE STRIP */}
         <div className="suppliers-panel rounded-[24px] border border-gray-100 flex flex-col mb-8 overflow-hidden bg-white">
           {/* Filtering Toolbar */}
-          <div className="p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="relative max-w-md w-full">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col gap-3">
+            {/* Search */}
+            <div className="relative w-full">
               <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -407,62 +408,134 @@ export default function SuppliersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-3">
-              <select className="border border-gray-200 rounded-[12px] px-4 py-3 text-[13px] font-bold text-gray-600 outline-none hover:bg-gray-50 bg-white min-w-[120px]">
-                <option>Status</option>
-                <option>Active</option>
-                <option>Inactive</option>
-              </select>
-              <button className="w-11 h-11 border border-gray-200 rounded-[12px] flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors">
-                <FileText className="w-4 h-4" />
-              </button>
-              <button className="w-11 h-11 border border-gray-200 rounded-[12px] flex items-center justify-center text-emerald-500 hover:bg-emerald-50 transition-colors">
-                <FileSpreadsheet className="w-4 h-4" />
-              </button>
-              <button onClick={() => { fetchSuppliers(); fetchStats(); }} className="w-11 h-11 border border-gray-200 rounded-[12px] flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-                <RefreshCcw className="w-4 h-4" />
-              </button>
-              <button className="w-11 h-11 border border-gray-200 rounded-[12px] flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-                <ChevronUp className="w-4 h-4" />
-              </button>
+            {/* Actions row */}
+            <div className="flex items-center justify-between gap-2">
+              {/* Left icon group */}
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <select className="border border-gray-200 rounded-[12px] px-3 py-2 text-[13px] font-bold text-gray-600 outline-none hover:bg-gray-50 bg-white shrink-0">
+                  <option>Status</option>
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+                <button className="w-9 h-9 shrink-0 border border-gray-200 rounded-[12px] flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors">
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button className="w-9 h-9 shrink-0 border border-gray-200 rounded-[12px] flex items-center justify-center text-emerald-500 hover:bg-emerald-50 transition-colors">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+                <button onClick={() => { fetchSuppliers(); fetchStats(); }} className="w-9 h-9 shrink-0 border border-gray-200 rounded-[12px] flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+                  <RefreshCcw className="w-4 h-4" />
+                </button>
+                <button className="w-9 h-9 shrink-0 border border-gray-200 rounded-[12px] flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+              </div>
+              {/* Request button always visible on the right */}
               <button
                 onClick={() => router.push("/suppliers/requests")}
-                className="suppliers-btn-gradient bg-gradient-to-r from-blue-700 to-blue-500 text-white rounded-[12px] px-6 py-3 flex items-center gap-2 text-[13px] font-black ml-2 hover:opacity-90"
+                className="suppliers-btn-gradient bg-gradient-to-r from-blue-700 to-blue-500 text-white rounded-[12px] px-3 sm:px-5 py-2.5 flex items-center gap-2 text-[13px] font-black shrink-0 hover:opacity-90"
               >
-                <PlusCircle className="w-4 h-4" /> Request Supplier
+                <PlusCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Request Supplier</span>
+                <span className="sm:hidden">Request</span>
               </button>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* ─── MOBILE CARD VIEW (hidden on md+) ─── */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {isLoading ? (
+              <div className="py-12 text-center text-[13px] font-bold text-gray-400">Loading suppliers...</div>
+            ) : suppliers.filter((s) =>
+              s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              s.email?.toLowerCase().includes(searchTerm.toLowerCase())
+            ).length === 0 ? (
+              <div className="py-12 text-center text-[13px] font-bold text-gray-400">No suppliers found.</div>
+            ) : suppliers.filter((s) =>
+              s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              s.email?.toLowerCase().includes(searchTerm.toLowerCase())
+            ).map((sup) => (
+              <div key={sup.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50/60 transition-colors">
+                {/* Header row: avatar + name + status */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden shrink-0">
+                    <img
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${sup.name}&backgroundColor=f8fafc`}
+                      alt={sup.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-black text-gray-900 truncate">{sup.name}</p>
+                    <p className="text-[11px] font-bold text-gray-400 font-mono">{sup.supplierCode}</p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0 ${
+                      sup.status === "Active" ? "bg-[#ecfdf5] text-[#059669]" : "bg-red-50 text-red-600"
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${sup.status === "Active" ? "bg-[#059669]" : "bg-red-500"}`} />
+                    {sup.status || "Inactive"}
+                  </span>
+                </div>
+
+                {/* Detail chips */}
+                <div className="grid grid-cols-1 gap-1.5 text-[12px] font-semibold text-gray-500">
+                  {sup.email && (
+                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest w-14 shrink-0">Email</span>
+                      <span className="truncate">{sup.email}</span>
+                    </div>
+                  )}
+                  {sup.phone && (
+                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest w-14 shrink-0">Phone</span>
+                      <span>{sup.phone}</span>
+                    </div>
+                  )}
+                  {sup.location && (
+                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest w-14 shrink-0">Location</span>
+                      <span className="truncate capitalize">{sup.location}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleEdit(sup)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(sup.id)}
+                    disabled={isDeleting === sup.id}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-[12px] font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ─── DESKTOP TABLE VIEW (hidden on mobile) ─── */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50/70 border-b border-gray-100">
                   <th className="py-4 px-6 w-12">
                     <input type="checkbox" className="rounded" />
                   </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide cursor-pointer">
-                    Code ⇅
-                  </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">
-                    Supplier
-                  </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">
-                    Email
-                  </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">
-                    Phone
-                  </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">
-                    Location
-                  </th>
-                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">
-                    Status
-                  </th>
-                  <th className="py-4 px-6 text-[12px] font-black text-gray-600 tracking-wide text-right">
-                    Actions
-                  </th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide cursor-pointer">Code ⇅</th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">Supplier</th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">Email</th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">Phone</th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">Location</th>
+                  <th className="py-4 px-4 text-[12px] font-black text-gray-600 tracking-wide">Status</th>
+                  <th className="py-4 px-6 text-[12px] font-black text-gray-600 tracking-wide text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -475,18 +548,12 @@ export default function SuppliersPage() {
                     <td colSpan={8} className="py-12 text-center text-gray-500 font-bold">No suppliers found.</td>
                   </tr>
                 ) : suppliers.filter((s) =>
-                  s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                  s.email?.toLowerCase().includes(searchTerm.toLowerCase()),
+                  s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  s.email?.toLowerCase().includes(searchTerm.toLowerCase())
                 ).map((sup) => (
-                  <tr
-                    key={sup.id}
-                    className="hover:bg-gray-50/50 transition-colors group"
-                  >
+                  <tr key={sup.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="py-4 px-6">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300"
-                      />
+                      <input type="checkbox" className="rounded border-gray-300" />
                     </td>
                     <td className="py-4 px-4 text-[13px] font-bold text-gray-500 font-mono tracking-tight">
                       {sup.supplierCode}
@@ -500,42 +567,30 @@ export default function SuppliersPage() {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="text-[13.5px] font-bold text-gray-900">
-                          {sup.name}
-                        </span>
+                        <span className="text-[13.5px] font-bold text-gray-900">{sup.name}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500">
-                      {sup.email}
-                    </td>
-                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500">
-                      {sup.phone}
-                    </td>
-                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500 capitalize">
-                      {sup.location}
-                    </td>
+                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500">{sup.email}</td>
+                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500">{sup.phone}</td>
+                    <td className="py-4 px-4 text-[13px] font-semibold text-gray-500 capitalize">{sup.location}</td>
                     <td className="py-4 px-4">
                       <span
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10.5px] font-black uppercase tracking-widest ${
-                          sup.status === "Active"
-                            ? "bg-[#ecfdf5] text-[#059669]"
-                            : "bg-red-50 text-red-600"
+                          sup.status === "Active" ? "bg-[#ecfdf5] text-[#059669]" : "bg-red-50 text-red-600"
                         }`}
                       >
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${sup.status === "Active" ? "bg-[#059669]" : "bg-red-500"}`}
-                        />
+                        <div className={`w-1.5 h-1.5 rounded-full ${sup.status === "Active" ? "bg-[#059669]" : "bg-red-500"}`} />
                         {sup.status}
                       </span>
                     </td>
                     <td className="py-4 px-6 flex justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => handleEdit(sup)}
                         className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-gray-400 transition-colors"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(sup.id)}
                         disabled={isDeleting === sup.id}
                         className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
@@ -550,9 +605,11 @@ export default function SuppliersPage() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between text-[12px] font-bold text-gray-400">
-            <span>Showing {suppliers.length > 0 ? 1 : 0} to {suppliers.length} of {stats.totalSuppliers || suppliers.length} suppliers</span>
-            <div className="flex items-center gap-4">
+          <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[12px] font-bold text-gray-400">
+            <span className="text-center sm:text-left">
+              Showing {suppliers.length > 0 ? 1 : 0} to {suppliers.length} of {stats.totalSuppliers || suppliers.length} suppliers
+            </span>
+            <div className="flex flex-row flex-wrap items-center justify-center gap-3">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
                 <select className="border border-gray-200 rounded-md px-2 py-1 outline-none bg-white font-bold text-gray-700">
@@ -565,19 +622,11 @@ export default function SuppliersPage() {
                 <button className="p-1 hover:text-gray-900">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button className="w-7 h-7 flex items-center justify-center bg-[#059669] text-white rounded-md">
-                  1
-                </button>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">
-                  2
-                </button>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">
-                  3
-                </button>
+                <button className="w-7 h-7 flex items-center justify-center bg-[#059669] text-white rounded-md">1</button>
+                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">2</button>
+                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">3</button>
                 <span className="px-1 text-gray-400">...</span>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">
-                  25
-                </button>
+                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">25</button>
                 <button className="p-1 hover:text-gray-900">
                   <ChevronRight className="w-5 h-5" />
                 </button>

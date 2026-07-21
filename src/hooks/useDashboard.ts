@@ -38,6 +38,7 @@ export interface ChartPoint {
   revenue: number;
   sales: number;
   cost: number;
+  profit: number;
 }
 
 // ─── Dashboard KPI Stats ───────────────────────────────────────────────────────
@@ -117,13 +118,14 @@ export function useRecentTransactions() {
 }
 
 // ─── Weekly Revenue Chart ─────────────────────────────────────────────────────
-export function useWeeklyChart() {
+export function useWeeklyChart(days = 7) {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     api
-      .get('/dashboard/weekly-chart')
+      .get('/dashboard/weekly-chart', { params: { days } })
       .then((res) => {
         const raw = res.data;
         const items: any[] = Array.isArray(raw)
@@ -135,17 +137,33 @@ export function useWeeklyChart() {
           : [];
 
         setChartData(
-          items.map((day: any) => ({
-            name: day.name,
-            revenue: day.revenue ?? 0,
-            sales: day.sales ?? 0,
-            cost: day.cost ?? 0,
-          }))
+          items.map((day: any) => {
+            const rawCost = day.cost ?? 0;
+            const rawBackendRevenue = day.revenue ?? 0;
+            
+            // The backend currently returns (Invoice Total - Cost) as 'revenue'
+            // Total Invoice Amount = rawBackendRevenue + rawCost
+            const totalInvoiceAmount = rawBackendRevenue + rawCost;
+            
+            // Remove 18% tax to get pure Net Sales (Revenue)
+            const pureRevenue = Math.round(totalInvoiceAmount / 1.18);
+            
+            // Calculate pure Gross Profit
+            const pureProfit = pureRevenue - rawCost;
+
+            return {
+              name: day.name,
+              sales: day.sales ?? 0,
+              cost: rawCost,
+              revenue: pureRevenue,
+              profit: pureProfit,
+            };
+          })
         );
       })
       .catch(() => setChartData([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [days]);
 
   return { chartData, loading };
 }
