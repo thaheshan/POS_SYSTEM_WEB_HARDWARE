@@ -1,9 +1,8 @@
 'use client';
-
 import { ReactNode } from 'react';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
+import Link from 'next/link';
 export interface ReportCategoryProps {
   title: string;
   description: string;
@@ -16,10 +15,10 @@ export interface ReportCategoryProps {
   cardContext?: ReactNode;
   onButtonClick?: () => void;
   onReportClick?: (report: string) => void;
+  href?: string;
   disabled?: boolean;
   disabledBadgeText?: string;
 }
-
 export default function ReportCategoryCard({
   title,
   description,
@@ -32,6 +31,7 @@ export default function ReportCategoryCard({
   cardContext,
   onButtonClick,
   onReportClick,
+  href,
   disabled = false,
   disabledBadgeText = "Coming Soon"
 }: ReportCategoryProps) {
@@ -59,9 +59,7 @@ export default function ReportCategoryCard({
       <p className="text-[13px] font-medium text-gray-500 leading-relaxed mb-6 min-h-[40px]">
         {description}
       </p>
-
       {cardContext}
-
       <div className="space-y-4 mb-8 flex-1">
         {reports.map((report) => (
           <button 
@@ -78,16 +76,34 @@ export default function ReportCategoryCard({
         ))}
       </div>
       
-      <button 
-        disabled={disabled}
-        onClick={onButtonClick}
-        className={cn(
-          "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all mt-auto text-white",
-          disabled ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none active:scale-100" : buttonColorClass + " hover:opacity-90 active:scale-[0.98]"
-        )}
-      >
-        {disabled ? "Coming Soon" : buttonText} {!disabled && <ArrowRight className="w-4 h-4" />}
-      </button>
+      {disabled ? (
+        <button 
+          disabled
+          className="w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all mt-auto text-white bg-gray-200 text-gray-400 cursor-not-allowed shadow-none active:scale-100"
+        >
+          {disabledBadgeText}
+        </button>
+      ) : href ? (
+        <Link 
+          href={href}
+          className={cn(
+            "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all hover:opacity-90 active:scale-[0.98] mt-auto text-white",
+            buttonColorClass
+          )}
+        >
+          {buttonText} <ArrowRight className="w-4 h-4" />
+        </Link>
+      ) : (
+        <button 
+          onClick={onButtonClick}
+          className={cn(
+            "w-full py-3.5 rounded-[12px] flex justify-center items-center gap-2 text-[13px] font-black transition-all hover:opacity-90 active:scale-[0.98] mt-auto text-white",
+            buttonColorClass
+          )}
+        >
+          {buttonText} <ArrowRight className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
