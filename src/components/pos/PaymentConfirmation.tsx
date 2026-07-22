@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import api from '@/api/axiosInstance';
-import { toast } from 'sonner';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 type PaymentConfirmationProps = {
   onBack: () => void;
@@ -221,7 +221,7 @@ function downloadInvoicePDF({
   const url  = URL.createObjectURL(blob);
   const win  = window.open(url, '_blank');
   if (!win) {
-    toast.error('Popup blocked. Please allow popups for this site to download the invoice.');
+    toastError(new Error('Your browser blocked the invoice window. Please allow pop-ups for this site and try again.'));
   }
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
@@ -285,11 +285,11 @@ export default function PaymentConfirmation({
       };
       console.log('[POS Checkout] Sending payload:', payload);
       await api.post('/sales/checkout', payload);
+      toastSuccess('Sale completed successfully.');
       onProcess(); // triggers success modal
     } catch (err: any) {
       console.error('[POS Checkout Error]', err?.response?.data || err);
-      const msg = err?.response?.data?.message || err?.response?.data?.error || 'Checkout failed. Please try again. Check console for details.';
-      toast.error(msg);
+      toastError(err, 'We couldn’t complete the sale. Please try again.');
     } finally {
       setProcessing(false);
     }
