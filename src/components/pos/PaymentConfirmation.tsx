@@ -20,7 +20,6 @@ type PaymentConfirmationProps = {
   change: number;
   subtotal: number;
   discount: number;
-  tax: number;
   total: number;
   notes?: string;
 };
@@ -28,7 +27,7 @@ type PaymentConfirmationProps = {
 // ── PDF Invoice Generator ─────────────────────────────────────────────────────
 function downloadInvoicePDF({
   items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change,
-  subtotal, discount, tax, total, notes,
+  subtotal, discount, total, notes,
 }: Omit<PaymentConfirmationProps, 'onBack' | 'onProcess'>) {
   const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
   const now = new Date();
@@ -166,15 +165,13 @@ function downloadInvoicePDF({
     <tbody>${itemRows}</tbody>
   </table>
 
-  <!-- Totals -->
-  <div class="totals">
+      <div class="totals">
     <div class="totals-box">
       <div class="total-row">
         <span>Subtotal</span>
         <span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span>
       </div>
       ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ''}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax (15%)</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ''}
       <div class="grand-total">
         <span>Grand Total</span>
         <span>Rs. ${total.toLocaleString()}</span>
@@ -241,7 +238,6 @@ export default function PaymentConfirmation({
   change,
   subtotal, 
   discount,
-  tax, 
   total,
   notes
 }: PaymentConfirmationProps) {
@@ -275,7 +271,6 @@ export default function PaymentConfirmation({
         })),
         subtotal,
         discount,
-        tax,
         total,
         paidAmount: amountTendered,
         change,
@@ -336,7 +331,7 @@ export default function PaymentConfirmation({
                 Customer Information
               </h3>
               <button 
-                onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
+                onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, total, notes })}
                 className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#059669] text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm self-start sm:self-auto"
               >
                   <Printer className="w-3.5 h-3.5" /> Print Receipt
@@ -406,10 +401,6 @@ export default function PaymentConfirmation({
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Subtotal</span>
                 <span>Rs. {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-[13px] font-bold text-gray-600">
-                <span>Tax (15%)</span>
-                <span>Rs. {tax.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-red-500">
                 <span>Discount</span>
@@ -507,7 +498,7 @@ export default function PaymentConfirmation({
 
         {/* Download Invoice */}
         <button
-          onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, tax, total, notes })}
+          onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, total, notes })}
           className="mt-4 w-full h-11 border border-[#059669] text-[#059669] font-bold text-[13px] rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
         >
           <Printer className="w-4 h-4" /> Download Invoice PDF

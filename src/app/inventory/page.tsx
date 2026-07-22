@@ -12,11 +12,11 @@ import InventoryAlertsAction from '@/components/inventory/InventoryAlertsAction'
 import EditInventoryModal from '@/components/inventory/EditInventoryModal';
 import DeleteInventoryModal from '@/components/inventory/DeleteInventoryModal';
 import AddProductModal from '@/components/inventory/AddProductModal';
+import AddWarehouseModal from '@/components/inventory/AddWarehouseModal';
 import AdjustStockModal from '@/components/inventory/AdjustStockModal';
 import PhysicalStockCountModal from '@/components/inventory/PhysicalStockCountModal';
 import TransferStockModal from '@/components/inventory/TransferStockModal';
 import PurchaseOrderModal from '@/components/inventory/PurchaseOrderModal';
-import ImportExportModal from '@/components/inventory/ImportExportModal';
 import { DateRange } from 'react-day-picker';
 import api from '@/api/axiosInstance';
 import { format, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
@@ -25,6 +25,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { Calendar as CalendarIcon, FileDown } from 'lucide-react';
 import InventoryReportView from '@/components/inventory/InventoryReportView';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -36,9 +37,10 @@ export default function InventoryPage() {
   const [isPhysicalStockModalOpen, setIsPhysicalStockModalOpen] = useState(false);
   const [isTransferStockModalOpen, setIsTransferStockModalOpen] = useState(false);
   const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
-  const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+  const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [inventoryData, setInventoryData] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -57,19 +59,43 @@ export default function InventoryPage() {
         }
         setIsPurchaseOrderModalOpen(true);
         // Clean up URL without reloading
-        window.history.replaceState({}, '', '/inventory');
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('po');
+        newUrl.searchParams.delete('items');
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
       }
     }
   }, []);
+
+  React.useEffect(() => {
+    if (inventoryData.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get('editId');
+      if (editId) {
+        const item = inventoryData.find(i => String(i.id) === editId || String(i.productId) === editId);
+        if (item) {
+          setSelectedItem(item);
+          setIsEditModalOpen(true);
+        } else {
+          toast.error('The requested item is no longer available.');
+        }
+        // Clean up URL without reloading
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('editId');
+        window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
+      }
+    }
+  }, [inventoryData]);
 
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
 
-      // Fetch both stock records and all products in parallel
-      const [stockRes, productsRes] = await Promise.allSettled([
+      // Fetch stock records, all products, and warehouses in parallel
+      const [stockRes, productsRes, warehousesRes] = await Promise.allSettled([
         api.get('/stock'),
         api.get('/products'),
+        api.get('/warehouses'),
       ]);
 
       const stockItems: any[] = stockRes.status === 'fulfilled'
@@ -79,6 +105,11 @@ export default function InventoryPage() {
       const allProducts: any[] = productsRes.status === 'fulfilled'
         ? (productsRes.value.data?.data || productsRes.value.data || [])
         : [];
+
+      if (warehousesRes.status === 'fulfilled') {
+        const whData = warehousesRes.value.data?.data || warehousesRes.value.data || [];
+        setWarehouses(whData);
+      }
 
       // Build a set of productIds that already have stock records
       const stockProductIds = new Set(stockItems.map((s: any) => s.product_id || s.productId));
@@ -221,6 +252,11 @@ export default function InventoryPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleTransfer = (item: any) => {
+    setSelectedItem(item);
+    setIsTransferStockModalOpen(true);
+  };
+
   const handleDelete = (item: any) => {
     setSelectedItem(item);
     setIsDeleteModalOpen(true);
@@ -235,7 +271,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh inventory data list
     } catch (error: any) {
       console.error('Failed to update product details:', error);
-      alert(error?.response?.data?.message || 'Failed to update product. Please try again.');
+      toast.error(error?.response?.data?.message || 'Failed to update product. Please try again.');
     }
   };
 
@@ -249,7 +285,7 @@ export default function InventoryPage() {
       fetchInventory(); // Refresh from server
     } catch (error: any) {
       console.error('Failed to delete product:', error);
-      alert(error?.response?.data?.message || 'Failed to delete product. Please try again.');
+      toast.error(error?.response?.data?.message || 'Failed to delete product. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -314,27 +350,48 @@ export default function InventoryPage() {
           onPhysicalStockCount={() => setIsPhysicalStockModalOpen(true)}
           onTransferStock={() => setIsTransferStockModalOpen(true)}
           onPurchaseOrder={() => setIsPurchaseOrderModalOpen(true)}
-          onImportExport={() => setIsImportExportModalOpen(true)}
+          onAddWarehouse={() => setIsAddWarehouseModalOpen(true)}
         />
 
-        {/* 3. INVENTORY TABLE */}
-        {isLoading ? (
-          <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        {/* 3. WAREHOUSE SELECTOR & INVENTORY TABLE */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedWarehouse(null)}
+              className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${!selectedWarehouse ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+            >
+              All Warehouses
+            </button>
+            {warehouses.map(wh => (
+              <button
+                key={wh.id}
+                onClick={() => setSelectedWarehouse(wh.name)}
+                className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-colors border ${selectedWarehouse === wh.name ? 'bg-[#1e40af] text-white border-[#1e40af]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                {wh.name}
+              </button>
+            ))}
           </div>
-        ) : (
-          <InventoryTable 
-            data={filteredData}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onFilterToggle={() => setIsFilterModalOpen(true)}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={handleClearAllFilters}
-            activeFilterCount={activeFilterCount}
-          />
-        )}
+
+          {isLoading ? (
+            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <InventoryTable 
+              data={filteredData}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onTransfer={handleTransfer}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onFilterToggle={() => setIsFilterModalOpen(true)}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={handleClearAllFilters}
+              activeFilterCount={activeFilterCount}
+            />
+          )}
+        </div>
 
         {/* 4. ANALYSIS SECTION */}
         <div className="space-y-10">
@@ -401,11 +458,16 @@ export default function InventoryPage() {
 
       <TransferStockModal
         isOpen={isTransferStockModalOpen}
-        onClose={() => setIsTransferStockModalOpen(false)}
+        onClose={() => {
+          setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
+        }}
         onSuccess={() => {
           setIsTransferStockModalOpen(false);
+          setSelectedItem(null);
           fetchInventory();
         }}
+        initialProductId={selectedItem?.productId || selectedItem?.id}
       />
 
       <PurchaseOrderModal
@@ -422,14 +484,13 @@ export default function InventoryPage() {
         prefillProductIds={prefillItems}
       />
 
-      <ImportExportModal
-        isOpen={isImportExportModalOpen}
-        onClose={() => setIsImportExportModalOpen(false)}
+      <AddWarehouseModal
+        isOpen={isAddWarehouseModalOpen}
+        onClose={() => setIsAddWarehouseModalOpen(false)}
         onSuccess={() => {
-          setIsImportExportModalOpen(false);
+          setIsAddWarehouseModalOpen(false);
           fetchInventory();
         }}
-        inventoryData={inventoryData}
       />
 
       {/* HIDDEN PRINT VIEW */}

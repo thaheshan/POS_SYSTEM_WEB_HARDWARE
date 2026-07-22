@@ -16,7 +16,8 @@ import {
   ChevronDown,
   MoreVertical,
   Wrench,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: Wrench, label: 'Labour & Services', href: '/labour-services', roles: ['staff', 'cashier'] },
   { icon: LayoutList, label: 'Reports', href: '/reports', roles: ['admin', 'owner'] },
   { icon: User, label: 'Staff Management', href: '/staff-management', roles: ['admin', 'owner', 'manager'] },
+  { icon: ClipboardList, label: 'Activity Log', href: '/activity-log', roles: ['admin', 'owner'] },
   { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'owner'] },
   { icon: Settings, label: 'Staff Settings', href: '/staff-settings', roles: ['staff', 'cashier'] },
 ];

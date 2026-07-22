@@ -5,19 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { useSalesData } from "@/hooks/useSales";
 import { DateRange } from "react-day-picker";
-import {
-  ArrowLeft,
-  Download,
-  FileText,
-  FileSpreadsheet,
-  TrendingUp,
-  Package,
-  BarChart2,
-  Tag,
-  MoreVertical,
-  Trash2,
-  AlertCircle,
-} from "lucide-react";
+import { ArrowLeft, Download, FileText, FileSpreadsheet, TrendingUp, Package, BarChart2, Tag, MoreVertical, Trash2, AlertCircle, Calendar, ChevronDown, X } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import SalesDatePicker from "@/components/sales/SalesDatePicker";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
 import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
@@ -29,7 +19,7 @@ function CategoryBReportPageContent() {
 
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const [dateRange] = useState<DateRange | undefined>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: fromParam ? new Date(fromParam) : today,
     to: toParam ? new Date(toParam) : today,
   });
@@ -105,8 +95,97 @@ function CategoryBReportPageContent() {
     dateRange?.from && dateRange.to
       ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
       : dateRange?.from
-        ? format(dateRange.from, "MMMM d, yyyy")
-        : "Today";
+      ? format(dateRange.from, "MMMM d, yyyy")
+      : "All Dates";
+
+  const handlePDF = () => {
+    setShowExportMenu(false);
+    const txns = catB.allTxns || [];
+    const rowsHtml = txns.map((t: any, i: number) => `
+      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+        <td>${t.id}</td>
+        <td>${t.time}</td>
+        <td>${t.mode}</td>
+        <td>${t.customerName || 'Walk-in'}</td>
+        <td style="text-align:right">Rs. ${Number(t.rawAmount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Category B Sales — ${dateLabel}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1e293b;background:#fff;padding:32px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #15803d;padding-bottom:18px;margin-bottom:24px;}
+  .brand{font-size:22px;font-weight:900;color:#15803d;letter-spacing:-1px;}  
+  .brand-sub{font-size:11px;color:#64748b;font-weight:500;margin-top:2px;}
+  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.7;}
+  .meta strong{color:#1e293b;}
+  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin:22px 0 10px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:10px;}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
+  .kpi-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .kpi-value{font-size:18px;font-weight:900;color:#15803d;}
+  table{width:100%;border-collapse:collapse;margin-top:4px;}
+  thead tr{background:#15803d;color:#fff;}
+  thead th{padding:9px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
+  tbody tr.even{background:#f8fafc;}
+  tbody tr.odd{background:#fff;}
+  tbody td{padding:8px 12px;font-size:11px;border-bottom:1px solid #f1f5f9;color:#374151;}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="brand">Futura Hardware POS</div>
+    <div class="brand-sub">Category B Sales Report (Overflow & Non-Taxable)</div>
+  </div>
+  <div class="meta">
+    <div><strong>Report Period:</strong> ${dateLabel}</div>
+    <div><strong>Generated:</strong> ${format(new Date(), 'MMM d, yyyy — h:mm a')}</div>
+  </div>
+</div>
+
+<div class="section-title">Performance Summary</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Total Category B</div>
+    <div class="kpi-value">Rs. ${(catB.core || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Overflow Amount</div>
+    <div class="kpi-value">Rs. ${(catB.overflow || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total Transactions</div>
+    <div class="kpi-value">${catB.txns || 0} records</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Average Bill</div>
+    <div class="kpi-value">Rs. ${(catB.avg || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+  </div>
+</div>
+
+<div class="section-title">Transactions Ledger (${txns.length} records)</div>
+<table>
+  <thead><tr>
+    <th>Invoice #</th><th>Time</th><th>Mode</th><th>Customer</th><th style="text-align:right">Amount</th>
+  </tr></thead>
+  <tbody>${rowsHtml}</tbody>
+</table>
+
+<div class="footer">
+  <span>Futura Hardware POS &mdash; Confidential Business Report</span>
+  <span>Page 1</span>
+</div>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 400);
+  };
 
   const filteredTxns = (catB.recentTxns || []).filter((txn: any) => {
     if (typeFilter === "overflow") return txn.type === "Overflow";
@@ -147,33 +226,77 @@ function CategoryBReportPageContent() {
             </div>
           </div>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 bg-[#15803d] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
-            >
-              <Download className="w-4 h-4" /> Export
-            </button>
-            {showExportMenu && (
-              <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-[185px]">
-                <button
-                  onClick={() => {
-                    setShowExportMenu(false);
-                    window.print();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
-                >
-                  <FileText className="w-4 h-4 text-red-500" /> Download PDF
+          {/* Export & Date Filter */}
+          <div className="flex items-center gap-3">
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button className="flex items-center justify-between gap-4 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors min-w-[200px]">
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-[13px] font-bold text-gray-700">
+                      {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'Select Date...'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
-                <button
-                  onClick={handleCSV}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  className="bg-white p-7 rounded-[32px] shadow-2xl border border-gray-100 z-50 animate-in fade-in zoom-in w-[380px]"
+                  sideOffset={12}
+                  align="end"
                 >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />{" "}
-                  Download CSV
-                </button>
-              </div>
-            )}
+                  <div className="flex flex-col min-h-[460px]">
+                    <div className="flex justify-between items-center mb-6 pl-2">
+                      <h4 className="text-[17px] font-black text-blue-900 tracking-tight">Select Time Period</h4>
+                      <Popover.Close className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-50 text-gray-400 hover:text-gray-900 transition-all">
+                        <X className="w-5 h-5" />
+                      </Popover.Close>
+                    </div>
+                    <div className="flex-1 py-2">
+                      <SalesDatePicker dateRange={dateRange} onSelect={setDateRange} />
+                    </div>
+                    <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between pl-1">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest text-left">Selected Range</span>
+                        <div className="text-[13px] font-black text-blue-700 flex items-center gap-2">
+                          {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : '---'}
+                          {dateRange?.to && (<><span className="text-gray-300 font-light">—</span>{format(dateRange.to, 'MMM d, yyyy')}</>)}
+                        </div>
+                      </div>
+                      <Popover.Close asChild>
+                        <button className="bg-blue-900 hover:bg-blue-800 text-white px-7 py-3 rounded-2xl font-black text-[13px] shadow-lg shadow-blue-100 transition-all active:scale-95">
+                          Apply
+                        </button>
+                      </Popover.Close>
+                    </div>
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 bg-[#15803d] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
+              >
+                <Download className="w-4 h-4" /> Export
+              </button>
+              {showExportMenu && (
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-[185px]">
+                  <button onClick={handlePDF} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
+                    <FileText className="w-4 h-4 text-red-500" /> Download PDF
+                  </button>
+                  <button
+                    onClick={handleCSV}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" />{" "}
+                    Download CSV
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -489,7 +612,8 @@ function CategoryBReportPageContent() {
           </div>
         )}
       </div>
-      {/* ── Delete Confirmation Modal ──────────────────────────────────────────── */}
+
+      {/* Delete Confirmation Modal */}
       {txnToDelete && (
         <div
           className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"

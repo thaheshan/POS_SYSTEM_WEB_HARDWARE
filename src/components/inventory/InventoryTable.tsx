@@ -6,6 +6,7 @@ interface InventoryTableProps {
   data: any[];
   onEdit?: (item: any) => void;
   onDelete?: (item: any) => void;
+  onTransfer?: (item: any) => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onFilterToggle: () => void;
@@ -18,6 +19,7 @@ export default function InventoryTable({
   data,
   onEdit,
   onDelete,
+  onTransfer,
   searchTerm,
   onSearchChange,
   onFilterToggle,
@@ -205,10 +207,13 @@ export default function InventoryTable({
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); onEdit?.(item); }} className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-emerald-100 transition-all">
+                      <button onClick={(e) => { e.stopPropagation(); onTransfer?.(item); }} title="Transfer Stock" className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-blue-100 transition-all">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); onEdit?.(item); }} title="Edit Product" className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-emerald-100 transition-all">
                         <Edit className="w-3.5 h-3.5 text-gray-500" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); onDelete?.(item); }} className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-red-100 transition-all">
+                      <button onClick={(e) => { e.stopPropagation(); onDelete?.(item); }} title="Delete Product" className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-red-100 transition-all">
                         <Trash2 className="w-3.5 h-3.5 text-gray-500" />
                       </button>
                     </div>
