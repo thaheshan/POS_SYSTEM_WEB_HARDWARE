@@ -23,7 +23,14 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { chartData, loading } = useWeeklyChart();
+
+  const timeframeDaysMap: Record<string, number> = {
+    'Last 7 Days': 7,
+    'Last 28 Days': 28,
+    'Last 90 Days': 90,
+  };
+  const days = timeframeDaysMap[timeframe] || 7;
+  const { chartData, loading } = useWeeklyChart(days);
 
   // Recharts needs to be mounted on client to avoid hydration mismatch
   useEffect(() => {
@@ -42,6 +49,8 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
   }, [dropdownRef]);
 
   const options = ['Last 7 Days', 'Last 28 Days', 'Last 90 Days'];
+
+  const hasData = chartData.some(d => (d.sales ?? 0) > 0 || (d.revenue ?? 0) > 0 || (d.cost ?? 0) > 0 || (d.profit ?? 0) > 0);
 
   if (!mounted || loading) {
     return (
@@ -91,75 +100,89 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
       </div>
 
       <div className="w-full h-[320px] -ml-3">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
-              dy={15}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
-              dx={-5}
-            />
-            <Tooltip 
-              cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
-              contentStyle={{ 
-                borderRadius: '12px', 
-                border: 'none', 
-                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                padding: '12px',
-                fontWeight: '700',
-                fontSize: '12px'
-              }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="cost" 
-              name="Cost"
-              stroke="#f97316" 
-              strokeWidth={4} 
-              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
-              animationDuration={1500}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="sales" 
-              name="Sales"
-              stroke="#3b82f6" 
-              strokeWidth={4} 
-              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
-              animationDuration={1500}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="revenue" 
-              name="Revenue"
-              stroke="#ec4899" 
-              strokeWidth={4} 
-              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#ec4899' }}
-              animationDuration={1500}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="profit" 
-              name="Profit"
-              stroke="#10b981" 
-              strokeWidth={4} 
-              dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}
-              animationDuration={1500}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
+                dy={15}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
+                dx={-5}
+              />
+              <Tooltip 
+                cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
+                contentStyle={{ 
+                  borderRadius: '12px', 
+                  border: 'none', 
+                  boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                  padding: '12px',
+                  fontWeight: '700',
+                  fontSize: '12px'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="cost" 
+                name="Cost"
+                stroke="#f97316" 
+                strokeWidth={4} 
+                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
+                animationDuration={1500}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="sales" 
+                name="Sales"
+                stroke="#3b82f6" 
+                strokeWidth={4} 
+                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
+                animationDuration={1500}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="revenue" 
+                name="Revenue"
+                stroke="#ec4899" 
+                strokeWidth={4} 
+                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#ec4899' }}
+                animationDuration={1500}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="profit" 
+                name="Profit"
+                stroke="#10b981" 
+                strokeWidth={4} 
+                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}
+                animationDuration={1500}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center border border-dashed border-gray-200 rounded-[20px] bg-gray-50/50 p-6 mx-3">
+            <div className="bg-blue-50/60 p-4 rounded-full mb-3 text-blue-500">
+              <svg className="w-8 h-8 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <p className="text-gray-950 text-[15px] font-black">No Sales Records Found</p>
+            <p className="text-gray-400 text-[12px] text-center max-w-[280px] mt-1 font-bold">
+              There are no transactions or cost data recorded during the {timeframe.toLowerCase()} period.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-8 mt-8 justify-center border-t border-gray-50 pt-6">
