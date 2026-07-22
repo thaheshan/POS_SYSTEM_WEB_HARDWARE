@@ -213,13 +213,6 @@ function CategoryAReportPageContent() {
     }
   };
 
-  const dateLabel =
-    dateRange?.from && dateRange.to
-      ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
-      : dateRange?.from
-        ? format(dateRange.from, "MMMM d, yyyy")
-        : "Today";
-
   return (
     <MainLayout>
       {/* Close any open dropdown when clicking outside */}
