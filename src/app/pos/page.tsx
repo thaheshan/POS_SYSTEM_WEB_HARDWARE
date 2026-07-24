@@ -40,6 +40,7 @@ type Product = {
   img: string;
   warehouseId?: string;
   branchId?: string;
+  warehouseName?: string;
   sellType: 'fixed' | 'loose';
   measurementUnit?: string;
 };
@@ -269,6 +270,7 @@ export default function POSPage() {
           img: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
           warehouseId: item.warehouseId || item.warehouse_id,
           branchId: item.branchId || item.branch_id,
+          warehouseName: item.warehouse?.name || 'Main Store',
           sellType,
           measurementUnit
         };
@@ -295,6 +297,7 @@ export default function POSPage() {
             img: p.images?.[0]?.imageUrl || null,
             warehouseId: undefined,
             branchId: undefined,
+            warehouseName: undefined,
             sellType,
             measurementUnit
           };
@@ -345,6 +348,7 @@ export default function POSPage() {
         img: product.img,
         warehouseId: product.warehouseId,
         branchId: product.branchId,
+        warehouseName: product.warehouseName,
         sellType: product.sellType,
         measurementUnit: product.measurementUnit,
       }];
@@ -574,7 +578,7 @@ export default function POSPage() {
                       const inCart = cart.find(c => c.id === product.id);
                       return (
                         <div
-                          key={product.id}
+                          key={`${product.id}-${product.warehouseId || 'no-wh'}`}
                           onClick={() => setPendingProduct(product)}
                           className={`bg-white rounded-[16px] border shadow-sm overflow-hidden hover:shadow-md transition-all group flex flex-col cursor-pointer ${
                             inCart ? 'border-[#059669] ring-2 ring-emerald-500/15' : 'border-gray-200'
@@ -607,6 +611,11 @@ export default function POSPage() {
                                 <span className="text-[10px] font-black text-[#059669] uppercase tracking-[0.15em] bg-emerald-50 px-2 py-0.5 rounded-md">
                                   {product.category}
                                 </span>
+                                {product.warehouseName && (
+                                  <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                                    {product.warehouseName}
+                                  </span>
+                                )}
                                 <span className="text-[11px] font-bold text-gray-400 font-mono">
                                   {product.sku}
                                 </span>

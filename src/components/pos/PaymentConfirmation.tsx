@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 type PaymentConfirmationProps = {
   onBack: () => void;
   onProcess: () => void;
-  items: { id: string, name: string, price: number, qty: number, img: string, warehouseId?: string, branchId?: string }[];
+  items: { id: string, name: string, price: number, qty: number, img: string, warehouseId?: string, branchId?: string, warehouseName?: string }[];
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -367,14 +367,21 @@ export default function PaymentConfirmation({
             </h3>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
               {items.map((item) => (
-                <div key={item.id} className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100">
+                <div key={`${item.id}-${item.warehouseId || 'no-wh'}`} className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100">
                   <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden shrink-0">
                         <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
                       </div>
                       <div>
                         <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">{item.name}</h4>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase">Unit Price: Rs. {item.price.toLocaleString()}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase">Unit Price: Rs. {item.price.toLocaleString()}</p>
+                          {item.warehouseName && (
+                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {item.warehouseName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                   </div>
                   <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">
