@@ -3,7 +3,7 @@
 import { X, FileText, Search, Plus, Trash2, CheckCircle2, Package } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
-import { toast } from 'sonner';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 interface PurchaseOrderModalProps {
   isOpen: boolean;
@@ -134,9 +134,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, onSuccess, prefill
   }, 0);
 
   const handleSubmit = async () => {
-    if (!supplierName) { toast.error('Supplier name is required.'); return; }
+    if (!supplierName) { toastError(new Error('Please enter the supplier name to continue.')); return; }
     const validLines = lines.filter(l => l.productId && Number(l.quantity) > 0);
-    if (validLines.length === 0) { toast.error('Add at least one product with a quantity.'); return; }
+    if (validLines.length === 0) { toastError(new Error('Please add at least one product with a valid quantity.')); return; }
 
     setSubmitting(true);
     try {
@@ -153,11 +153,11 @@ export default function PurchaseOrderModal({ isOpen, onClose, onSuccess, prefill
         });
         receiveCount++;
       }
-      toast.success(`Purchase order received. ${receiveCount} line(s) added to stock.`);
+      toastSuccess(`Purchase order received successfully. ${receiveCount} ${receiveCount === 1 ? 'item was' : 'items were'} added to stock.`);
       setDone(true);
       onSuccess();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to process purchase order.');
+      toastError(err, 'We couldn’t receive the purchase order. Please try again.');
     } finally {
       setSubmitting(false);
     }

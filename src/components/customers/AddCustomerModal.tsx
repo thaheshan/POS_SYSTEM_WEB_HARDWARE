@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import api from '@/api/axiosInstance';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (customer?: any) => void }) {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', customerType: 'Individual' });
@@ -10,7 +11,12 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!form.name || !form.phone) { setError('Name and phone are required.'); return; }
+    if (!form.name || !form.phone) {
+      const message = 'Please enter the customer’s name and phone number.';
+      setError(message);
+      toastError(new Error(message));
+      return;
+    }
     setLoading(true);
     try {
       const response = await api.post('/customers', { 
@@ -22,10 +28,13 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
       });
       // Try to pass the newly created customer back to the caller
       const createdCustomer = response.data?.data || response.data;
+      toastSuccess('Customer added successfully.');
       onSuccess(createdCustomer);
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to add customer.');
+      const message = err?.response?.data?.message || 'We couldn’t add the customer. Please try again.';
+      setError(message);
+      toastError(err, 'We couldn’t add the customer. Please try again.');
     } finally {
       setLoading(false);
     }

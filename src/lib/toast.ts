@@ -1,15 +1,28 @@
-import { toast } from "react-hot-toast";
+import toast from 'react-hot-toast';
 
-export function toastSuccess(message: string) {
-  return toast.success(message);
-}
+type ApiError = {
+  data?: { message?: string | string[]; error?: string };
+  response?: { data?: { message?: string | string[]; error?: string } };
+  message?: string;
+};
 
-export function toastError(error: unknown, fallback = "Something went wrong. Please try again.") {
-  const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data?.message;
-  const message = Array.isArray(responseMessage)
-    ? responseMessage.join(" ")
-    : responseMessage || (error instanceof Error ? error.message : fallback);
+export const toastSuccess = (message: string) => toast.success(message);
 
-  return toast.error(message);
-}
+export const getErrorMessage = (
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.'
+) => {
+  const apiError = error as ApiError | undefined;
+
+  const message =
+    apiError?.data?.message ??
+    apiError?.response?.data?.message ??
+    apiError?.data?.error ??
+    apiError?.response?.data?.error ??
+    apiError?.message;
+
+  return Array.isArray(message) ? message.join(', ') : message || fallback;
+};
+
+export const toastError = (error: unknown, fallback?: string) =>
+  toast.error(getErrorMessage(error, fallback));
