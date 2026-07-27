@@ -8,8 +8,12 @@ type ApiError = {
 
 export const toastSuccess = (message: string) => toast.success(message);
 
-export const getErrorMessage = (error: unknown, fallback = 'Something went wrong') => {
+export const getErrorMessage = (
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.'
+) => {
   const apiError = error as ApiError | undefined;
+
   const message =
     apiError?.data?.message ??
     apiError?.response?.data?.message ??

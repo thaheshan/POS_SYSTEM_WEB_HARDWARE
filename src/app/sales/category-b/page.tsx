@@ -26,12 +26,16 @@ function CategoryBReportPageContent() {
 
   const { data, loading, refresh } = useSalesData(dateRange);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<"all" | "overflow" | "nontax">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "overflow" | "nontax">(
+    "all",
+  );
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [txnToDelete, setTxnToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    null,
+  );
 
   const confirmDelete = async () => {
     if (!txnToDelete) return;
@@ -59,7 +63,26 @@ function CategoryBReportPageContent() {
       ["Non-Taxable Products", catB.baseNonTax],
       ["Transactions", catB.txns],
       ["Average Bill", catB.avg],
-    ].map((r) => r.join(",")).join("\n");
+      [],
+      [
+        "Transaction ID",
+        "Customer Name",
+        "Transaction Date",
+        "Type",
+        "Amount",
+        "Status",
+      ],
+      ...(catB.allTxns || []).map((t: any) => [
+        t.id,
+        `"${t.customerName}"`,
+        `${t.date} ${t.time}`,
+        t.type,
+        t.rawAmount,
+        t.status,
+      ]),
+    ]
+      .map((r) => r.join(","))
+      .join("\n");
     const blob = new Blob([rows], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -172,13 +195,15 @@ function CategoryBReportPageContent() {
 
   return (
     <MainLayout>
-      <div className="max-w-[1200px] mx-auto pb-20" onClick={() => setOpenMenuId(null)}>
-
+      <div
+        className="max-w-[1200px] mx-auto pb-20"
+        onClick={() => setOpenMenuId(null)}
+      >
         {/* PAGE HEADER */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/sales')}
+              onClick={() => router.push("/sales")}
               className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 shadow-sm transition-all active:scale-95"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -188,7 +213,9 @@ function CategoryBReportPageContent() {
                 <span className="text-[11px] font-black uppercase tracking-[0.15em] bg-emerald-100 text-emerald-700 px-3 py-1 rounded-md">
                   Category B
                 </span>
-                <span className="text-[12px] font-bold text-gray-400">{dateLabel}</span>
+                <span className="text-[12px] font-bold text-gray-400">
+                  {dateLabel}
+                </span>
               </div>
               <h1 className="text-[26px] font-black text-gray-900 tracking-tight">
                 Non-Tax & Overflow — Detailed Report
@@ -201,90 +228,108 @@ function CategoryBReportPageContent() {
 
           {/* Export & Date Filter */}
           <div className="flex items-center gap-3">
-             <Popover.Root>
+            <Popover.Root>
               <Popover.Trigger asChild>
                 <button className="flex items-center justify-between gap-4 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors min-w-[200px]">
-                   <div className="flex items-center gap-2.5">
-                     <Calendar className="w-4 h-4 text-gray-500" />
-                     <span className="text-[13px] font-bold text-gray-700">
-                       {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'Select Date...'}
-                     </span>
-                   </div>
-                   <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-[13px] font-bold text-gray-700">
+                      {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'Select Date...'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
                 <Popover.Content
-                   className="bg-white p-7 rounded-[32px] shadow-2xl border border-gray-100 z-50 animate-in fade-in zoom-in w-[380px]"
-                   sideOffset={12}
-                   align="end"
+                  className="bg-white p-7 rounded-[32px] shadow-2xl border border-gray-100 z-50 animate-in fade-in zoom-in w-[380px]"
+                  sideOffset={12}
+                  align="end"
                 >
-                   <div className="flex flex-col min-h-[460px]">
-                      <div className="flex justify-between items-center mb-6 pl-2">
-                         <h4 className="text-[17px] font-black text-blue-900 tracking-tight">Select Time Period</h4>
-                         <Popover.Close className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-50 text-gray-400 hover:text-gray-900 transition-all">
-                            <X className="w-5 h-5" />
-                         </Popover.Close>
+                  <div className="flex flex-col min-h-[460px]">
+                    <div className="flex justify-between items-center mb-6 pl-2">
+                      <h4 className="text-[17px] font-black text-blue-900 tracking-tight">Select Time Period</h4>
+                      <Popover.Close className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-50 text-gray-400 hover:text-gray-900 transition-all">
+                        <X className="w-5 h-5" />
+                      </Popover.Close>
+                    </div>
+                    <div className="flex-1 py-2">
+                      <SalesDatePicker dateRange={dateRange} onSelect={setDateRange} />
+                    </div>
+                    <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between pl-1">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest text-left">Selected Range</span>
+                        <div className="text-[13px] font-black text-blue-700 flex items-center gap-2">
+                          {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : '---'}
+                          {dateRange?.to && (<><span className="text-gray-300 font-light">—</span>{format(dateRange.to, 'MMM d, yyyy')}</>)}
+                        </div>
                       </div>
-                      <div className="flex-1 py-2">
-                        <SalesDatePicker dateRange={dateRange} onSelect={setDateRange} />
-                      </div>
-                      <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between pl-1">
-                         <div className="flex flex-col gap-1">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest text-left">Selected Range</span>
-                            <div className="text-[13px] font-black text-blue-700 flex items-center gap-2">
-                               {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : '---'}
-                               {dateRange?.to && (<><span className="text-gray-300 font-light">—</span>{format(dateRange.to, 'MMM d, yyyy')}</>)}
-                            </div>
-                         </div>
-                         <Popover.Close asChild>
-                            <button className="bg-blue-900 hover:bg-blue-800 text-white px-7 py-3 rounded-2xl font-black text-[13px] shadow-lg shadow-blue-100 transition-all active:scale-95">
-                               Apply
-                            </button>
-                         </Popover.Close>
-                      </div>
-                   </div>
+                      <Popover.Close asChild>
+                        <button className="bg-blue-900 hover:bg-blue-800 text-white px-7 py-3 rounded-2xl font-black text-[13px] shadow-lg shadow-blue-100 transition-all active:scale-95">
+                          Apply
+                        </button>
+                      </Popover.Close>
+                    </div>
+                  </div>
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 bg-[#15803d] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
-            >
-              <Download className="w-4 h-4" /> Export
-            </button>
-            {showExportMenu && (
-              <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-[185px]">
-                <button onClick={handlePDF} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
-                  <FileText className="w-4 h-4 text-red-500" /> Download PDF
-                </button>
-                <button onClick={handleCSV} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Download CSV
-                </button>
-              </div>
-            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 bg-[#15803d] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-[13.5px] shadow-sm transition-all active:scale-95"
+              >
+                <Download className="w-4 h-4" /> Export
+              </button>
+              {showExportMenu && (
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-[185px]">
+                  <button onClick={handlePDF} className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all">
+                    <FileText className="w-4 h-4 text-red-500" /> Download PDF
+                  </button>
+                  <button
+                    onClick={handleCSV}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" />{" "}
+                    Download CSV
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         </div>
 
         {/* SUMMARY BANNER */}
         <div className="bg-gradient-to-r from-[#15803d] to-[#166534] rounded-2xl p-6 mb-8 text-white shadow-xl shadow-emerald-200">
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-[11px] font-black text-emerald-200 uppercase tracking-widest mb-1">Total Category B</p>
-              <p className="text-[32px] font-black">Rs. {loading ? "..." : catB.core.toLocaleString()}</p>
-              <p className="text-[12px] font-bold text-emerald-300 mt-1">{catB.txns} transactions</p>
+              <p className="text-[11px] font-black text-emerald-200 uppercase tracking-widest mb-1">
+                Total Category B
+              </p>
+              <p className="text-[32px] font-black">
+                Rs. {loading ? "..." : catB.core.toLocaleString()}
+              </p>
+              <p className="text-[12px] font-bold text-emerald-300 mt-1">
+                {catB.txns} transactions
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/15 rounded-2xl p-4">
-                <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-1">Overflow</p>
-                <p className="text-[18px] font-black">Rs. {loading ? "..." : catB.overflow.toLocaleString()}</p>
+                <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-1">
+                  Overflow
+                </p>
+                <p className="text-[18px] font-black">
+                  Rs. {loading ? "..." : catB.overflow.toLocaleString()}
+                </p>
               </div>
               <div className="bg-white/15 rounded-2xl p-4">
-                <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-1">Non-Taxable</p>
-                <p className="text-[18px] font-black">Rs. {loading ? "..." : catB.baseNonTax.toLocaleString()}</p>
+                <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-1">
+                  Non-Taxable
+                </p>
+                <p className="text-[18px] font-black">
+                  Rs. {loading ? "..." : catB.baseNonTax.toLocaleString()}
+                </p>
               </div>
             </div>
           </div>
@@ -293,17 +338,50 @@ function CategoryBReportPageContent() {
         {/* KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
           {[
-            { label: "Total Cat B", value: `Rs. ${(catB.core || 0).toLocaleString()}`, icon: BarChart2, color: "text-emerald-600", bg: "bg-emerald-50" },
-            { label: "Overflow Amount", value: `Rs. ${(catB.overflow || 0).toLocaleString()}`, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Transactions", value: `${catB.txns || 0}`, icon: FileText, color: "text-purple-600", bg: "bg-purple-50" },
-            { label: "Average Bill", value: `Rs. ${(catB.avg || 0).toLocaleString()}`, icon: Tag, color: "text-amber-600", bg: "bg-amber-50" },
+            {
+              label: "Total Cat B",
+              value: `Rs. ${(catB.core || 0).toLocaleString()}`,
+              icon: BarChart2,
+              color: "text-emerald-600",
+              bg: "bg-emerald-50",
+            },
+            {
+              label: "Overflow Amount",
+              value: `Rs. ${(catB.overflow || 0).toLocaleString()}`,
+              icon: TrendingUp,
+              color: "text-blue-600",
+              bg: "bg-blue-50",
+            },
+            {
+              label: "Transactions",
+              value: `${catB.txns || 0}`,
+              icon: FileText,
+              color: "text-purple-600",
+              bg: "bg-purple-50",
+            },
+            {
+              label: "Average Bill",
+              value: `Rs. ${(catB.avg || 0).toLocaleString()}`,
+              icon: Tag,
+              color: "text-amber-600",
+              bg: "bg-amber-50",
+            },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center mb-3`}>
+            <div
+              key={kpi.label}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+            >
+              <div
+                className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center mb-3`}
+              >
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
               </div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-              <p className="text-[20px] font-black text-gray-900">{loading ? "..." : kpi.value}</p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                {kpi.label}
+              </p>
+              <p className="text-[20px] font-black text-gray-900">
+                {loading ? "..." : kpi.value}
+              </p>
             </div>
           ))}
         </div>
@@ -332,19 +410,38 @@ function CategoryBReportPageContent() {
         {/* TRANSACTIONS TABLE */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-8">
           <div className="flex items-center justify-between p-6 border-b border-gray-50">
-            <h3 className="text-[16px] font-black text-gray-900">Category B Transactions</h3>
-            <span className="text-[12px] font-bold text-gray-400">{filteredTxns.length} records</span>
+            <h3 className="text-[16px] font-black text-gray-900">
+              Category B Transactions
+            </h3>
+            <span className="text-[12px] font-bold text-gray-400">
+              {filteredTxns.length} records
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mode</th>
-                  <th className="text-right py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                  <th className="text-left py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Transaction ID
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Customer Name
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Transaction Date
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Type
+                  </th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Amount
+                  </th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -358,7 +455,10 @@ function CategoryBReportPageContent() {
                   ))
                 ) : filteredTxns.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-[13px] font-bold text-gray-300">
+                    <td
+                      colSpan={6}
+                      className="py-16 text-center text-[13px] font-bold text-gray-300"
+                    >
                       No Category B transactions found for this period.
                     </td>
                   </tr>
@@ -367,43 +467,87 @@ function CategoryBReportPageContent() {
                     const menuKey = txn.rawId || txn.id || String(i);
                     const isOpen = openMenuId === menuKey;
                     return (
-                    <tr key={i} className="hover:bg-emerald-50/30 transition-colors">
-                      <td className="py-4 px-6 text-[13px] font-bold text-gray-900 font-mono">{txn.id}</td>
-                      <td className="py-4 px-4 text-[13px] font-medium text-gray-500">{txn.time}</td>
-                      <td className="py-4 px-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          txn.type === "Overflow"
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-emerald-50 text-emerald-600"
-                        }`}>
-                          {txn.type}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">Rs. {txn.amount}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="px-3 py-1 bg-gray-50 text-gray-600 text-[10px] font-black rounded-full uppercase tracking-wider">{txn.mode}</span>
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="relative flex justify-end">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(isOpen ? null : menuKey); }}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
+                      <tr
+                        key={i}
+                        className="hover:bg-emerald-50/30 transition-colors"
+                      >
+                        <td className="py-4 px-6">
+                          <p className="text-[13px] font-bold text-gray-900 font-mono">
+                            {txn.id}
+                          </p>
+                        </td>
+                        <td className="py-4 px-4 text-[13px] font-medium text-gray-700">
+                          {txn.customerName}
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="text-[13px] font-bold text-gray-900">
+                            {txn.date}
+                          </p>
+                          <p className="text-[10px] font-bold text-gray-400">
+                            {txn.time}
+                          </p>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              txn.type === "Overflow"
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-emerald-50 text-emerald-600"
+                            }`}
                           >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                          {isOpen && (
-                            <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 py-1 z-50 w-[175px]" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => { setOpenMenuId(null); setSelectedInvoiceId(txn.rawId || txn.id); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all rounded-xl">
-                                <FileText className="w-4 h-4 text-blue-500" /> View Receipt / PDF
-                              </button>
-                              <button onClick={() => { setOpenMenuId(null); setTxnToDelete(txn); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-red-600 hover:bg-red-50 transition-all rounded-xl">
-                                <Trash2 className="w-4 h-4" /> Delete / Void
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            {txn.type}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right text-[13px] font-black text-emerald-600 font-mono">
+                          Rs. {txn.amount}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <span
+                            className={`px-2 py-1 text-[11px] font-black rounded-lg ${txn.status === "Completed" || txn.status === "Paid" ? "bg-emerald-100 text-emerald-700" : txn.status === "Refunded" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}
+                          >
+                            {txn.status || "Completed"}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <div className="relative flex justify-end">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(isOpen ? null : menuKey);
+                              }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            {isOpen && (
+                              <div
+                                className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 py-1 z-50 w-[175px]"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setSelectedInvoiceId(txn.rawId || txn.id);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 transition-all rounded-xl"
+                                >
+                                  <FileText className="w-4 h-4 text-blue-500" />{" "}
+                                  View Receipt / PDF
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setTxnToDelete(txn);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] font-bold text-red-600 hover:bg-red-50 transition-all rounded-xl"
+                                >
+                                  <Trash2 className="w-4 h-4" /> Delete / Void
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })
                 )}
@@ -415,15 +559,21 @@ function CategoryBReportPageContent() {
             <div className="border-t border-gray-100 p-6 bg-gray-50/50 space-y-2">
               <div className="flex justify-between text-[13px] font-bold text-gray-500">
                 <span>Overflow Amount</span>
-                <span className="font-mono">Rs. {catB.overflow.toLocaleString()}</span>
+                <span className="font-mono">
+                  Rs. {catB.overflow.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-gray-500">
                 <span>Non-Taxable Products</span>
-                <span className="font-mono">Rs. {catB.baseNonTax.toLocaleString()}</span>
+                <span className="font-mono">
+                  Rs. {catB.baseNonTax.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between text-[17px] font-black text-gray-900 pt-3 border-t border-gray-200">
                 <span>Total Category B</span>
-                <span className="text-emerald-600 font-mono">Rs. {catB.core.toLocaleString()}</span>
+                <span className="text-emerald-600 font-mono">
+                  Rs. {catB.core.toLocaleString()}
+                </span>
               </div>
             </div>
           )}
@@ -433,7 +583,9 @@ function CategoryBReportPageContent() {
         {(catB.topProducts || []).length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-50">
-              <h3 className="text-[16px] font-black text-gray-900">Top Non-Taxable Products</h3>
+              <h3 className="text-[16px] font-black text-gray-900">
+                Top Non-Taxable Products
+              </h3>
             </div>
             <div className="p-6 space-y-4">
               {catB.topProducts.map((p: any, i: number) => (
@@ -443,19 +595,25 @@ function CategoryBReportPageContent() {
                       <Package className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-[13px] font-bold text-gray-900">{p.name}</p>
-                      <p className="text-[11px] font-bold text-gray-400">{p.sold} units sold</p>
+                      <p className="text-[13px] font-bold text-gray-900">
+                        {p.name}
+                      </p>
+                      <p className="text-[11px] font-bold text-gray-400">
+                        {p.sold} units sold
+                      </p>
                     </div>
                   </div>
-                  <span className="text-[14px] font-black text-gray-900 font-mono">Rs. {p.amount}</span>
+                  <span className="text-[14px] font-black text-gray-900 font-mono">
+                    Rs. {p.amount}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
-
       </div>
-      {/* ── Delete Confirmation Modal ──────────────────────────────────────────── */}
+
+      {/* Delete Confirmation Modal */}
       {txnToDelete && (
         <div
           className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
@@ -463,7 +621,7 @@ function CategoryBReportPageContent() {
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-            style={{ animation: 'fadeInScale 0.2s ease-out' }}
+            style={{ animation: "fadeInScale 0.2s ease-out" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-red-600 px-6 py-5 flex items-center gap-3">
@@ -471,20 +629,28 @@ function CategoryBReportPageContent() {
                 <Trash2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-black text-[16px]">Delete Invoice</h3>
-                <p className="text-red-100 text-[11px] font-medium mt-0.5">This action cannot be undone</p>
+                <h3 className="text-white font-black text-[16px]">
+                  Delete Invoice
+                </h3>
+                <p className="text-red-100 text-[11px] font-medium mt-0.5">
+                  This action cannot be undone
+                </p>
               </div>
             </div>
             <div className="px-6 py-6">
               <p className="text-gray-700 text-[14px] leading-relaxed">
-                You are about to permanently delete invoice{' '}
-                <span className="font-black text-gray-900">{txnToDelete.id}</span>.
+                You are about to permanently delete invoice{" "}
+                <span className="font-black text-gray-900">
+                  {txnToDelete.id}
+                </span>
+                .
               </p>
               <div className="mt-4 bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-start gap-3">
                 <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                 <p className="text-red-700 text-[12px] leading-relaxed">
-                  All invoice items, payment records, and associated data will be{' '}
-                  <strong>permanently removed</strong> from the database. This cannot be recovered.
+                  All invoice items, payment records, and associated data will
+                  be <strong>permanently removed</strong> from the database.
+                  This cannot be recovered.
                 </p>
               </div>
             </div>

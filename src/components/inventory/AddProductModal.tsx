@@ -165,6 +165,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const [categories, setCategories]     = useState<{ id: string; name: string }[]>([]);
   const [subCategories, setSubCategories] = useState<{ id: string; name: string }[]>([]);
   const [suppliers, setSuppliers]       = useState<{ id: string; name: string }[]>([]);
+  const [warehouses, setWarehouses]     = useState<{ id: string; name: string; code?: string }[]>([]);
   const [previewUrl, setPreviewUrl]     = useState<string | null>(null);
   const [dragOver, setDragOver]         = useState(false);
   const fileRef                         = useRef<HTMLInputElement>(null);
@@ -197,6 +198,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     categoryId:       '',
     subCategoryId:    '',
     supplierId:       '',
+    warehouseId:      '',
     // Image
     imageFile:        null as File | null,
   });
@@ -219,9 +221,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes, prodRes] = await Promise.allSettled([
+      const [catRes, prodRes, whRes] = await Promise.allSettled([
         api.get('/products/categories'),
         api.get('/products'),
+        api.get('/warehouses'),
       ]);
 
       let productsList: Product[] = [];
@@ -242,8 +245,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           setCategories([]);
         }
       }
-      // suppliers removed
-      setSuppliers([]);
+
+      if (whRes.status === 'fulfilled') {
+        const whData = whRes.value.data?.data || whRes.value.data || [];
+        const mappedWh = Array.isArray(whData) ? whData.map((w: any) => ({ id: w.id, name: w.name, code: w.code })) : [];
+        setWarehouses(mappedWh);
+        // Auto-select the first active warehouse
+        if (mappedWh.length > 0) {
+          setForm(prev => ({ ...prev, warehouseId: mappedWh[0].id }));
+        }
+      }
 
       // Auto-generate SKU
       const nextSku = generateNextSku(productsList);
@@ -264,6 +275,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       sku: '', barcode: '', trackInventory: true,
       initialStock: '0', minimumStock: '10', continueOOS: false,
       categoryId: '', subCategoryId: '', supplierId: '',
+      warehouseId: warehouses.length > 0 ? warehouses[0].id : '',
       imageFile: null,
     });
     setPreviewUrl(null);
@@ -333,6 +345,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       formData.append('sellType', form.productType);
       if (form.productType === 'LOOSE') {
         formData.append('measurementUnit', form.unit);
+      }
+      // Append warehouseId if selected — backend will create stock in that warehouse
+      if (form.warehouseId) {
+        formData.append('warehouseId', form.warehouseId);
       }
 
       if (form.description?.trim()) formData.append('description', form.description.trim());
@@ -707,6 +723,35 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Warehouse Location */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <p className="text-[12px] font-black text-gray-500 uppercase tracking-widest mb-1">Warehouse Location</p>
+                <p className="text-[10.5px] text-gray-400 font-medium mb-3">Initial stock will be stored here</p>
+                <div className="relative">
+                  <select
+                    name="warehouseId"
+                    value={form.warehouseId}
+                    onChange={handleChange}
+                    className={`${selectCls} text-[12px] ${!form.warehouseId ? 'border-amber-300' : ''}`}
+                  >
+                    <option value="">Select Warehouse</option>
+                    {loading && <option disabled>Loading…</option>}
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}{w.code ? ` (${w.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                {warehouses.length === 0 && !loading && (
+                  <p className="text-[10.5px] text-amber-600 mt-1.5 font-medium">⚠ No warehouses found. <span className="font-bold">Add a warehouse first</span> to assign stock location.</p>
+                )}
+                {form.warehouseId && (
+                  <p className="text-[10.5px] text-emerald-600 mt-1.5 font-medium">✓ Stock will be stored in: <span className="font-bold">{warehouses.find(w => w.id === form.warehouseId)?.name}</span></p>
+                )}
               </div>
 
               {/* Supplier Information */}
