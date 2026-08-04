@@ -17,6 +17,7 @@ import {
   MoreVertical,
   Wrench,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,6 +71,12 @@ const menuItems = [
     icon: LayoutList,
     label: "Reports",
     href: "/reports",
+    roles: ["admin", "owner"],
+  },
+  {
+    icon: ClipboardList,
+    label: "Activity Log",
+    href: "/activity-log",
     roles: ["admin", "owner"],
   },
   {

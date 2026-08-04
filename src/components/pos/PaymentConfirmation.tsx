@@ -46,6 +46,8 @@ type PaymentConfirmationProps = {
   discount: number;
   total: number;
   notes?: string;
+  orderDiscountType?: 'percentage' | 'fixed';
+  orderDiscountValue?: number;
 };
 
 // ── PDF Invoice Generator ─────────────────────────────────────────────────────
@@ -61,6 +63,8 @@ function downloadInvoicePDF({
   discount,
   total,
   notes,
+  orderDiscountType,
+  orderDiscountValue,
 }: Omit<PaymentConfirmationProps, "onBack" | "onProcess">) {
   const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
   const now = new Date();
@@ -73,6 +77,10 @@ function downloadInvoicePDF({
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // Per-item discount totals for invoice breakdown
+  const grossSubtotalPdf = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const itemDiscountsTotalPdf = items.reduce((sum, item) => sum + (item.discountAmount ?? 0) * item.qty, 0);
 
   const itemRows = items
     .map((item, i) => {
@@ -219,11 +227,26 @@ function downloadInvoicePDF({
 
       <div class="totals">
     <div class="totals-box">
+      ${itemDiscountsTotalPdf > 0 ? `
+      <div class="total-row">
+        <span>Items Total (before discounts)</span>
+        <span style="font-family:monospace;">Rs. ${grossSubtotalPdf.toLocaleString()}</span>
+      </div>
+      <div class="total-row discount">
+        <span>Item Discounts &nbsp;<span style="font-size:10px;background:#fef2f2;padding:2px 6px;border-radius:4px;">${((itemDiscountsTotalPdf / grossSubtotalPdf) * 100).toFixed(1)}% off</span></span>
+        <span style="font-family:monospace;">-Rs. ${itemDiscountsTotalPdf.toLocaleString()}</span>
+      </div>
+      ` : ''}
       <div class="total-row">
         <span>Subtotal</span>
         <span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span>
       </div>
-      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ""}
+      ${discount > 0 ? `
+      <div class="total-row discount">
+        <span>Order Discount ${orderDiscountType === 'percentage' ? `<span style="font-size:10px;background:#fef2f2;padding:2px 6px;border-radius:4px;">(${orderDiscountValue}% off)</span>` : ''}</span>
+        <span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span>
+      </div>
+      ` : ''}
       <div class="grand-total">
         <span>Grand Total</span>
         <span>Rs. ${total.toLocaleString()}</span>
@@ -300,6 +323,8 @@ export default function PaymentConfirmation({
   discount,
   total,
   notes,
+  orderDiscountType,
+  orderDiscountValue,
 }: PaymentConfirmationProps) {
   const [processing, setProcessing] = useState(false);
 
@@ -322,6 +347,20 @@ export default function PaymentConfirmation({
     const seq = String(Math.floor(Math.random() * 9000) + 1000);
     return `INV-${yy}${mm}${dd}-${seq}`;
   }, []);
+
+  // Per-item discount totals for the on-screen billing breakdown
+  const grossSubtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.qty, 0),
+    [items],
+  );
+  const itemDiscountsTotal = useMemo(
+    () => items.reduce((sum, item) => sum + (item.discountAmount ?? 0) * item.qty, 0),
+    [items],
+  );
+  const itemDiscountsPct =
+    grossSubtotal > 0
+      ? ((itemDiscountsTotal / grossSubtotal) * 100).toFixed(1)
+      : "0.0";
 
   const handleProcess = async () => {
     setProcessing(true);
@@ -529,14 +568,42 @@ export default function PaymentConfirmation({
               Billing Summary
             </h3>
             <div className="space-y-3 pb-4 border-b border-gray-100">
+              {/* Show per-item discount breakdown only when items have discounts */}
+              {itemDiscountsTotal > 0 && (
+                <>
+                  <div className="flex justify-between text-[13px] font-bold text-gray-600">
+                    <span>Items Total</span>
+                    <span>Rs. {grossSubtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-[13px] font-bold text-red-500">
+                    <span className="flex items-center gap-1.5">
+                      Item Discounts
+                      <span className="text-[10px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">
+                        {itemDiscountsPct}% off
+                      </span>
+                    </span>
+                    <span>-Rs. {itemDiscountsTotal.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Subtotal</span>
                 <span>Rs. {subtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-[13px] font-bold text-red-500">
-                <span>Discount</span>
-                <span>-Rs. {discount.toLocaleString()}</span>
-              </div>
+              {/* Show order-level discount only when applied */}
+              {discount > 0 && (
+                <div className="flex justify-between text-[13px] font-bold text-red-500">
+                  <span className="flex items-center gap-1.5">
+                    Order Discount
+                    {orderDiscountType === 'percentage' && orderDiscountValue && orderDiscountValue > 0 && (
+                      <span className="text-[10px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">
+                        {orderDiscountValue}% off
+                      </span>
+                    )}
+                  </span>
+                  <span>-Rs. {discount.toLocaleString()}</span>
+                </div>
+              )}
             </div>
             <div className="flex justify-between items-center pt-4">
               <span className="text-[15px] font-black text-gray-900">
