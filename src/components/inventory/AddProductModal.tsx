@@ -21,6 +21,33 @@ import api from "@/api/axiosInstance";
 import { useAuth } from "@/hooks/useAuth";
 import ImageOptionsModal from "./ImageOptionsModal";
 import CameraCaptureModal from "./CameraCaptureModal";
+import { toastError, toastSuccess } from "@/lib/toast";
+
+interface Product {
+  sku?: string;
+  [key: string]: any;
+}
+
+const generateNextSku = (products: Product[]): string => {
+  const skuPattern = /^SKU_(\d+)$/i;
+  let maxNum = 0;
+
+  products.forEach((p) => {
+    if (p.sku && typeof p.sku === "string") {
+      const match = p.sku.trim().match(skuPattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+
+  const nextNum = maxNum + 1;
+  const paddedNum = String(nextNum).padStart(3, "0");
+  return `SKU_${paddedNum}`;
+};
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -107,8 +134,13 @@ export default function AddProductModal({
 }: AddProductModalProps) {
   const { user } = useAuth();
   const isOwnerOrAdmin = user?.role === "owner" || user?.role === "admin";
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [existingProducts, setExistingProducts] = useState<Product[]>([]);
+  const existingProductsRef = useRef<Product[]>([]);
+
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     [],
   );
@@ -118,6 +150,10 @@ export default function AddProductModal({
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>(
     [],
   );
+  const [warehouses, setWarehouses] = useState<
+    { id: string; name: string; code?: string }[]
+  >([]);
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -150,6 +186,7 @@ export default function AddProductModal({
     categoryId: "",
     subCategoryId: "",
     supplierId: "",
+    warehouseId: "",
     // Image
     imageFile: null as File | null,
     // Discount settings
@@ -177,9 +214,12 @@ export default function AddProductModal({
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes] = await Promise.allSettled([
+      const [catRes, prodRes, whRes] = await Promise.allSettled([
         api.get("/products/categories"),
+        api.get("/products"),
+        api.get("/warehouses"),
       ]);
+
       if (catRes.status === "fulfilled") {
         const catData = catRes.value.data;
         const arr = Array.isArray(catData)
@@ -194,8 +234,36 @@ export default function AddProductModal({
           setCategories([]);
         }
       }
-      // suppliers removed
+
+      let productsList: Product[] = [];
+      if (prodRes.status === "fulfilled") {
+        const prodData = prodRes.value.data;
+        productsList = Array.isArray(prodData)
+          ? prodData
+          : prodData?.data || prodData?.products || [];
+        if (!Array.isArray(productsList)) productsList = [];
+        setExistingProducts(productsList);
+        existingProductsRef.current = productsList;
+      }
+
+      if (whRes.status === "fulfilled") {
+        const whData = whRes.value.data?.data || whRes.value.data || [];
+        const mappedWh = Array.isArray(whData)
+          ? whData.map((w: any) => ({ id: w.id, name: w.name, code: w.code }))
+          : [];
+        setWarehouses(mappedWh);
+        // Auto-select the first active warehouse
+        if (mappedWh.length > 0) {
+          setForm((prev) => ({ ...prev, warehouseId: mappedWh[0].id }));
+        }
+      }
+
+      // suppliers not fetched from a dedicated endpoint yet
       setSuppliers([]);
+
+      // Auto-generate SKU based on existing products
+      const nextSku = generateNextSku(productsList);
+      setForm((prev) => ({ ...prev, sku: nextSku }));
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
@@ -224,6 +292,7 @@ export default function AddProductModal({
       categoryId: "",
       subCategoryId: "",
       supplierId: "",
+      warehouseId: warehouses.length > 0 ? warehouses[0].id : "",
       imageFile: null,
       isDiscountEnabled: false,
       discountType: "PERCENTAGE",
@@ -274,16 +343,19 @@ export default function AddProductModal({
     if (form.isDiscountEnabled) {
       const maxVal = parseFloat(String(form.maxAllowedDiscount));
       if (form.maxAllowedDiscount === "" || isNaN(maxVal) || maxVal < 0) {
-        errs.maxAllowedDiscount = "Maximum allowed discount is required and must be positive";
+        errs.maxAllowedDiscount =
+          "Maximum allowed discount is required and must be positive";
       } else if (form.discountType === "PERCENTAGE" && maxVal > 100) {
         errs.maxAllowedDiscount = "Percentage discount cannot exceed 100%";
       }
       if (form.defaultDiscountValue !== "") {
         const defaultVal = parseFloat(String(form.defaultDiscountValue));
         if (isNaN(defaultVal) || defaultVal < 0) {
-          errs.defaultDiscountValue = "Default discount value must be positive";
+          errs.defaultDiscountValue =
+            "Default discount value must be positive";
         } else if (!isNaN(maxVal) && defaultVal > maxVal) {
-          errs.defaultDiscountValue = "Default discount value cannot exceed the maximum allowed discount";
+          errs.defaultDiscountValue =
+            "Default discount value cannot exceed the maximum allowed discount";
         }
       }
     }
@@ -324,6 +396,11 @@ export default function AddProductModal({
         formData.append("description", form.description.trim());
       if (form.imageFile) formData.append("imageFile", form.imageFile);
 
+      // Backend will create the initial stock entry in this warehouse
+      if (form.warehouseId) {
+        formData.append("warehouseId", form.warehouseId);
+      }
+
       const res = await api.post("/products", formData);
       const newProduct = res.data?.data || res.data;
 
@@ -350,15 +427,12 @@ export default function AddProductModal({
         }
       }
 
+      toastSuccess("Product saved successfully.");
       onSuccess();
       onClose();
     } catch (err: any) {
       console.error("Failed to create product", err);
-      const raw = err?.response?.data?.message;
-      const detail = Array.isArray(raw)
-        ? raw.join("\n")
-        : raw || "Failed to create product. Please try again.";
-      alert(detail);
+      toastError(err, "We couldn't save the product. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -725,6 +799,9 @@ export default function AddProductModal({
                           {errors.sku}
                         </p>
                       )}
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Auto-generated — edit if you need a custom SKU
+                      </p>
                     </Field>
                     <Field label="Barcode">
                       <input
@@ -828,7 +905,7 @@ export default function AddProductModal({
                   </div>
                 </div>
 
-                {/* Product Discount Settings */}
+                {/* Product Discount Settings — Owner/Admin only */}
                 {isOwnerOrAdmin && (
                   <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
                     <SectionHeader
@@ -837,7 +914,7 @@ export default function AddProductModal({
                       sub="Configure maximum allowed discounts for POS"
                       color="rose"
                     />
-                    
+
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -850,7 +927,9 @@ export default function AddProductModal({
                         </div>
                         <button
                           type="button"
-                          onClick={() => set("isDiscountEnabled", !form.isDiscountEnabled)}
+                          onClick={() =>
+                            set("isDiscountEnabled", !form.isDiscountEnabled)
+                          }
                           className={`w-12 h-6 rounded-full transition-all relative flex-shrink-0 ${form.isDiscountEnabled ? "bg-emerald-500" : "bg-gray-300"}`}
                         >
                           <div
@@ -869,8 +948,12 @@ export default function AddProductModal({
                                 onChange={handleChange}
                                 className={selectCls}
                               >
-                                <option value="PERCENTAGE">Percentage (%)</option>
-                                <option value="FIXED_AMOUNT">Fixed Amount (LKR)</option>
+                                <option value="PERCENTAGE">
+                                  Percentage (%)
+                                </option>
+                                <option value="FIXED_AMOUNT">
+                                  Fixed Amount (LKR)
+                                </option>
                               </select>
                               <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
@@ -882,7 +965,11 @@ export default function AddProductModal({
                               type="number"
                               value={form.maxAllowedDiscount}
                               onChange={handleChange}
-                              placeholder={form.discountType === "PERCENTAGE" ? "e.g. 15" : "e.g. 200"}
+                              placeholder={
+                                form.discountType === "PERCENTAGE"
+                                  ? "e.g. 15"
+                                  : "e.g. 200"
+                              }
                               className={`${inputCls} ${errors.maxAllowedDiscount ? "border-red-300 ring-2 ring-red-100" : ""}`}
                               min="0"
                             />
@@ -899,7 +986,11 @@ export default function AddProductModal({
                               type="number"
                               value={form.defaultDiscountValue}
                               onChange={handleChange}
-                              placeholder={form.discountType === "PERCENTAGE" ? "e.g. 5" : "e.g. 50"}
+                              placeholder={
+                                form.discountType === "PERCENTAGE"
+                                  ? "e.g. 5"
+                                  : "e.g. 50"
+                              }
                               className={`${inputCls} ${errors.defaultDiscountValue ? "border-red-300 ring-2 ring-red-100" : ""}`}
                               min="0"
                             />
@@ -1065,6 +1156,52 @@ export default function AddProductModal({
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Warehouse Location */}
+                <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                  <p className="text-[12px] font-black text-gray-500 uppercase tracking-widest mb-1">
+                    Warehouse Location
+                  </p>
+                  <p className="text-[10.5px] text-gray-400 font-medium mb-3">
+                    Initial stock will be stored here
+                  </p>
+                  <div className="relative">
+                    <select
+                      name="warehouseId"
+                      value={form.warehouseId}
+                      onChange={handleChange}
+                      className={`${selectCls} text-[12px] ${!form.warehouseId ? "border-amber-300" : ""}`}
+                    >
+                      <option value="">Select Warehouse</option>
+                      {loading && <option disabled>Loading…</option>}
+                      {warehouses.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                          {w.code ? ` (${w.code})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                  {warehouses.length === 0 && !loading && (
+                    <p className="text-[10.5px] text-amber-600 mt-1.5 font-medium">
+                      ⚠ No warehouses found.{" "}
+                      <span className="font-bold">Add a warehouse first</span>{" "}
+                      to assign stock location.
+                    </p>
+                  )}
+                  {form.warehouseId && (
+                    <p className="text-[10.5px] text-emerald-600 mt-1.5 font-medium">
+                      ✓ Stock will be stored in:{" "}
+                      <span className="font-bold">
+                        {
+                          warehouses.find((w) => w.id === form.warehouseId)
+                            ?.name
+                        }
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Supplier Information */}

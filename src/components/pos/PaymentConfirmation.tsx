@@ -18,7 +18,7 @@ import { useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import api from "@/api/axiosInstance";
-import { toast } from "sonner";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type PaymentConfirmationProps = {
   onBack: () => void;
@@ -31,6 +31,7 @@ type PaymentConfirmationProps = {
     img: string;
     warehouseId?: string;
     branchId?: string;
+    warehouseName?: string;
     discountAmount?: number;
     discountPercentage?: number;
   }[];
@@ -74,13 +75,12 @@ function downloadInvoicePDF({
   });
 
   const itemRows = items
-    .map(
-      (item, i) => {
-        const itemDiscount = item.discountAmount ?? 0;
-        const finalUnitPrice = item.price - itemDiscount;
-        const finalLineTotal = finalUnitPrice * item.qty;
-        
-        return `
+    .map((item, i) => {
+      const itemDiscount = item.discountAmount ?? 0;
+      const finalUnitPrice = item.price - itemDiscount;
+      const finalLineTotal = finalUnitPrice * item.qty;
+
+      return `
     <tr style="border-bottom:1px solid #f0f0f0;">
       <td style="padding:10px 8px;color:#6b7280;font-size:12px;">${i + 1}</td>
       <td style="padding:10px 8px;">
@@ -95,8 +95,7 @@ function downloadInvoicePDF({
       <td style="padding:10px 8px;text-align:right;font-weight:800;color:#111827;font-size:13px;font-family:monospace;">Rs. ${finalLineTotal.toLocaleString()}</td>
     </tr>
   `;
-      }
-    )
+    })
     .join("");
 
   const html = `<!DOCTYPE html>
@@ -275,8 +274,10 @@ function downloadInvoicePDF({
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank");
   if (!win) {
-    toast.error(
-      "Popup blocked. Please allow popups for this site to download the invoice.",
+    toastError(
+      new Error(
+        "Your browser blocked the invoice window. Please allow pop-ups for this site and try again.",
+      ),
     );
   }
   setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -344,14 +345,11 @@ export default function PaymentConfirmation({
       };
       console.log("[POS Checkout] Sending payload:", payload);
       await api.post("/sales/checkout", payload);
+      toastSuccess("Sale completed successfully.");
       onProcess(); // triggers success modal
     } catch (err: any) {
       console.error("[POS Checkout Error]", err?.response?.data || err);
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Checkout failed. Please try again. Check console for details.";
-      toast.error(msg);
+      toastError(err, "We couldn't complete the sale. Please try again.");
     } finally {
       setProcessing(false);
     }
@@ -466,7 +464,7 @@ export default function PaymentConfirmation({
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${item.warehouseId || "no-wh"}`}
                     className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100"
                   >
                     <div className="flex items-center gap-4">
@@ -481,20 +479,27 @@ export default function PaymentConfirmation({
                         <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">
                           {item.name}
                         </h4>
-                        {itemDiscount > 0 ? (
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] font-black text-emerald-600">
-                              Rs. {finalUnitPrice.toLocaleString()}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {itemDiscount > 0 ? (
+                            <>
+                              <span className="text-[11px] font-black text-emerald-600">
+                                Rs. {finalUnitPrice.toLocaleString()}
+                              </span>
+                              <span className="text-[9.5px] font-semibold text-gray-400 line-through">
+                                Rs. {item.price.toLocaleString()}
+                              </span>
+                            </>
+                          ) : (
+                            <p className="text-[11px] font-semibold text-gray-500 uppercase">
+                              Unit Price: Rs. {item.price.toLocaleString()}
+                            </p>
+                          )}
+                          {item.warehouseName && (
+                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {item.warehouseName}
                             </span>
-                            <span className="text-[9.5px] font-semibold text-gray-400 line-through">
-                              Rs. {item.price.toLocaleString()}
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase">
-                            Unit Price: Rs. {item.price.toLocaleString()}
-                          </p>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/api/axiosInstance';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const roleLabel: Record<string, string> = {
@@ -156,9 +157,11 @@ export default function StaffManagementPage() {
     try {
       setApprovingId(staffId);
       await api.post('/staff/approve', { staff_id: staffId, action });
+      toastSuccess(`Staff member ${action === 'approve' ? 'approved' : 'rejected'} successfully.`);
       await fetchAll(); // refresh data
     } catch (err) {
       console.error(`Failed to ${action} staff`, err);
+      toastError(err, `We couldn’t ${action} this staff member. Please try again.`);
     } finally {
       setApprovingId(null);
     }
@@ -170,11 +173,12 @@ export default function StaffManagementPage() {
     try {
       setDeletingStaffId(staffToDelete.id);
       await api.delete(`/staff/${staffToDelete.id}`);
+      toastSuccess('Staff member removed successfully.');
       setStaffToDelete(null);
       await fetchAll();
     } catch (err: any) {
       console.error('Failed to delete staff:', err?.response?.data ?? err?.message);
-      alert(err?.response?.data?.message || 'Failed to delete staff member');
+      toastError(err, 'We couldn’t remove this staff member. Please try again.');
     } finally {
       setDeletingStaffId(null);
     }
@@ -684,6 +688,7 @@ function AddStaffModal({ isOpen, onClose, onSuccess, roles }: { isOpen: boolean;
         shopVerificationCode,
         directCreate: true, 
       });
+      toastSuccess('Staff member added successfully.');
       await onSuccess();
       setFormData({
         name: '',
@@ -700,6 +705,7 @@ function AddStaffModal({ isOpen, onClose, onSuccess, roles }: { isOpen: boolean;
       } else {
         setError(msg || err.message || 'Failed to add staff');
       }
+      toastError(err, 'We couldn’t add the staff member. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -838,10 +844,12 @@ function EditStaffModal({ isOpen, onClose, staff, roles, onSuccess }: { isOpen: 
 
     try {
       await api.put(`/staff/${staff.id}`, formData);
+      toastSuccess('Staff details updated successfully.');
       onSuccess();
       onClose();
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || 'Failed to update staff');
+      toastError(err, 'We couldn’t update the staff details. Please try again.');
     } finally {
       setLoading(false);
     }

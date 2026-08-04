@@ -6,14 +6,37 @@ import {
   Calendar, X, ChevronDown, RefreshCw, TrendingUp, ShoppingBag, Receipt
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useEffect, useCallback, useRef } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import api from '@/api/axiosInstance';
 
-interface SaleRow {
+export interface InvoiceItem {
+  productName?: string;
+  itemName?: string;
+  product?: {
+    name?: string;
+  };
+}
+
+export interface RawInvoicePayload {
+  id?: string;
+  invoiceNumber?: string;
+  createdAt?: string | Date;
+  customer?: { name?: string };
+  customerName?: string;
+  user?: { name?: string };
+  cashierName?: string;
+  staffName?: string;
+  totalAmount?: number | string;
+  amount?: number | string;
+  status?: string;
+  items?: InvoiceItem[];
+}
+
+export interface SaleRow {
   id: string;
   rawId: string;
   invoiceNumber: string;
@@ -89,21 +112,21 @@ export default function SalesReportsPage() {
       else if (Array.isArray(res.data))              items = res.data;
 
       const rows: SaleRow[] = items.map((inv: any) => ({
-        id:           inv.invoiceNumber || inv.id,
-        rawId:        inv.id,
+        id:            inv.invoiceNumber || inv.id,
+        rawId:         inv.id,
         invoiceNumber: inv.invoiceNumber || inv.id,
-        date:         format(new Date(inv.createdAt), 'yyyy-MM-dd'),
-        time:         format(new Date(inv.createdAt), 'hh:mm a'),
-        product:      inv.items?.[0]?.product?.name ?? '—',
-        cashierName:  inv.cashier?.first_name
+        date:          format(new Date(inv.createdAt), 'yyyy-MM-dd'),
+        time:          format(new Date(inv.createdAt), 'hh:mm a'),
+        product:       inv.items?.[0]?.product?.name ?? '—',
+        cashierName:   inv.cashier?.first_name
                         ? `${inv.cashier.first_name} ${inv.cashier.last_name ?? ''}`.trim()
                         : '—',
         customerName: inv.customer?.name || 'Walk-in',
-        amount:       Number(inv.totalAmount || 0),
-        saleType:     inv.saleType || 'CASH',
-        status:       inv.status || 'COMPLETED',
-        taxAmount:    Number(inv.taxAmount || 0),
-        items:        inv.items || [],
+        amount:        Number(inv.totalAmount || 0),
+        saleType:      inv.saleType || 'CASH',
+        status:        inv.status || 'COMPLETED',
+        taxAmount:     Number(inv.taxAmount || 0),
+        items:         inv.items || [],
       }));
 
       // newest-first
@@ -138,7 +161,6 @@ export default function SalesReportsPage() {
   const totalRevenue = sales.reduce((s, r) => s + r.amount, 0);
   const totalItems   = sales.reduce((s, r) => s + (r.items?.length || 1), 0);
   const avgTicket    = sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0;
-  const totalVAT     = sales.reduce((s, r) => s + r.taxAmount, 0);
 
   const dateLabel = dateRange?.from
     ? `${format(dateRange.from, 'MMM d, yyyy')}${dateRange.to ? ` – ${format(dateRange.to, 'MMM d, yyyy')}` : ''}`
