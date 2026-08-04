@@ -26,8 +26,15 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
         address: form.address || undefined, 
         customerType: form.customerType 
       });
-      // Try to pass the newly created customer back to the caller
-      const createdCustomer = response.data?.data || response.data;
+      // Handle nested data objects
+      let createdCustomer = response.data;
+      if (createdCustomer && createdCustomer.data) {
+        createdCustomer = createdCustomer.data;
+        if (createdCustomer.data) {
+          createdCustomer = createdCustomer.data;
+        }
+      }
+      
       toastSuccess('Customer added successfully.');
       onSuccess(createdCustomer);
       onClose();

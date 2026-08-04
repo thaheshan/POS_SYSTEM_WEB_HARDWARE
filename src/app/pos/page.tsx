@@ -302,7 +302,7 @@ export default function POSPage() {
           isDiscountApproved: originalProduct?.isDiscountApproved || item.product?.isDiscountApproved || item.isDiscountApproved || false,
           discountType: originalProduct?.discountType || item.product?.discountType || item.discountType || 'PERCENTAGE',
           maxAllowedDiscount: Number(originalProduct?.maxAllowedDiscount || item.product?.maxAllowedDiscount || item.maxAllowedDiscount || 0),
-          defaultDiscountValue: Number(originalProduct?.defaultDiscountValue || item.defaultDiscountValue || 0),
+          defaultDiscountValue: Number(originalProduct?.defaultDiscountValue || item.product?.defaultDiscountValue || item.defaultDiscountValue || 0),
         };
       });
 
@@ -533,10 +533,10 @@ export default function POSPage() {
           onSuccess={(newCustomer) => {
             if (newCustomer) {
               setSelectedCustomer({
-                id: newCustomer.id,
-                name: newCustomer.name,
-                phone: newCustomer.phone,
-                customerType: newCustomer.customerType
+                id: newCustomer.id || newCustomer.customer_id,
+                name: newCustomer.name || newCustomer.customer_name || 'Walk-in',
+                phone: newCustomer.phone || '',
+                customerType: newCustomer.customerType || newCustomer.customer_type || 'Individual'
               });
             }
           }} 
@@ -580,6 +580,8 @@ export default function POSPage() {
               discount={discountAmount}
               total={total}
               notes={notes}
+              orderDiscountType={discountType}
+              orderDiscountValue={discountValue}
             />
           </div>
         ) : (

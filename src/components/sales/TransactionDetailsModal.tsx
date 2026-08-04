@@ -48,6 +48,8 @@ function downloadInvoicePDF({
     qty: number;
     unitPrice: number;
     total: number;
+    discountAmount?: number;
+    discountPercentage?: number;
   }[];
   subtotal: number;
   discount: number;
@@ -56,19 +58,25 @@ function downloadInvoicePDF({
 }) {
   const itemRows = items
     .map(
-      (item, i) => `
+      (item, i) => {
+        const itemDiscount = item.discountAmount ?? 0;
+        const originalPrice = item.unitPrice + itemDiscount;
+        return `
     <tr style="border-bottom:1px solid #f0f0f0;">
       <td style="padding:10px 8px;color:#6b7280;font-size:12px;">${i + 1}</td>
       <td style="padding:10px 8px;">
         <div style="font-weight:700;color:#111827;font-size:13px;">${item.productName}</div>
         ${item.sku ? `<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:2px;">SKU: ${item.sku}</div>` : ""}
+        ${itemDiscount > 0 ? `<div style="font-size:11px;color:#ef4444;font-weight:500;margin-top:2px;">Discount applied: -Rs. ${itemDiscount.toLocaleString()} ${item.discountPercentage ? `(${item.discountPercentage}%)` : ""}</div>` : ""}
       </td>
       <td style="padding:10px 8px;text-align:center;font-weight:700;color:#111827;font-size:13px;">${item.qty}</td>
-      <td style="padding:10px 8px;text-align:right;color:#374151;font-size:13px;font-family:monospace;">Rs. ${item.unitPrice.toLocaleString()}</td>
+      <td style="padding:10px 8px;text-align:right;color:#374151;font-size:13px;font-family:monospace;">
+        ${itemDiscount > 0 ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:4px;">Rs. ${originalPrice.toLocaleString()}</span>` : ""}
+        Rs. ${item.unitPrice.toLocaleString()}
+      </td>
       <td style="padding:10px 8px;text-align:right;font-weight:800;color:#111827;font-size:13px;font-family:monospace;">Rs. ${item.total.toLocaleString()}</td>
     </tr>
-  `,
-    )
+  `})
     .join("");
 
   const html = `<!DOCTYPE html>
@@ -235,12 +243,18 @@ function normalizeItem(raw: any) {
       0,
   );
 
+  // ── Discounts ────────────────────────────────────────────────────────────
+  const discountAmount = Number(raw.discountAmount ?? raw.discount_amount ?? 0);
+  const discountPercentage = Number(raw.discountPercentage ?? raw.discount_percentage ?? 0);
+
   return {
     productId,
     productName: productName || "Unknown Item",
     sku,
     qty,
     unitPrice,
+    discountAmount,
+    discountPercentage,
     get total() {
       return this.qty * this.unitPrice;
     },
@@ -550,7 +564,7 @@ export default function TransactionDetailsModal({
   const subtotal =
     viewItems.reduce((s, it) => s + it.total, 0) ||
     Number(data?.subtotal ?? data?.totalAmount ?? 0);
-  const discount = Number(data?.discount ?? 0);
+  const discount = Number(data?.discountAmount ?? data?.discount_amount ?? data?.discount ?? 0);
   const tax = Number(data?.tax ?? 0);
   const totalAmount = Number(
     data?.totalAmount ?? data?.amount ?? subtotal - discount + tax,
