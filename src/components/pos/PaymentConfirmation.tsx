@@ -1,16 +1,40 @@
-'use client';
+"use client";
 
-import { CheckCircle2, ArrowLeft, Printer, X, Clock, User, Package, Receipt, CreditCard, Banknote, Smartphone, FileText } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import api from '@/api/axiosInstance';
-import { toastError, toastSuccess } from '@/lib/toast';
+import {
+  CheckCircle2,
+  ArrowLeft,
+  Printer,
+  X,
+  Clock,
+  User,
+  Package,
+  Receipt,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  FileText,
+} from "lucide-react";
+import { useState, useMemo } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+import api from "@/api/axiosInstance";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type PaymentConfirmationProps = {
   onBack: () => void;
   onProcess: () => void;
-  items: { id: string, name: string, price: number, qty: number, img: string, warehouseId?: string, branchId?: string, warehouseName?: string }[];
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    qty: number;
+    img: string;
+    warehouseId?: string;
+    branchId?: string;
+    warehouseName?: string;
+    discountAmount?: number;
+    discountPercentage?: number;
+  }[];
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -26,25 +50,53 @@ type PaymentConfirmationProps = {
 
 // ── PDF Invoice Generator ─────────────────────────────────────────────────────
 function downloadInvoicePDF({
-  items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change,
-  subtotal, discount, total, notes,
-}: Omit<PaymentConfirmationProps, 'onBack' | 'onProcess'>) {
+  items,
+  customerName,
+  customerPhone,
+  customerType,
+  paymentMethod,
+  amountTendered,
+  change,
+  subtotal,
+  discount,
+  total,
+  notes,
+}: Omit<PaymentConfirmationProps, "onBack" | "onProcess">) {
   const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-  const itemRows = items.map((item, i) => `
+  const itemRows = items
+    .map((item, i) => {
+      const itemDiscount = item.discountAmount ?? 0;
+      const finalUnitPrice = item.price - itemDiscount;
+      const finalLineTotal = finalUnitPrice * item.qty;
+
+      return `
     <tr style="border-bottom:1px solid #f0f0f0;">
       <td style="padding:10px 8px;color:#6b7280;font-size:12px;">${i + 1}</td>
       <td style="padding:10px 8px;">
         <div style="font-weight:700;color:#111827;font-size:13px;">${item.name}</div>
+        ${itemDiscount > 0 ? `<div style="font-size:11px;color:#ef4444;font-weight:500;">Discount applied: -Rs. ${itemDiscount.toLocaleString()} (${item.discountPercentage?.toFixed(0)}%)</div>` : ""}
       </td>
       <td style="padding:10px 8px;text-align:center;font-weight:700;color:#111827;font-size:13px;">${item.qty}</td>
-      <td style="padding:10px 8px;text-align:right;color:#374151;font-size:13px;font-family:monospace;">Rs. ${item.price.toLocaleString()}</td>
-      <td style="padding:10px 8px;text-align:right;font-weight:800;color:#111827;font-size:13px;font-family:monospace;">Rs. ${(item.price * item.qty).toLocaleString()}</td>
+      <td style="padding:10px 8px;text-align:right;color:#374151;font-size:13px;font-family:monospace;">
+        ${itemDiscount > 0 ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:4px;">Rs. ${item.price.toLocaleString()}</span>` : ""}
+        Rs. ${finalUnitPrice.toLocaleString()}
+      </td>
+      <td style="padding:10px 8px;text-align:right;font-weight:800;color:#111827;font-size:13px;font-family:monospace;">Rs. ${finalLineTotal.toLocaleString()}</td>
     </tr>
-  `).join('');
+  `;
+    })
+    .join("");
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -140,7 +192,7 @@ function downloadInvoicePDF({
     </div>
     <div class="meta-box">
       <div class="meta-label">Customer</div>
-      <div class="meta-value">${customerName || 'Walk-in Customer'}</div>
+      <div class="meta-value">${customerName || "Walk-in Customer"}</div>
       <div style="font-size:11px;color:#6b7280;margin-top:2px;">${customerPhone || customerType}</div>
     </div>
     <div class="meta-box">
@@ -171,7 +223,7 @@ function downloadInvoicePDF({
         <span>Subtotal</span>
         <span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span>
       </div>
-      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ''}
+      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ""}
       <div class="grand-total">
         <span>Grand Total</span>
         <span>Rs. ${total.toLocaleString()}</span>
@@ -192,15 +244,19 @@ function downloadInvoicePDF({
     </div>
     <div class="payment-box">
       <div class="meta-label">Total Items</div>
-      <div class="meta-value">${items.length} item${items.length !== 1 ? 's' : ''}</div>
+      <div class="meta-value">${items.length} item${items.length !== 1 ? "s" : ""}</div>
     </div>
   </div>
 
-  ${notes && notes !== 'No special instructions provided.' ? `
+  ${
+    notes && notes !== "No special instructions provided."
+      ? `
   <div class="notes-box">
     <div class="meta-label">Special Instructions</div>
     <div class="notes-text">${notes}</div>
-  </div>` : ''}
+  </div>`
+      : ""
+  }
 
   <!-- Footer -->
   <div class="footer">
@@ -214,20 +270,24 @@ function downloadInvoicePDF({
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
   if (!win) {
-    toastError(new Error('Your browser blocked the invoice window. Please allow pop-ups for this site and try again.'));
+    toastError(
+      new Error(
+        "Your browser blocked the invoice window. Please allow pop-ups for this site and try again.",
+      ),
+    );
   }
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function PaymentConfirmation({ 
-  onBack, 
-  onProcess, 
+export default function PaymentConfirmation({
+  onBack,
+  onProcess,
   items,
   customerId,
   customerName,
@@ -236,24 +296,29 @@ export default function PaymentConfirmation({
   paymentMethod,
   amountTendered,
   change,
-  subtotal, 
+  subtotal,
   discount,
   total,
-  notes
+  notes,
 }: PaymentConfirmationProps) {
   const [processing, setProcessing] = useState(false);
 
   // Live cashier info from Redux auth state
   const authUser = useSelector((state: RootState) => state.auth?.user as any);
-  const cashierName = authUser?.name || authUser?.fullName || authUser?.username || authUser?.email || 'Cashier';
-  const tillNumber  = authUser?.tillNumber || authUser?.till || 'Till #1';
+  const cashierName =
+    authUser?.name ||
+    authUser?.fullName ||
+    authUser?.username ||
+    authUser?.email ||
+    "Cashier";
+  const tillNumber = authUser?.tillNumber || authUser?.till || "Till #1";
 
   // Stable invoice reference for this session (regenerates only on mount)
   const invoiceRef = useMemo(() => {
     const now = new Date();
-    const yy  = now.getFullYear().toString().slice(-2);
-    const mm  = String(now.getMonth() + 1).padStart(2, '0');
-    const dd  = String(now.getDate()).padStart(2, '0');
+    const yy = now.getFullYear().toString().slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
     const seq = String(Math.floor(Math.random() * 9000) + 1000);
     return `INV-${yy}${mm}${dd}-${seq}`;
   }, []);
@@ -265,7 +330,7 @@ export default function PaymentConfirmation({
         items: items.map((item) => ({
           productId: item.id,
           quantity: item.qty,
-          unitPrice: item.price,
+          unitPrice: item.price - (item.discountAmount ?? 0),
           warehouseId: item.warehouseId,
           branchId: item.branchId,
         })),
@@ -278,13 +343,13 @@ export default function PaymentConfirmation({
         notes,
         customerId,
       };
-      console.log('[POS Checkout] Sending payload:', payload);
-      await api.post('/sales/checkout', payload);
-      toastSuccess('Sale completed successfully.');
+      console.log("[POS Checkout] Sending payload:", payload);
+      await api.post("/sales/checkout", payload);
+      toastSuccess("Sale completed successfully.");
       onProcess(); // triggers success modal
     } catch (err: any) {
-      console.error('[POS Checkout Error]', err?.response?.data || err);
-      toastError(err, 'We couldn’t complete the sale. Please try again.');
+      console.error("[POS Checkout Error]", err?.response?.data || err);
+      toastError(err, "We couldn't complete the sale. Please try again.");
     } finally {
       setProcessing(false);
     }
@@ -294,10 +359,9 @@ export default function PaymentConfirmation({
     <div className="flex-1 bg-white flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
       {/* LEFT COLUMN: Details */}
       <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-10 bg-gray-50/30">
-        
         {/* Header */}
         <div className="flex items-start gap-4 sm:gap-6 mb-8 lg:mb-10">
-          <button 
+          <button
             onClick={onBack}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-[13px] hover:bg-gray-50 transition-colors shadow-sm shrink-0"
           >
@@ -309,18 +373,21 @@ export default function PaymentConfirmation({
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Confirm Payment</h1>
-                <p className="text-[13px] font-medium text-gray-500 mt-1">Review and confirm payment details</p>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  Confirm Payment
+                </h1>
+                <p className="text-[13px] font-medium text-gray-500 mt-1">
+                  Review and confirm payment details
+                </p>
               </div>
             </div>
             <p className="text-[12px] font-medium text-gray-400 mt-4 flex items-center gap-1.5 sm:ml-14">
-               <Clock className="w-3.5 h-3.5" /> Estimated time: 2-3 min
+              <Clock className="w-3.5 h-3.5" /> Estimated time: 2-3 min
             </p>
           </div>
         </div>
 
         <div className="space-y-6 max-w-3xl sm:ml-14">
-          
           {/* Customer Info */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 border-b border-gray-50 pb-4">
@@ -330,24 +397,48 @@ export default function PaymentConfirmation({
                 </span>
                 Customer Information
               </h3>
-              <button 
-                onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, total, notes })}
+              <button
+                onClick={() =>
+                  downloadInvoicePDF({
+                    items,
+                    customerName,
+                    customerPhone,
+                    customerType,
+                    paymentMethod,
+                    amountTendered,
+                    change,
+                    subtotal,
+                    discount,
+                    total,
+                    notes,
+                  })
+                }
                 className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#059669] text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm self-start sm:self-auto"
               >
-                  <Printer className="w-3.5 h-3.5" /> Print Receipt
+                <Printer className="w-3.5 h-3.5" /> Print Receipt
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Name / ID</p>
-                <p className="text-[14px] font-bold text-gray-900">{customerName || 'Walk-in Customer'}</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+                  Name / ID
+                </p>
+                <p className="text-[14px] font-bold text-gray-900">
+                  {customerName || "Walk-in Customer"}
+                </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Phone</p>
-                <p className="text-[14px] font-bold text-gray-900">{customerPhone || 'N/A'}</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+                  Phone
+                </p>
+                <p className="text-[14px] font-bold text-gray-900">
+                  {customerPhone || "N/A"}
+                </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Type</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+                  Type
+                </p>
                 <div>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
                     {customerType}
@@ -366,16 +457,43 @@ export default function PaymentConfirmation({
               Items Summary
             </h3>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-              {items.map((item) => (
-                <div key={`${item.id}-${item.warehouseId || 'no-wh'}`} className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100">
-                  <div className="flex items-center gap-4">
+              {items.map((item) => {
+                const itemDiscount = item.discountAmount ?? 0;
+                const finalUnitPrice = item.price - itemDiscount;
+                const finalLineTotal = finalUnitPrice * item.qty;
+
+                return (
+                  <div
+                    key={`${item.id}-${item.warehouseId || "no-wh"}`}
+                    className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100"
+                  >
+                    <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                        <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+                        <img
+                          src={item.img}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div>
-                        <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">{item.name}</h4>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase">Unit Price: Rs. {item.price.toLocaleString()}</p>
+                        <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">
+                          {item.name}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {itemDiscount > 0 ? (
+                            <>
+                              <span className="text-[11px] font-black text-emerald-600">
+                                Rs. {finalUnitPrice.toLocaleString()}
+                              </span>
+                              <span className="text-[9.5px] font-semibold text-gray-400 line-through">
+                                Rs. {item.price.toLocaleString()}
+                              </span>
+                            </>
+                          ) : (
+                            <p className="text-[11px] font-semibold text-gray-500 uppercase">
+                              Unit Price: Rs. {item.price.toLocaleString()}
+                            </p>
+                          )}
                           {item.warehouseName && (
                             <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
                               {item.warehouseName}
@@ -383,16 +501,22 @@ export default function PaymentConfirmation({
                           )}
                         </div>
                       </div>
+                    </div>
+                    <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">
+                      <p className="text-[12px] font-bold text-gray-500">
+                        Qty: {item.qty}
+                      </p>
+                      <p className="text-[14px] font-black text-gray-900">
+                        Rs. {finalLineTotal.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">
-                      <p className="text-[12px] font-bold text-gray-500">Qty: {item.qty}</p>
-                      <p className="text-[14px] font-black text-gray-900">Rs. {(item.price * item.qty).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4 text-[13px] font-semibold text-gray-500">
-               Total Items: <span className="font-bold text-gray-900">{items.length}</span>
+              Total Items:{" "}
+              <span className="font-bold text-gray-900">{items.length}</span>
             </div>
           </div>
 
@@ -415,8 +539,12 @@ export default function PaymentConfirmation({
               </div>
             </div>
             <div className="flex justify-between items-center pt-4">
-               <span className="text-[15px] font-black text-gray-900">Grand Total</span>
-               <span className="text-[18px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
+              <span className="text-[15px] font-black text-gray-900">
+                Grand Total
+              </span>
+              <span className="text-[18px] font-black text-[#059669]">
+                Rs. {total.toLocaleString()}
+              </span>
             </div>
           </div>
 
@@ -432,7 +560,14 @@ export default function PaymentConfirmation({
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
                 <span>Payment Method</span>
                 <span className="flex items-center gap-1.5 text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 capitalize">
-                   {paymentMethod === 'cash' ? <Banknote className="w-3.5 h-3.5" /> : paymentMethod === 'card' ? <CreditCard className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />} {paymentMethod}
+                  {paymentMethod === "cash" ? (
+                    <Banknote className="w-3.5 h-3.5" />
+                  ) : paymentMethod === "card" ? (
+                    <CreditCard className="w-3.5 h-3.5" />
+                  ) : (
+                    <Smartphone className="w-3.5 h-3.5" />
+                  )}{" "}
+                  {paymentMethod}
                 </span>
               </div>
               <div className="flex justify-between text-[13px] font-bold text-gray-600">
@@ -441,71 +576,101 @@ export default function PaymentConfirmation({
               </div>
             </div>
             <div className="flex justify-between items-center pt-4">
-               <span className="text-[15px] font-black text-gray-900">Change</span>
-               <span className="text-[16px] font-black text-[#059669]">Rs. {change.toLocaleString()}</span>
+              <span className="text-[15px] font-black text-gray-900">
+                Change
+              </span>
+              <span className="text-[16px] font-black text-[#059669]">
+                Rs. {change.toLocaleString()}
+              </span>
             </div>
           </div>
 
           {/* Ready to Process Status */}
           <div className="bg-[#059669] rounded-2xl p-5 flex items-center gap-4 text-white shadow-md">
-             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
-               <CheckCircle2 className="w-6 h-6 text-[#059669]" />
-             </div>
-             <div>
-                <h4 className="text-[15px] font-black tracking-tight">Ready to Process Payment</h4>
-                <p className="text-[13px] font-medium text-white/80 mt-0.5">All details verified and ready for processing</p>
-             </div>
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-6 h-6 text-[#059669]" />
+            </div>
+            <div>
+              <h4 className="text-[15px] font-black tracking-tight">
+                Ready to Process Payment
+              </h4>
+              <p className="text-[13px] font-medium text-white/80 mt-0.5">
+                All details verified and ready for processing
+              </p>
+            </div>
           </div>
 
           {/* Special Instructions */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-             <h3 className="text-[13px] font-black tracking-tight text-gray-900 mb-3 flex items-center gap-2">
-               <FileText className="w-4 h-4 text-[#059669]" /> Special Instructions <span className="text-[11px] font-normal text-gray-400 ml-1">(Optional)</span>
-             </h3>
-             <textarea 
-               rows={2} 
-               value={notes || "No special instructions provided."} 
-               className="w-full text-[13px] text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-4 outline-none resize-none bg-transparent"
-               readOnly
+            <h3 className="text-[13px] font-black tracking-tight text-gray-900 mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#059669]" /> Special
+              Instructions{" "}
+              <span className="text-[11px] font-normal text-gray-400 ml-1">
+                (Optional)
+              </span>
+            </h3>
+            <textarea
+              rows={2}
+              value={notes || "No special instructions provided."}
+              className="w-full text-[13px] text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-4 outline-none resize-none bg-transparent"
+              readOnly
             />
           </div>
-
         </div>
       </div>
 
       {/* RIGHT COLUMN: Transaction Summary Panel */}
       <div className="w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col p-6 shadow-xl relative z-10 shrink-0">
-        
         <div className="bg-[#059669] rounded-2xl p-6 text-white shadow-md mb-6 mt-4 lg:mb-auto lg:mt-6">
-           <h3 className="text-[15px] font-black tracking-tight mb-6">Transaction Summary</h3>
-           <div className="space-y-4 mb-6 text-[12px] font-bold text-emerald-100">
-             <div className="flex justify-between">
-                <span>Invoice Ref.</span>
-                <span className="text-white font-mono text-[11px]">{invoiceRef}</span>
-             </div>
-             <div className="flex justify-between">
-                <span>Cashier</span>
-                <span className="text-white">{cashierName}</span>
-             </div>
-             <div className="flex justify-between">
-                <span>Payment Method</span>
-                <span className="text-white capitalize">{paymentMethod}</span>
-             </div>
-             <div className="flex justify-between">
-                <span>Total Items</span>
-                <span className="text-white">{items.length}</span>
-             </div>
-           </div>
-           
-           <div className="pt-4 border-t border-emerald-500 flex items-center justify-between">
-              <span className="text-[14px] font-black">Amount Due</span>
-              <span className="text-[20px] font-black">Rs. {total.toLocaleString()}</span>
-           </div>
+          <h3 className="text-[15px] font-black tracking-tight mb-6">
+            Transaction Summary
+          </h3>
+          <div className="space-y-4 mb-6 text-[12px] font-bold text-emerald-100">
+            <div className="flex justify-between">
+              <span>Invoice Ref.</span>
+              <span className="text-white font-mono text-[11px]">
+                {invoiceRef}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Cashier</span>
+              <span className="text-white">{cashierName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Payment Method</span>
+              <span className="text-white capitalize">{paymentMethod}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total Items</span>
+              <span className="text-white">{items.length}</span>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-emerald-500 flex items-center justify-between">
+            <span className="text-[14px] font-black">Amount Due</span>
+            <span className="text-[20px] font-black">
+              Rs. {total.toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {/* Download Invoice */}
         <button
-          onClick={() => downloadInvoicePDF({ items, customerName, customerPhone, customerType, paymentMethod, amountTendered, change, subtotal, discount, total, notes })}
+          onClick={() =>
+            downloadInvoicePDF({
+              items,
+              customerName,
+              customerPhone,
+              customerType,
+              paymentMethod,
+              amountTendered,
+              change,
+              subtotal,
+              discount,
+              total,
+              notes,
+            })
+          }
           className="mt-4 w-full h-11 border border-[#059669] text-[#059669] font-bold text-[13px] rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
         >
           <Printer className="w-4 h-4" /> Download Invoice PDF
@@ -513,22 +678,26 @@ export default function PaymentConfirmation({
 
         {/* Action Footer */}
         <div className="pt-4 mt-4 border-t border-gray-100 flex items-center gap-3">
-           <button 
-             onClick={onBack}
-             className="flex-1 h-14 px-3 border border-red-200 text-red-500 font-bold text-[12px] leading-tight rounded-xl hover:bg-red-50 transition-colors bg-white flex items-center justify-center gap-2"
-           >
-             <X className="w-5 h-5 shrink-0" strokeWidth={2.5} />
-             <span className="text-left">Cancel<br/>Transaction</span>
-           </button>
-           <button 
-             onClick={handleProcess}
-             disabled={processing}
-             className="flex-[1.5] h-14 bg-[#059669] hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
-           >
-             <CheckCircle2 className="w-5 h-5" /> {processing ? 'Processing...' : 'Process Payment'}
-           </button>
+          <button
+            onClick={onBack}
+            className="flex-1 h-14 px-3 border border-red-200 text-red-500 font-bold text-[12px] leading-tight rounded-xl hover:bg-red-50 transition-colors bg-white flex items-center justify-center gap-2"
+          >
+            <X className="w-5 h-5 shrink-0" strokeWidth={2.5} />
+            <span className="text-left">
+              Cancel
+              <br />
+              Transaction
+            </span>
+          </button>
+          <button
+            onClick={handleProcess}
+            disabled={processing}
+            className="flex-[1.5] h-14 bg-[#059669] hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+          >
+            <CheckCircle2 className="w-5 h-5" />{" "}
+            {processing ? "Processing..." : "Process Payment"}
+          </button>
         </div>
-
       </div>
     </div>
   );

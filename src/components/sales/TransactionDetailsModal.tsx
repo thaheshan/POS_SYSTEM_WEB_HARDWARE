@@ -32,6 +32,7 @@ function downloadInvoicePDF({
   items,
   subtotal,
   discount,
+  tax,
   totalAmount,
 }: {
   invoiceNo: string;
@@ -50,6 +51,7 @@ function downloadInvoicePDF({
   }[];
   subtotal: number;
   discount: number;
+  tax: number;
   totalAmount: number;
 }) {
   const itemRows = items
@@ -101,6 +103,7 @@ function downloadInvoicePDF({
     .total-row { display:flex; justify-content:space-between; padding:7px 0; font-size:13px; font-weight:600; color:#374151; border-bottom:1px solid #f3f4f6; }
     .total-row:last-child { border-bottom:none; }
     .total-row.discount { color:#ef4444; }
+    .total-row.tax { color:#059669; }
     .grand-total { display:flex; justify-content:space-between; align-items:center; background:#2563eb; color:#fff; padding:14px 16px; border-radius:12px; margin-top:10px; }
     .grand-total span:first-child { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
     .grand-total span:last-child  { font-size:20px; font-weight:900; font-family:monospace; }
@@ -144,6 +147,7 @@ function downloadInvoicePDF({
     <div class="totals-box">
       <div class="total-row"><span>Subtotal</span><span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span></div>
       ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ""}
+      ${tax > 0 ? `<div class="total-row tax"><span>Tax</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ""}
       <div class="grand-total"><span>Total Amount</span><span>Rs. ${totalAmount.toLocaleString()}</span></div>
     </div>
   </div>
@@ -547,8 +551,9 @@ export default function TransactionDetailsModal({
     viewItems.reduce((s, it) => s + it.total, 0) ||
     Number(data?.subtotal ?? data?.totalAmount ?? 0);
   const discount = Number(data?.discount ?? 0);
+  const tax = Number(data?.tax ?? 0);
   const totalAmount = Number(
-    data?.totalAmount ?? data?.amount ?? subtotal - discount,
+    data?.totalAmount ?? data?.amount ?? subtotal - discount + tax,
   );
 
   const payStatus = data?.paymentStatus || data?.status || "Completed";
@@ -633,6 +638,7 @@ export default function TransactionDetailsModal({
                         items: viewItems,
                         subtotal,
                         discount,
+                        tax,
                         totalAmount,
                       })
                     }
@@ -820,6 +826,16 @@ export default function TransactionDetailsModal({
                           </span>
                           <span className="font-mono text-[14px]">
                             −Rs. {discount.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      {tax > 0 && (
+                        <div className="flex justify-between text-[12px] font-bold text-emerald-500">
+                          <span className="uppercase tracking-widest text-[9px]">
+                            Tax
+                          </span>
+                          <span className="font-mono text-[14px]">
+                            +Rs. {tax.toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -1133,6 +1149,7 @@ export default function TransactionDetailsModal({
                   items: viewItems,
                   subtotal,
                   discount,
+                  tax,
                   totalAmount,
                 })
               }
@@ -1153,6 +1170,7 @@ export default function TransactionDetailsModal({
                   items: viewItems,
                   subtotal,
                   discount,
+                  tax,
                   totalAmount,
                 })
               }
