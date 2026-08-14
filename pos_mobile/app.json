@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Hardware POS Mobile",
+    "slug": "pos-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1e40af"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.futurasolutions.posmobile"
+    },
+    "android": {
+      "package": "com.futurasolutions.posmobile"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "posmobile"
+  }
+}
