@@ -1,27 +1,62 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, ShoppingCart, Package, Users } from 'lucide-react-native';
+import { View, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Boxes,
+  Users,
+} from 'lucide-react-native';
+
+function TabBarBackground() {
+  return (
+    <LinearGradient
+      colors={['#1E429F', '#1A56DB']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={StyleSheet.absoluteFill}
+    />
+  );
+}
 
 export default function AppLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: true,
-        headerStyle: { backgroundColor: '#1e40af' },
+        headerStyle: {
+          backgroundColor: '#1E429F',
+        },
+        headerTitleStyle: {
+          fontWeight: '900',
+          fontSize: 17,
+          color: '#ffffff',
+          letterSpacing: 0.3,
+        },
         headerTintColor: '#ffffff',
-        headerTitleStyle: { fontWeight: '900', fontSize: 18 },
-        tabBarActiveTintColor: '#1e40af',
-        tabBarInactiveTintColor: '#94a3b8',
+        tabBarActiveTintColor: '#ffffff',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#e2e8f0',
-          height: 60,
+          height: 64,
           paddingBottom: 8,
           paddingTop: 8,
+          borderTopWidth: 0,
+          elevation: 20,
+          shadowColor: '#1E429F',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
         },
+        tabBarBackground: () => <TabBarBackground />,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '700',
+          letterSpacing: 0.3,
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
         },
       }}
     >
@@ -29,28 +64,40 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} />,
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <LayoutDashboard size={size - 1} color={color} strokeWidth={2} />
+          ),
         }}
       />
       <Tabs.Screen
         name="pos"
         options={{
-          title: 'POS Checkout',
-          tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} />,
+          title: 'Point of Sale',
+          tabBarLabel: 'POS',
+          tabBarIcon: ({ color, size }) => (
+            <ShoppingCart size={size - 1} color={color} strokeWidth={2} />
+          ),
         }}
       />
       <Tabs.Screen
         name="inventory"
         options={{
           title: 'Inventory',
-          tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
+          tabBarLabel: 'Inventory',
+          tabBarIcon: ({ color, size }) => (
+            <Boxes size={size - 1} color={color} strokeWidth={2} />
+          ),
         }}
       />
       <Tabs.Screen
         name="customers"
         options={{
           title: 'Customers',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          tabBarLabel: 'Customers',
+          tabBarIcon: ({ color, size }) => (
+            <Users size={size - 1} color={color} strokeWidth={2} />
+          ),
         }}
       />
     </Tabs>

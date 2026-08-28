@@ -7,7 +7,7 @@ import { setCredentials, setLoading } from '../src/store/slices/authSlice';
 import { TOKEN_KEY } from '../src/api/axiosInstance';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 function NavigationStack() {
   const { isAuthenticated, isLoading } = useSelector((state: RootState) => state.auth);
@@ -36,9 +36,10 @@ function NavigationStack() {
   useEffect(() => {
     if (isLoading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!isAuthenticated && !inAuthGroup) {
+    const onSplash = segments[0] === 'splash';
+    if (!isAuthenticated && !inAuthGroup && !onSplash) {
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
+    } else if (isAuthenticated && (inAuthGroup || onSplash)) {
       router.replace('/(app)');
     }
   }, [isAuthenticated, isLoading, segments]);
@@ -46,13 +47,14 @@ function NavigationStack() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1e40af" />
+        <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
   }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="splash" />
       <Stack.Screen name="(auth)/login" />
       <Stack.Screen name="(app)" />
     </Stack>
@@ -63,7 +65,7 @@ export default function RootLayout() {
   return (
     <Provider store={store}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style="light" backgroundColor="#1E429F" />
         <NavigationStack />
       </SafeAreaProvider>
     </Provider>
@@ -73,7 +75,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1e40af',
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
   },
