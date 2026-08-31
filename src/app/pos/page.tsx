@@ -519,20 +519,22 @@ export default function POSPage() {
   // Hardware Barcode Scanner Listener
   useBarcodeScanner({
     onScan: (scannedCode) => {
+      const code = scannedCode.trim().toLowerCase();
       const found = productsList.find(
         (p) =>
-          p.sku.toLowerCase() === scannedCode.toLowerCase() ||
-          p.name.toLowerCase().includes(scannedCode.toLowerCase())
+          p.barcode?.toLowerCase() === code ||
+          p.sku?.toLowerCase() === code ||
+          p.name?.toLowerCase().includes(code)
       );
       if (found) {
         if (found.stock <= 0) {
           toast.error(`Scanned item "${found.name}" is out of stock!`);
         } else {
-          addToCartWithQty(found, 1);
-          toast.success(`Scanned: ${found.name}`);
+          setPendingProduct(found);
+          toast.success(`Scanned: ${found.name}. Enter quantity.`);
         }
       } else {
-        toast.error(`Barcode '${scannedCode}' not found in inventory.`);
+        toast.error(`Barcode / SKU '${scannedCode}' not found in inventory.`);
       }
     },
     enabled: viewState === 'pos',

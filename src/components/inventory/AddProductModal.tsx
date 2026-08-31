@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ImageOptionsModal from "./ImageOptionsModal";
 import CameraCaptureModal from "./CameraCaptureModal";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { printBarcodeLabels } from "@/utils/barcodePrintUtility";
 
 interface Product {
   sku?: string;
@@ -47,6 +48,26 @@ const generateNextSku = (products: Product[]): string => {
   const nextNum = maxNum + 1;
   const paddedNum = String(nextNum).padStart(3, "0");
   return `SKU_${paddedNum}`;
+};
+
+const generateNextBarcode = (products: Product[]): string => {
+  const barcodePattern = /^200000(\d{6})$/;
+  let maxNum = 0;
+
+  products.forEach((p) => {
+    if (p.barcode && typeof p.barcode === "string") {
+      const match = p.barcode.trim().match(barcodePattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+
+  const nextNum = maxNum + 1;
+  return `200000${String(nextNum).padStart(6, "0")}`;
 };
 
 interface AddProductModalProps {
@@ -194,6 +215,10 @@ export default function AddProductModal({
     discountType: "PERCENTAGE" as "PERCENTAGE" | "FIXED_AMOUNT",
     maxAllowedDiscount: "" as number | "",
     defaultDiscountValue: "" as number | "",
+    // Barcode Printing Configuration
+    autoPrintBarcode: false,
+    barcodePrintSize: "2.0x1.0" as '2.0x1.0' | '1.5x1.0' | '1.25x1.0' | '1.0x0.5',
+    barcodePrintQty: "1",
   });
 
   /* ─── Derived ─── */
@@ -261,9 +286,10 @@ export default function AddProductModal({
       // suppliers not fetched from a dedicated endpoint yet
       setSuppliers([]);
 
-      // Auto-generate SKU based on existing products
+      // Auto-generate SKU & Barcode based on existing products
       const nextSku = generateNextSku(productsList);
-      setForm((prev) => ({ ...prev, sku: nextSku }));
+      const nextBarcode = generateNextBarcode(productsList);
+      setForm((prev) => ({ ...prev, sku: nextSku, barcode: nextBarcode }));
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
@@ -298,6 +324,9 @@ export default function AddProductModal({
       discountType: "PERCENTAGE",
       maxAllowedDiscount: "",
       defaultDiscountValue: "",
+      autoPrintBarcode: false,
+      barcodePrintSize: "2.0x1.0",
+      barcodePrintQty: "1",
     });
     setPreviewUrl(null);
     setErrors({});
@@ -395,6 +424,9 @@ export default function AddProductModal({
       if (form.description?.trim())
         formData.append("description", form.description.trim());
       if (form.imageFile) formData.append("imageFile", form.imageFile);
+      if (form.barcode?.trim()) {
+        formData.append("barcode", form.barcode.trim());
+      }
 
       // Backend will create the initial stock entry in this warehouse
       if (form.warehouseId) {
@@ -428,6 +460,17 @@ export default function AddProductModal({
       }
 
       toastSuccess("Product saved successfully.");
+
+      if (form.autoPrintBarcode) {
+        printBarcodeLabels({
+          productName: newProduct?.name || form.name,
+          barcode: newProduct?.barcode || form.barcode,
+          price: newProduct?.sellingPrice || form.sellingPrice,
+          size: form.barcodePrintSize,
+          quantity: parseInt(form.barcodePrintQty) || 1,
+        });
+      }
+
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -811,7 +854,69 @@ export default function AddProductModal({
                         placeholder="UPC, EAN, ISBN or custom barcode"
                         className={inputCls}
                       />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Auto-generated — starts with '200' for local store use
+                      </p>
                     </Field>
+                  </div>
+
+                  {/* Dynamic Barcode Thermal Label Generator UI */}
+                  <div className="mb-5 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[13px] font-bold text-gray-800">
+                          Print Barcode Label on Save
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          Automatically spool barcode labels to thermal printer
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => set("autoPrintBarcode", !form.autoPrintBarcode)}
+                        className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none ${
+                          form.autoPrintBarcode ? "bg-emerald-600" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full shadow transition-transform duration-200 ${
+                            form.autoPrintBarcode ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {form.autoPrintBarcode && (
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-emerald-100/50">
+                        <Field label="Label Dimensions (Inches)">
+                          <div className="relative">
+                            <select
+                              name="barcodePrintSize"
+                              value={form.barcodePrintSize}
+                              onChange={handleChange}
+                              className={inputCls}
+                            >
+                              <option value="2.0x1.0">2.0" × 1.0" (Standard)</option>
+                              <option value="1.5x1.0">1.5" × 1.0" (Compact)</option>
+                              <option value="1.25x1.0">1.25" × 1.0" (Mini)</option>
+                              <option value="1.0x0.5">1.0" × 0.5" (Micro)</option>
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+                        </Field>
+                        <Field label="Print Quantity">
+                          <input
+                            type="number"
+                            name="barcodePrintQty"
+                            min="1"
+                            value={form.barcodePrintQty}
+                            onChange={handleChange}
+                            placeholder="1"
+                            className={inputCls}
+                          />
+                        </Field>
+                      </div>
+                    )}
                   </div>
 
                   {/* Track inventory toggle */}
