@@ -7,6 +7,7 @@ type ApiError = {
 };
 
 export const toastSuccess = (message: string) => toast.success(message);
+export const toastInfo = (message: string) => toast(message, { icon: 'ℹ️' });
 
 export const getErrorMessage = (
   error: unknown,

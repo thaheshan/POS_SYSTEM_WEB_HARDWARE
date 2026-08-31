@@ -295,6 +295,13 @@ function CartSidebar({ visible, onClose, products }: any) {
                     <CreditCard size={16} color={paymentMethod === 'card' ? '#fff' : '#374151'} />
                     <Text style={[styles.paymentBtnText, paymentMethod === 'card' && styles.paymentBtnTextWhite]}>Card</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.paymentBtn, paymentMethod === 'credit' && styles.paymentBtnActive]}
+                    onPress={() => dispatch(setPaymentMethod('CREDIT'))}
+                  >
+                    <CreditCard size={16} color={paymentMethod === 'credit' ? '#fff' : '#374151'} />
+                    <Text style={[styles.paymentBtnText, paymentMethod === 'credit' && styles.paymentBtnTextWhite]}>Credit</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {paymentMethod === 'cash' && (
