@@ -77,7 +77,22 @@ function downloadInvoicePDF({
   discount,
   total,
   notes,
-}: Omit<PaymentConfirmationProps, "onBack" | "onProcess"> & { storeName?: string }) {
+}: {
+  storeName?: string;
+  items: PaymentConfirmationProps["items"];
+  customerName?: string;
+  customerPhone?: string;
+  customerType: string;
+  paymentMethod: string;
+  amountTendered: number;
+  change: number;
+  subtotal: number;
+  discount: number;
+  total: number;
+  notes?: string;
+  orderDiscountType?: "percentage" | "fixed";
+  orderDiscountValue?: number;
+}) {
   const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", {
