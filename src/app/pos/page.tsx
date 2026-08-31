@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import {
   Minus, Plus, X, ChevronDown, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
-  Smartphone, ShoppingCart, Users,
+  Smartphone, ShoppingCart, Users, Zap, Scan,
 } from 'lucide-react';
 import Link from 'next/link';
 import PaymentConfirmation from '@/components/pos/PaymentConfirmation';
@@ -16,6 +16,8 @@ import api from '@/api/axiosInstance';
 import AddCategoryModal from '@/components/pos/AddCategoryModal';
 import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
+import { useBarcodeScanner, openCashDrawer } from '@/utils/hardwareIntegration';
+
 
 type CartItem = {
   id: string;
@@ -365,17 +367,18 @@ export default function POSPage() {
   const [selectedCartItemForDiscount, setSelectedCartItemForDiscount] = useState<CartItem | null>(null);
   const [isLabourModalOpen, setIsLabourModalOpen] = useState(false);
 
-  // Checkout/sidebar state
+  // Hardware & Checkout/sidebar state
   const [activeTab, setActiveTab] = useState<'items' | 'checkout'>('items');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerMin | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'credit'>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [notes, setNotes] = useState('');
   const [heldOrders, setHeldOrders] = useState<CartItem[][]>([]);
+
 
   // ── Cart helpers
   const handleApplyItemDiscount = (itemId: string, val: number, type: 'PERCENTAGE' | 'FIXED_AMOUNT') => {
@@ -513,6 +516,29 @@ export default function POSPage() {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, [activeTab]);
 
+  // Hardware Barcode Scanner Listener
+  useBarcodeScanner({
+    onScan: (scannedCode) => {
+      const found = productsList.find(
+        (p) =>
+          p.sku.toLowerCase() === scannedCode.toLowerCase() ||
+          p.name.toLowerCase().includes(scannedCode.toLowerCase())
+      );
+      if (found) {
+        if (found.stock <= 0) {
+          toast.error(`Scanned item "${found.name}" is out of stock!`);
+        } else {
+          addToCartWithQty(found, 1);
+          toast.success(`Scanned: ${found.name}`);
+        }
+      } else {
+        toast.error(`Barcode '${scannedCode}' not found in inventory.`);
+      }
+    },
+    enabled: viewState === 'pos',
+  });
+
+
   return (
     <>
       <AddLabourModal
@@ -569,6 +595,9 @@ export default function POSPage() {
                 }, 2000);
               }}
               items={cart}
+              selectedCustomer={selectedCustomer}
+              onSelectCustomer={setSelectedCustomer}
+              onAddNewCustomer={() => setIsCustomerModalOpen(true)}
               customerId={selectedCustomer?.id}
               customerName={selectedCustomer?.name}
               customerPhone={selectedCustomer?.phone}

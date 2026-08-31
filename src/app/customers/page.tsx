@@ -25,6 +25,7 @@ import {
   FileDown,
   MoreVertical,
   Edit3,
+  MessageSquare,
 } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import * as Popover from '@radix-ui/react-popover';
@@ -32,6 +33,9 @@ import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
+import { triggerBatchCreditReminders } from '@/utils/textlkSmsService';
+import { toastInfo, toastSuccess } from '@/lib/toast';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Customer {
@@ -444,6 +448,16 @@ export default function CustomersPage() {
               </Popover.Portal>
             </Popover.Root>
 
+            <button
+              onClick={async () => {
+                toastInfo("Dispatching TEXT.LK credit reminders...");
+                const res = await triggerBatchCreditReminders();
+                toastSuccess(res.message);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white rounded-xl text-[13px] font-black shadow-lg shadow-amber-600/20 hover:bg-amber-700 transition-all active:scale-95"
+            >
+              <MessageSquare className="w-4 h-4" /> Send Credit Reminders (SMS)
+            </button>
             <button
               onClick={() => window.print()}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-900 text-white rounded-xl text-[13px] font-black shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-95"
