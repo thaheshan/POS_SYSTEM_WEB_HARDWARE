@@ -43,6 +43,7 @@ type Product = {
   id: string;
   name: string;
   sku: string;
+  barcode?: string;
   price: number;
   stock: number;
   status: string;
@@ -299,6 +300,7 @@ export default function POSPage() {
           warehouseName: item.warehouse?.name || 'Main Store',
           sellType,
           measurementUnit,
+          barcode: originalProduct?.barcode || item.product?.barcode || item.barcode || undefined,
           // Discount configurations (fall back to stock/product API values if not found in allProducts)
           isDiscountEnabled: originalProduct?.isDiscountEnabled || item.product?.isDiscountEnabled || item.isDiscountEnabled || false,
           isDiscountApproved: originalProduct?.isDiscountApproved || item.product?.isDiscountApproved || item.isDiscountApproved || false,
@@ -330,6 +332,7 @@ export default function POSPage() {
             id: String(p.id),
             name: name,
             sku: p.sku || 'N/A',
+            barcode: p.barcode || undefined,
             price: Number(p.sellingPrice || 0),
             stock: 0,
             status: 'Out of Stock',
