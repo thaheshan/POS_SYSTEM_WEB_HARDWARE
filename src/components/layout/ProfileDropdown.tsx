@@ -6,7 +6,12 @@ import { Settings, LogOut, CreditCard, User, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
-export default function ProfileDropdown() {
+interface ProfileDropdownProps {
+  logoUrl?: string;
+  shopName?: string;
+}
+
+export default function ProfileDropdown({ logoUrl, shopName }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -29,35 +34,38 @@ export default function ProfileDropdown() {
   };
 
   const getInitials = () => {
-    if (!user?.name) return '?';
-    return user.name.charAt(0).toUpperCase();
+    const name = shopName || user?.name;
+    if (!name) return '?';
+    return name.charAt(0).toUpperCase();
   };
+
+  const activeLogo = (logoUrl || user?.logoUrl) ?? undefined;
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-[40px] h-[40px] md:w-auto md:h-auto bg-white/15 hover:bg-white/25 rounded-xl md:rounded-full md:px-2 md:py-1 transition-all shadow-md active:scale-95 border border-white/10"
+        className="flex items-center gap-2 transition-all active:scale-95 group"
       >
-        {user?.logoUrl ? (
+        {activeLogo ? (
           <img 
-            src={user.logoUrl} 
+            src={activeLogo} 
             alt="Shop Logo" 
-            className="w-[28px] h-[28px] rounded-full object-cover bg-white"
+            className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl object-cover"
           />
         ) : (
-          <div className="w-[28px] h-[28px] rounded-full bg-blue-500 flex items-center justify-center border border-white/20">
-            <span className="text-white text-[12px] font-bold">{getInitials()}</span>
+          <div className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl flex items-center justify-center bg-white/10">
+            <span className="text-white text-[20px] font-black">{getInitials()}</span>
           </div>
         )}
-        <ChevronDown className="hidden md:block w-4 h-4 text-white/80" />
+        <ChevronDown className="hidden md:block w-4 h-4 text-white/90 group-hover:text-white" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="px-4 py-2 border-b border-gray-50 mb-1">
-            <p className="text-[13px] font-bold text-gray-900 truncate">{user?.name}</p>
-            <p className="text-[11px] font-medium text-gray-500 truncate">{user?.email}</p>
+            <p className="text-[13.5px] font-black text-gray-900 truncate">{shopName || user?.name}</p>
+            <p className="text-[11.5px] font-medium text-gray-500 truncate">{user?.name ? `${user.name} (${user.role || 'Member'})` : user?.email}</p>
           </div>
 
           <button

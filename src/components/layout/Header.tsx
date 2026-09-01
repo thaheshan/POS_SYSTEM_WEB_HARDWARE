@@ -5,10 +5,12 @@ import { Copy, Menu } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import NotificationDropdown from './NotificationDropdown';
 import ProfileDropdown from './ProfileDropdown';
+import { shopApi } from '@/api/shop';
 
 export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, logout, isAuthenticated } = useAuth();
   const [time, setTime] = useState<string>('');
+  const [shopProfile, setShopProfile] = useState<{ name?: string; logo_url?: string } | null>(null);
 
   useEffect(() => {
     // Initial set
@@ -24,6 +26,19 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      shopApi.getProfile()
+        .then((data) => {
+          if (data) setShopProfile(data);
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  const shopName = shopProfile?.name || 'Trinco Hardware & Electricals';
+  const logoUrl = (shopProfile?.logo_url || user?.logoUrl) ?? undefined;
 
   return (
     <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">
@@ -75,20 +90,20 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         </div>
         
         {/* Right: User Info & Actions */}
-        <div className="flex items-center justify-end gap-3 md:gap-5 w-auto lg:w-[300px] min-w-0">
-          <div className="hidden xl:flex flex-col min-w-0 items-end max-w-[180px]">
-            <span className="text-[14px] font-bold truncate text-white leading-tight w-full text-right">
-              {user?.name || (isAuthenticated ? 'Connecting...' : 'Guest User')}
+        <div className="flex items-center justify-end gap-3 md:gap-5 shrink-0">
+          <div className="hidden lg:flex flex-col items-end whitespace-nowrap">
+            <span className="text-[15px] font-black text-white leading-tight text-right drop-shadow-sm">
+              {shopName}
             </span>
-            <span className="text-[12px] text-white/70 font-medium leading-tight mt-0.5 capitalize truncate w-full text-right">
-              {user?.role ? `${user.role.toLowerCase()} Member Profile` : 'Restricted Mode'}
+            <span className="text-[11.5px] text-white/80 font-semibold leading-tight mt-0.5 capitalize text-right">
+              {user?.role ? `${user.role.toLowerCase()} Member` : 'Member Profile'}{user?.name ? ` • ${user.name}` : ''}
             </span>
           </div>
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <NotificationDropdown />
-            <ProfileDropdown />
+            <ProfileDropdown logoUrl={logoUrl} shopName={shopName} />
           </div>
         </div>
       </div>
