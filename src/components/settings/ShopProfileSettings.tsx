@@ -237,7 +237,7 @@ export default function ShopProfileSettings({ setHasUnsavedChanges }: Props) {
         <div className="bg-gray-50 rounded-[20px] p-6 mb-8 border border-gray-100 flex items-center gap-6">
           <div className="w-24 h-24 bg-white border border-gray-200 rounded-[16px] overflow-hidden flex items-center justify-center shadow-sm shrink-0">
             {profile?.logo_url || user?.logoUrl ? (
-              <img src={profile?.logo_url || user?.logoUrl} alt="Shop Logo" className="w-full h-full object-cover" />
+              <img src={(profile?.logo_url || user?.logoUrl) ?? undefined} alt="Shop Logo" className="w-full h-full object-cover" />
             ) : (
               <ImageIcon className="w-8 h-8 text-gray-300" />
             )}
