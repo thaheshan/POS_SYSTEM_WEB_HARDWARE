@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const res = await fetch(`${backendUrl}/shop/subscription-status`, {
+    const res = await fetch(`${backendUrl}/shops/subscription-status`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });

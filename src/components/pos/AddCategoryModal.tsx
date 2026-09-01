@@ -9,12 +9,36 @@ interface AddCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  defaultParentId?: string;
 }
 
-export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModalProps) {
+export default function AddCategoryModal({ isOpen, onClose, onSuccess, defaultParentId }: AddCategoryModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [parentId, setParentId] = useState<string>(defaultParentId || '');
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setDescription('');
+      setParentId(defaultParentId || '');
+      fetchParentCategories();
+    }
+  }, [isOpen, defaultParentId]);
+
+  const fetchParentCategories = async () => {
+    try {
+      const res = await api.get('/products/categories');
+      const items = res.data?.data || res.data || [];
+      if (Array.isArray(items)) {
+        setCategories(items.map((c: any) => ({ id: c.id, name: c.name })));
+      }
+    } catch {
+      // silently fail
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,11 +49,19 @@ export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCate
     
     setLoading(true);
     try {
-      await api.post('/products/categories', {
-        name,
-        description,
-      });
-      toast.success('Category created successfully.');
+      if (parentId) {
+        await api.post(`/products/categories/${parentId}/subcategories`, {
+          name,
+          description,
+        });
+        toast.success('Subcategory created successfully.');
+      } else {
+        await api.post('/products/categories', {
+          name,
+          description,
+        });
+        toast.success('Category created successfully.');
+      }
       setName('');
       setDescription('');
       onSuccess();
@@ -53,8 +85,8 @@ export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCate
               <Tags className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Add Category</h2>
-              <p className="text-xs text-gray-500">Create a new product category</p>
+              <h2 className="text-lg font-bold text-gray-900">{parentId ? 'Add Subcategory' : 'Add Category'}</h2>
+              <p className="text-xs text-gray-500">{parentId ? 'Create a subcategory under parent' : 'Create a new main category or subcategory'}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -65,12 +97,30 @@ export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCate
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Category Name <span className="text-red-400">*</span></label>
+            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Parent Category</label>
+            <select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all bg-white"
+            >
+              <option value="">None (Top-Level Main Category)</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+              {parentId ? 'Subcategory Name' : 'Category Name'} <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Electrical, Tools, Paints..."
+              placeholder={parentId ? 'e.g. LED Bulbs, Switches...' : 'e.g. Electrical, Tools, Paints...'}
               className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all"
             />
           </div>
@@ -81,7 +131,7 @@ export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCate
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this category..."
+              placeholder="Brief description..."
               className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none"
             />
           </div>
@@ -99,7 +149,7 @@ export default function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCate
               disabled={loading}
               className="py-2 px-6 rounded-xl text-sm font-bold bg-[#059669] text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
-              {loading ? 'Saving...' : 'Save Category'}
+              {loading ? 'Saving...' : parentId ? 'Save Subcategory' : 'Save Category'}
             </button>
           </div>
         </form>

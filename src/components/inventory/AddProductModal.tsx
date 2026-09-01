@@ -162,7 +162,7 @@ export default function AddProductModal({
   const [existingProducts, setExistingProducts] = useState<Product[]>([]);
   const existingProductsRef = useRef<Product[]>([]);
 
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+  const [categories, setCategories] = useState<{ id: string; name: string; subcategories?: { id: string; name: string }[] }[]>(
     [],
   );
   const [subCategories, setSubCategories] = useState<
@@ -174,8 +174,59 @@ export default function AddProductModal({
   const [warehouses, setWarehouses] = useState<
     { id: string; name: string; code?: string }[]
   >([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [savingCat, setSavingCat] = useState(false);
+  const [newSubCatName, setNewSubCatName] = useState("");
+  const [showNewSubCat, setShowNewSubCat] = useState(false);
+  const [savingSubCat, setSavingSubCat] = useState(false);
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  /* ─── Auto-load subcategories when category changes ─── */
+
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) return;
+    setSavingCat(true);
+    try {
+      const res = await api.post("/products/categories", { name: newCatName.trim() });
+      const cat = res.data?.data || res.data;
+      const newEntry = { id: cat.id, name: cat.name, subcategories: [] };
+      setCategories(prev => [...prev, newEntry].sort((a, b) => a.name.localeCompare(b.name)));
+      set("categoryId", cat.id);
+      setNewCatName("");
+      setShowNewCat(false);
+      toastSuccess(`Category "${cat.name}" created!`);
+    } catch {
+      toastError("Failed to create category");
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleCreateSubcategory = async () => {
+    if (!newSubCatName.trim() || !form.categoryId) return;
+    setSavingSubCat(true);
+    try {
+      const res = await api.post(`/products/categories/${form.categoryId}/subcategories`, { name: newSubCatName.trim() });
+      const sub = res.data?.data || res.data;
+      const newEntry = { id: sub.id, name: sub.name };
+      setSubCategories(prev => [...prev, newEntry].sort((a, b) => a.name.localeCompare(b.name)));
+      // Also update the parent in categories list
+      setCategories(prev => prev.map(c => c.id === form.categoryId
+        ? { ...c, subcategories: [...(c.subcategories || []), newEntry] }
+        : c
+      ));
+      set("subCategoryId", sub.id);
+      setNewSubCatName("");
+      setShowNewSubCat(false);
+      toastSuccess(`Subcategory "${sub.name}" created!`);
+    } catch {
+      toastError("Failed to create subcategory");
+    } finally {
+      setSavingSubCat(false);
+    }
+  };
+
+const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -228,6 +279,29 @@ export default function AddProductModal({
     if (sell === 0) return 0;
     return (((sell - cost) / sell) * 100).toFixed(2);
   })();
+
+  /* ─── Auto-load subcategories when category changes ─── */
+  useEffect(() => {
+    if (!form.categoryId) {
+      setSubCategories([]);
+      setShowNewSubCat(false);
+      return;
+    }
+    const parent = categories.find(c => c.id === form.categoryId);
+    if (parent?.subcategories && parent.subcategories.length > 0) {
+      setSubCategories(parent.subcategories);
+    } else {
+      api.get(`/products/categories/${form.categoryId}/subcategories`)
+        .then(res => {
+          const data = res.data?.data || res.data || [];
+          setSubCategories(Array.isArray(data) ? data : []);
+        })
+        .catch(() => setSubCategories([]));
+    }
+    set("subCategoryId", "");
+    setShowNewSubCat(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.categoryId]);
 
   /* ─── Fetch dropdown data on open ─── */
   useEffect(() => {
@@ -402,6 +476,7 @@ export default function AddProductModal({
       formData.append("name", form.name.trim());
       formData.append("sku", form.sku.trim());
       formData.append("categoryId", form.categoryId);
+      if (form.subCategoryId) formData.append("subcategoryId", form.subCategoryId);
       formData.append(
         "sellingPrice",
         (parseFloat(form.sellingPrice) || 0).toString(),
@@ -1209,10 +1284,40 @@ export default function AddProductModal({
                   </p>
 
                   <div className="space-y-3">
+                    {/* Category */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5">
-                        Category <span className="text-red-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] font-bold text-gray-500">
+                          Category <span className="text-red-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => { setShowNewCat(v => !v); setShowNewSubCat(false); }}
+                          className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> New
+                        </button>
+                      </div>
+                      {showNewCat && (
+                        <div className="flex gap-1 mb-2">
+                          <input
+                            autoFocus
+                            value={newCatName}
+                            onChange={e => setNewCatName(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleCreateCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                            placeholder="Category name…"
+                            className="flex-1 px-2.5 py-1.5 text-[12px] bg-white border border-emerald-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-300"
+                          />
+                          <button
+                            type="button"
+                            disabled={savingCat || !newCatName.trim()}
+                            onClick={handleCreateCategory}
+                            className="px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg text-[11px] font-bold disabled:opacity-50"
+                          >
+                            {savingCat ? '…' : <Check className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      )}
                       <div className="relative">
                         <select
                           name="categoryId"
@@ -1224,7 +1329,7 @@ export default function AddProductModal({
                           {loading && <option disabled>Loading…</option>}
                           {categories.map((c) => (
                             <option key={c.id} value={c.id}>
-                              {c.name}
+                              {c.name}{c.subcategories && c.subcategories.length > 0 ? ` (${c.subcategories.length} subs)` : ''}
                             </option>
                           ))}
                         </select>
@@ -1237,29 +1342,63 @@ export default function AddProductModal({
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5">
-                        Sales Category
-                      </label>
-                      <div className="relative">
-                        <select
-                          name="subCategoryId"
-                          value={form.subCategoryId}
-                          onChange={handleChange}
-                          className={`${selectCls} text-[12px]`}
-                        >
-                          <option value="">
-                            Select subcategory (optional)
-                          </option>
-                          {subCategories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {/* Subcategory — only shows when a category is selected */}
+                    {form.categoryId && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-bold text-gray-500">
+                            Subcategory <span className="text-gray-400 font-normal">(optional)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => { setShowNewSubCat(v => !v); setShowNewCat(false); }}
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> New
+                          </button>
+                        </div>
+                        {showNewSubCat && (
+                          <div className="flex gap-1 mb-2">
+                            <input
+                              autoFocus
+                              value={newSubCatName}
+                              onChange={e => setNewSubCatName(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleCreateSubcategory(); if (e.key === 'Escape') setShowNewSubCat(false); }}
+                              placeholder="Subcategory name…"
+                              className="flex-1 px-2.5 py-1.5 text-[12px] bg-white border border-blue-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-300"
+                            />
+                            <button
+                              type="button"
+                              disabled={savingSubCat || !newSubCatName.trim()}
+                              onClick={handleCreateSubcategory}
+                              className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-[11px] font-bold disabled:opacity-50"
+                            >
+                              {savingSubCat ? '…' : <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        )}
+                        <div className="relative">
+                          <select
+                            name="subCategoryId"
+                            value={form.subCategoryId}
+                            onChange={handleChange}
+                            className={`${selectCls} text-[12px]`}
+                          >
+                            <option value="">Select subcategory</option>
+                            {subCategories.length === 0 && (
+                              <option disabled>No subcategories yet — create one above</option>
+                            )}
+                            {subCategories.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                       </div>
-                    </div>
+                    )}
+
                   </div>
                 </div>
 

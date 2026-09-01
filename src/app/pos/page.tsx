@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import {
   Minus, Plus, X, ChevronDown, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
-  Smartphone, ShoppingCart, Users, Zap, Scan,
+  Smartphone, ShoppingCart, Users, Zap, Scan, Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 import PaymentConfirmation from '@/components/pos/PaymentConfirmation';
@@ -48,6 +48,7 @@ type Product = {
   stock: number;
   status: string;
   category: string;
+  subCategory?: string | null;
   img: string;
   warehouseId?: string;
   branchId?: string;
@@ -220,6 +221,7 @@ function QtyPopup({
 export default function POSPage() {
   const [viewState, setViewState] = useState<'pos' | 'confirm'>('pos');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -228,9 +230,19 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [categoriesList, setCategoriesList] = useState<string[]>([]);
+  const [categoriesData, setCategoriesData] = useState<{ id: string; name: string; subcategories?: { id: string; name: string }[] }[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const categories = Array.from(new Set(['All', ...categoriesList]));
+  const [selectedParentIdForModal, setSelectedParentIdForModal] = useState<string | undefined>(undefined);
+
+  const categories = useMemo(() => {
+    const apiCatNames = categoriesData.map(c => c.name);
+    const prodCatNames = productsList.map(p => p.category).filter(Boolean);
+    return Array.from(new Set(['All', ...apiCatNames, ...prodCatNames]));
+  }, [categoriesData, productsList]);
+
+  const activeCategoryObj = useMemo(() => {
+    return categoriesData.find(c => c.name.trim().toLowerCase() === activeCategory.trim().toLowerCase());
+  }, [categoriesData, activeCategory]);
 
   useEffect(() => {
     fetchProducts();
@@ -241,7 +253,9 @@ export default function POSPage() {
     try {
       const res = await api.get('/products/categories');
       const items = res.data?.data || res.data || [];
-      setCategoriesList(items.map((c: any) => c.name));
+      if (Array.isArray(items)) {
+        setCategoriesData(items);
+      }
     } catch (err) {
       console.error('Failed to fetch categories', err);
     }
@@ -294,6 +308,7 @@ export default function POSPage() {
           stock: qty,
           status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
           category: item.product?.category?.name || item.category_name || 'All',
+          subCategory: item.product?.subCategory?.name || item.subCategory?.name || originalProduct?.subCategory?.name || null,
           img: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
           warehouseId: item.warehouseId || item.warehouse_id,
           branchId: item.branchId || item.branch_id,
@@ -337,6 +352,7 @@ export default function POSPage() {
             stock: 0,
             status: 'Out of Stock',
             category: p.category?.name || 'All',
+            subCategory: p.subCategory?.name || null,
             img: p.images?.[0]?.imageUrl || null,
             warehouseId: undefined,
             branchId: undefined,
@@ -501,11 +517,12 @@ export default function POSPage() {
   }, [cart, productsList]);
 
   const filteredProducts = useMemo(() => productsList.filter(p => {
-    const matchCat = activeCategory === 'All' || p.category === activeCategory;
+    const matchCat = activeCategory === 'All' || p.category === activeCategory || p.subCategory === activeCategory;
+    const matchSubCat = activeSubcategory === 'All' || p.subCategory === activeSubcategory || p.category === activeSubcategory;
     const searchLower = (searchQuery || '').toLowerCase();
     const matchSearch = (p.name || '').toLowerCase().includes(searchLower) || (p.sku || '').toLowerCase().includes(searchLower);
-    return matchCat && matchSearch;
-  }), [activeCategory, searchQuery, productsList]);
+    return matchCat && matchSubCat && matchSearch;
+  }), [activeCategory, activeSubcategory, searchQuery, productsList]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -552,11 +569,17 @@ export default function POSPage() {
       />
       <AddCategoryModal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setSelectedParentIdForModal(undefined);
+        }}
         onSuccess={() => {
           setIsCategoryModalOpen(false);
+          setSelectedParentIdForModal(undefined);
           fetchCategories();
+          fetchProducts();
         }}
+        defaultParentId={selectedParentIdForModal}
       />
       {isCustomerModalOpen && (
         <AddCustomerModal 
@@ -648,30 +671,83 @@ export default function POSPage() {
                 </div>
               </div>
 
-              {/* Categories */}
-              <div className="bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md bg-white/90">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mb-1 flex-1">
-                  {categories.map((cat, index) => (
-                    <button
-                      key={`${cat}-${index}`}
-                      onClick={() => setActiveCategory(cat)}
-                      className={`px-5 py-2.5 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
-                        activeCategory === cat
-                          ? 'bg-[#059669] text-white border-[#059669] shadow-lg shadow-emerald-200'
-                          : 'bg-white text-gray-400 border-gray-100 hover:border-emerald-200 hover:text-emerald-600'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+              {/* Categories & Subcategories Section */}
+              <div className="bg-white border-b border-gray-100 px-8 py-4 space-y-3 sticky top-0 z-20 backdrop-blur-md bg-white/95 shadow-sm">
+                {/* Main Categories Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mb-1 flex-1">
+                    {categories.map((cat, index) => (
+                      <button
+                        key={`${cat}-${index}`}
+                        onClick={() => {
+                          setActiveCategory(cat);
+                          setActiveSubcategory('All');
+                        }}
+                        className={`px-5 py-2.5 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
+                          activeCategory === cat
+                            ? 'bg-[#059669] text-white border-[#059669] shadow-lg shadow-emerald-200'
+                            : 'bg-white text-gray-400 border-gray-100 hover:border-emerald-200 hover:text-emerald-600'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedParentIdForModal(undefined);
+                      setIsCategoryModalOpen(true);
+                    }}
+                    className="ml-4 px-5 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-2 border-emerald-200 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" strokeWidth={3} />
+                    Category
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsCategoryModalOpen(true)}
-                  className="ml-4 px-5 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-2 border-emerald-200 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 flex items-center gap-1.5 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" strokeWidth={3} />
-                  Category
-                </button>
+
+                {/* Subcategories Row (shown when any category except 'All' is selected) */}
+                {activeCategory !== 'All' && (
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mb-1 flex-1 items-center">
+                      <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mr-2 shrink-0 flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-blue-600" /> Subcategory:
+                      </span>
+                      <button
+                        onClick={() => setActiveSubcategory('All')}
+                        className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
+                          activeSubcategory === 'All'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
+                            : 'bg-white text-gray-400 border-gray-100 hover:border-blue-200 hover:text-blue-600'
+                        }`}
+                      >
+                        All {activeCategory}
+                      </button>
+                      {(activeCategoryObj?.subcategories || []).map((sub, idx) => (
+                        <button
+                          key={`${sub.id}-${idx}`}
+                          onClick={() => setActiveSubcategory(sub.name)}
+                          className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
+                            activeSubcategory === sub.name
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
+                              : 'bg-white text-gray-400 border-gray-100 hover:border-blue-200 hover:text-blue-600'
+                          }`}
+                        >
+                          {sub.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedParentIdForModal(activeCategoryObj?.id);
+                        setIsCategoryModalOpen(true);
+                      }}
+                      className="ml-4 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" strokeWidth={3} />
+                      Subcategory
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Product Grid */}
