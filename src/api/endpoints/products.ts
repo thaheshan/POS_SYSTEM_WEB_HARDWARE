@@ -25,4 +25,17 @@ export const productsAPI = {
 
   approveDiscount: (id: string, data: { isDiscountApproved: boolean }) =>
     api.patch(`/products/${id}/discount-approval`, data),
+
+  /* ─── Brand endpoints ─── */
+  getBrands: (subcategoryId?: string) =>
+    api.get("/products/brands", { params: subcategoryId ? { subcategoryId } : {} }),
+
+  createBrand: (data: { name: string; categoryId?: string; description?: string }) =>
+    api.post("/products/brands", data),
+
+  updateBrand: (id: string, data: { name?: string; description?: string }) =>
+    api.patch(`/products/brands/${id}`, data),
+
+  deleteBrand: (id: string) => api.delete(`/products/brands/${id}`),
 };
+

@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
-import { BarChart3, ShoppingBag, CreditCard, ChevronDown, Clock, Eye, Edit2, TrendingUp, TrendingDown, Package, Activity, Search, Filter, X, SlidersHorizontal, Plus } from 'lucide-react';
+import { BarChart3, ShoppingBag, CreditCard, ChevronDown, Clock, Eye, Edit2, TrendingUp, TrendingDown, Package, Activity, Search, Filter, X, SlidersHorizontal, Plus, ShieldCheck } from 'lucide-react';
 import TransactionDetailsModal from '@/components/sales/TransactionDetailsModal';
+import { useSalesData } from '@/hooks/useSales';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const ALL_TRANSACTIONS = [
@@ -108,6 +109,7 @@ const PEAK_DATA: Record<string, { time: string; txns: number }[]> = {
 
 export default function SalesDashboardPage() {
   const router = useRouter();
+  const { data: salesData, loading: salesLoading } = useSalesData(undefined);
   const [selectedTxn, setSelectedTxn] = useState<string | null>(null);
   const [modalTab, setModalTab] = useState<'view' | 'edit'>('view');
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,16 +203,57 @@ export default function SalesDashboardPage() {
           </div>
         </div>
 
-        {/* STAT CARDS */}
-        <div className="grid grid-cols-4 gap-6">
+        {/* STAT CARDS INCLUDING CREDIT MANAGEMENT */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { icon: ShoppingBag, color: 'emerald', label: "Today's Sales", val: 'Rs. 125,450', sub: 'From yesterday', badge: '+15.2%', up: true },
-            { icon: CreditCard, color: 'amber', label: 'Transactions', val: '145', sub: 'Today so far', badge: '+12 new', up: true },
-            { icon: Activity, color: 'blue', label: 'Avg Order Value', val: 'Rs. 865.17', sub: 'Per transaction', badge: '+2.8%', up: true },
-            { icon: Clock, color: 'amber', label: 'Pending Orders', val: '8', sub: 'Awaiting pickup', badge: 'Action needed', up: false },
+            {
+              icon: ShoppingBag,
+              color: 'emerald',
+              label: "Total Revenue",
+              val: salesLoading ? '...' : `Rs. ${(salesData.summary?.totalSales || 0).toLocaleString('en-LK')}`,
+              sub: 'Cat A & Cat B combined',
+              badge: `${(salesData.catA?.txns || 0) + (salesData.catB?.txns || 0)} txns`,
+              up: true,
+              href: '/reports',
+            },
+            {
+              icon: ShieldCheck,
+              color: 'amber',
+              label: 'Credit Outstanding',
+              val: salesLoading ? '...' : `Rs. ${(salesData.creditSummary?.totalOutstandingCredit || 0).toLocaleString('en-LK')}`,
+              sub: `Credit Sales: Rs. ${(salesData.creditSummary?.creditSalesTotal || 0).toLocaleString('en-LK')}`,
+              badge: `${salesData.creditSummary?.creditTxnCount || 0} credit txns`,
+              up: true,
+              href: '/customers',
+            },
+            {
+              icon: Activity,
+              color: 'blue',
+              label: 'Gross Profit',
+              val: salesLoading ? '...' : `Rs. ${(salesData.summary?.netProfit || 0).toLocaleString('en-LK')}`,
+              sub: 'After tax & expenses',
+              badge: `${salesData.summary?.totalSales > 0 ? Math.round(((salesData.summary?.netProfit || 0) / salesData.summary.totalSales) * 100) : 0}% margin`,
+              up: true,
+              href: '/reports',
+            },
+            {
+              icon: CreditCard,
+              color: 'purple',
+              label: 'VAT Remittable',
+              val: salesLoading ? '...' : `Rs. ${(salesData.catA?.vat || 0).toLocaleString('en-LK')}`,
+              sub: 'Sri Lanka IRD 18% VAT',
+              badge: 'IRD Compliant',
+              up: true,
+              href: '/reports',
+            },
           ].map((card) => {
             const Icon = card.icon;
-            const colorMap: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-blue-600' };
+            const colorMap: Record<string, string> = {
+              emerald: 'bg-emerald-50 text-emerald-600',
+              amber: 'bg-amber-50 text-amber-600',
+              blue: 'bg-blue-50 text-blue-600',
+              purple: 'bg-purple-50 text-purple-600',
+            };
             const badgeColor = card.up ? 'text-emerald-500' : 'text-amber-500';
             return (
               <div key={card.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -221,9 +264,9 @@ export default function SalesDashboardPage() {
                   </span>
                 </div>
                 <p className="text-[12px] font-bold text-gray-400 mb-1">{card.label}</p>
-                <h3 className="text-[26px] font-black text-gray-900 mb-1">{card.val}</h3>
+                <h3 className="text-[24px] font-black text-gray-900 mb-1">{card.val}</h3>
                 <p className="text-[11px] font-bold text-gray-400 mb-4">{card.sub}</p>
-                <button onClick={() => router.push('/sales/analytics')} className="w-full text-center text-[12px] font-black text-emerald-600 hover:text-emerald-700 transition">View All →</button>
+                <button onClick={() => router.push(card.href)} className="w-full text-center text-[12px] font-black text-emerald-600 hover:text-emerald-700 transition">View Details →</button>
               </div>
             );
           })}

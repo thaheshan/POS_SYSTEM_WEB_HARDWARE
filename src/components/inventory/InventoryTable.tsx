@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X } from 'lucide-react';
+import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Barcode } from 'lucide-react';
 import Image from 'next/image';
 
 interface InventoryTableProps {
@@ -7,6 +7,7 @@ interface InventoryTableProps {
   onEdit?: (item: any) => void;
   onDelete?: (item: any) => void;
   onTransfer?: (item: any) => void;
+  onBarcode?: (item: any) => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onFilterToggle: () => void;
@@ -20,6 +21,7 @@ export default function InventoryTable({
   onEdit,
   onDelete,
   onTransfer,
+  onBarcode,
   searchTerm,
   onSearchChange,
   onFilterToggle,
@@ -206,7 +208,10 @@ export default function InventoryTable({
                     {getReorderIcon(item.reorder)}
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button onClick={(e) => { e.stopPropagation(); onBarcode?.(item); }} title="Barcode Label" className="w-7 h-7 rounded bg-emerald-50 flex items-center justify-center hover:bg-emerald-100 transition-all text-emerald-700">
+                        <Barcode className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); onTransfer?.(item); }} title="Transfer Stock" className="w-7 h-7 rounded bg-gray-50 flex items-center justify-center hover:bg-blue-100 transition-all">
                         <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" />
                       </button>

@@ -22,6 +22,7 @@ import CustomerSearch from "@/components/pos/CustomerSearch";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import api from "@/api/axiosInstance";
+import { shopApi } from "@/api/shop";
 import { toastError, toastSuccess, toastInfo } from "@/lib/toast";
 import {
   openCashDrawer,
@@ -346,22 +347,34 @@ export default function PaymentConfirmation({
   const [selectedMethod, setSelectedMethod] = useState<string>(paymentMethod || "cash");
   const [creditPaidInput, setCreditPaidInput] = useState<string>("0");
   const [customerAccount, setCustomerAccount] = useState<any>(null);
+  const [shopProfile, setShopProfile] = useState<any>(null);
 
-  // Live cashier & shop info from Redux auth state profile
+  // Live cashier & shop info from Redux auth state profile & Shop API
   const authUser = useSelector((state: RootState) => state.auth?.user as any);
+
+  useEffect(() => {
+    shopApi
+      .getProfile()
+      .then((data) => {
+        if (data?.name) setShopProfile(data);
+      })
+      .catch(() => {});
+  }, []);
+
   const cashierName =
     authUser?.name ||
     authUser?.fullName ||
     authUser?.username ||
     authUser?.email ||
     "Cashier";
+
   const storeName =
+    shopProfile?.name ||
     authUser?.shop?.name ||
     authUser?.shopName ||
     authUser?.shop_name ||
     authUser?.tenantName ||
-    authUser?.name ||
-    "Futura Hardware Store";
+    "Futura Hardware & Building Materials";
 
 
   // Fetch customer account details if customerId is provided
@@ -459,6 +472,8 @@ export default function PaymentConfirmation({
         paymentMethod: selectedMethod,
         amountTendered: effectivePaidAmount,
         change: isCreditSale ? 0 : change,
+        creditLeftover,
+        totalOutstandingCredit: newTotalOutstanding,
         subtotal,
         discount,
         total,
@@ -872,6 +887,8 @@ export default function PaymentConfirmation({
                 paymentMethod: selectedMethod,
                 amountTendered: effectivePaidAmount,
                 change: isCreditSale ? 0 : change,
+                creditLeftover,
+                totalOutstandingCredit: newTotalOutstanding,
                 subtotal,
                 discount,
                 total,

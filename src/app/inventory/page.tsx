@@ -34,6 +34,8 @@ import TransferStockModal from "@/components/inventory/TransferStockModal";
 import PurchaseOrderModal from "@/components/inventory/PurchaseOrderModal";
 import ImportExportModal from "@/components/inventory/ImportExportModal";
 import ManageCategoriesModal from "@/components/inventory/ManageCategoriesModal";
+import BarcodeLabelModal from "@/components/inventory/BarcodeLabelModal";
+import { shopApi } from "@/api/shop";
 import { DateRange } from "react-day-picker";
 import api from "@/api/axiosInstance";
 import {
@@ -67,9 +69,13 @@ export default function InventoryPage() {
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
   const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [barcodeProduct, setBarcodeProduct] = useState<any>(null);
+  const [shopProfile, setShopProfile] = useState<any>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -88,6 +94,8 @@ export default function InventoryPage() {
 
   React.useEffect(() => {
     fetchInventory();
+
+    shopApi.getProfile().then(setShopProfile).catch(() => {});
 
     if (isOwnerOrAdmin) {
       fetchDiscountProducts();
@@ -277,11 +285,12 @@ export default function InventoryPage() {
     try {
       setIsLoading(true);
 
-      // Fetch stock records, all products, and warehouses in parallel
-      const [stockRes, productsRes, warehousesRes] = await Promise.allSettled([
+      // Fetch stock records, all products, warehouses, and categories in parallel
+      const [stockRes, productsRes, warehousesRes, categoriesRes] = await Promise.allSettled([
         api.get("/stock"),
         api.get("/products"),
         api.get("/warehouses"),
+        api.get("/products/categories"),
       ]);
 
       const stockItems: any[] =
@@ -297,6 +306,16 @@ export default function InventoryPage() {
       if (warehousesRes.status === "fulfilled") {
         const whData = warehousesRes.value.data?.data || warehousesRes.value.data || [];
         setWarehouses(whData);
+      }
+
+      if (categoriesRes.status === "fulfilled") {
+        const catData = categoriesRes.value.data;
+        const arr = Array.isArray(catData)
+          ? catData
+          : catData?.data || catData?.categories || [];
+        if (Array.isArray(arr)) {
+          setCategories(arr);
+        }
       }
 
       // Build a set of productIds that already have stock records
@@ -399,6 +418,8 @@ export default function InventoryPage() {
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(
     null,
   );
@@ -412,14 +433,39 @@ export default function InventoryPage() {
     to: new Date(),
   });
 
+  // Calculate available Subcategories & Brands based on active selection
+  const availableSubCategories = useMemo(() => {
+    if (!selectedCategory || selectedCategory === "all") return [];
+    const cat = categories.find(
+      (c: any) =>
+        c.name?.toLowerCase() === selectedCategory.toLowerCase() ||
+        c.id === selectedCategory
+    );
+    return cat?.subcategories || cat?.subCategories || [];
+  }, [categories, selectedCategory]);
+
+  const availableBrands = useMemo(() => {
+    if (!selectedSubCategory || selectedSubCategory === "all") return [];
+    const sub = availableSubCategories.find(
+      (s: any) =>
+        s.name?.toLowerCase() === selectedSubCategory.toLowerCase() ||
+        s.id === selectedSubCategory
+    );
+    return sub?.brands || [];
+  }, [availableSubCategories, selectedSubCategory]);
+
   // Filter Stats
   const hasActiveFilters = !!(
     selectedCategory ||
+    selectedSubCategory ||
+    selectedBrand ||
     selectedWarehouse ||
     selectedStatus
   );
   const activeFilterCount = [
     selectedCategory,
+    selectedSubCategory,
+    selectedBrand,
     selectedWarehouse,
     selectedStatus,
   ].filter(Boolean).length;
@@ -432,9 +478,27 @@ export default function InventoryPage() {
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // 2. Select Filters
+      // 2. 3-Tier Hierarchy & Select Filters
       const matchesCategory =
-        !selectedCategory || item.category === selectedCategory;
+        !selectedCategory ||
+        selectedCategory === "all" ||
+        item.category?.toLowerCase() === selectedCategory.toLowerCase() ||
+        item.categoryId === selectedCategory;
+
+      const matchesSubCategory =
+        !selectedSubCategory ||
+        selectedSubCategory === "all" ||
+        item.subcategory?.toLowerCase() === selectedSubCategory.toLowerCase() ||
+        item.subCategory?.toLowerCase() === selectedSubCategory.toLowerCase() ||
+        item.subCategoryId === selectedSubCategory;
+
+      const matchesBrand =
+        !selectedBrand ||
+        selectedBrand === "all" ||
+        item.brand?.toLowerCase() === selectedBrand.toLowerCase() ||
+        item.brandName?.toLowerCase() === selectedBrand.toLowerCase() ||
+        item.brandId === selectedBrand;
+
       const matchesWarehouse =
         !selectedWarehouse || item.warehouse === selectedWarehouse;
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
@@ -463,6 +527,8 @@ export default function InventoryPage() {
       return (
         matchesSearch &&
         matchesCategory &&
+        matchesSubCategory &&
+        matchesBrand &&
         matchesWarehouse &&
         matchesStatus &&
         matchesDate
@@ -471,6 +537,8 @@ export default function InventoryPage() {
   }, [
     searchTerm,
     selectedCategory,
+    selectedSubCategory,
+    selectedBrand,
     selectedWarehouse,
     selectedStatus,
     dateRange,
@@ -480,6 +548,8 @@ export default function InventoryPage() {
   const handleClearAllFilters = () => {
     setSearchTerm("");
     setSelectedCategory(null);
+    setSelectedSubCategory(null);
+    setSelectedBrand(null);
     setSelectedWarehouse(null);
     setSelectedStatus(null);
   };
@@ -508,13 +578,24 @@ export default function InventoryPage() {
         discountType,
         maxAllowedDiscount,
         defaultDiscountValue,
+        imageFile,
         ...coreData
       } = updatedData;
 
-      // 1. Update core product details
-      await api.patch(`/products/${selectedItem.id}`, coreData);
+      if (imageFile instanceof File) {
+        const formData = new FormData();
+        Object.entries(coreData).forEach(([key, val]) => {
+          if (val !== undefined && val !== null) {
+            formData.append(key, String(val));
+          }
+        });
+        formData.append("imageFile", imageFile);
+        await api.patch(`/products/${selectedItem.id}`, formData);
+      } else {
+        await api.patch(`/products/${selectedItem.id}`, coreData);
+      }
 
-      // 2. Update discount configuration (always update this if provided)
+      // 2. Update discount configuration
       await api.patch(`/products/${selectedItem.id}/discount-config`, {
         isDiscountEnabled,
         discountType,
@@ -694,6 +775,135 @@ export default function InventoryPage() {
                 ))}
               </div>
 
+              {/* 3-TIER HIERARCHY FILTER ROWS (Category -> Subcategory -> Brand) */}
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
+                {/* Category Filter Row (Emerald) */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                  <span className="text-[11px] font-black text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 shrink-0">
+                    Category:
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedCategory(null);
+                      setSelectedSubCategory(null);
+                      setSelectedBrand(null);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-[12px] font-black transition-all shrink-0 ${
+                      !selectedCategory
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    All Categories
+                  </button>
+                  {categories.map((c: any) => (
+                    <button
+                      key={c.id || c.name}
+                      onClick={() => {
+                        setSelectedCategory(c.name);
+                        setSelectedSubCategory(null);
+                        setSelectedBrand(null);
+                      }}
+                      className={`px-3 py-1 rounded-xl text-[12px] font-bold transition-all shrink-0 ${
+                        selectedCategory === c.name || selectedCategory === c.id
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-emerald-50/60 text-emerald-800 border border-emerald-100 hover:bg-emerald-100"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setIsManageCategoriesModalOpen(true)}
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-black text-emerald-600 hover:bg-emerald-50 border border-dashed border-emerald-300 transition-colors shrink-0"
+                  >
+                    + Category
+                  </button>
+                </div>
+
+                {/* Subcategory Filter Row (Blue) */}
+                {selectedCategory && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100 overflow-x-auto pb-1 scrollbar-thin animate-in fade-in duration-150">
+                    <span className="text-[11px] font-black text-blue-700 uppercase tracking-wider bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 shrink-0">
+                      Subcategory:
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedSubCategory(null);
+                        setSelectedBrand(null);
+                      }}
+                      className={`px-3 py-1 rounded-xl text-[12px] font-black transition-all shrink-0 ${
+                        !selectedSubCategory
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      All {selectedCategory} Subcategories
+                    </button>
+                    {availableSubCategories.map((sub: any) => (
+                      <button
+                        key={sub.id || sub.name}
+                        onClick={() => {
+                          setSelectedSubCategory(sub.name);
+                          setSelectedBrand(null);
+                        }}
+                        className={`px-3 py-1 rounded-xl text-[12px] font-bold transition-all shrink-0 ${
+                          selectedSubCategory === sub.name || selectedSubCategory === sub.id
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "bg-blue-50/60 text-blue-800 border border-blue-100 hover:bg-blue-100"
+                        }`}
+                      >
+                        {sub.name}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setIsManageCategoriesModalOpen(true)}
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-black text-blue-600 hover:bg-blue-50 border border-dashed border-blue-300 transition-colors shrink-0"
+                    >
+                      + Subcategory
+                    </button>
+                  </div>
+                )}
+
+                {/* Brand Filter Row (Purple) */}
+                {selectedSubCategory && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100 overflow-x-auto pb-1 scrollbar-thin animate-in fade-in duration-150">
+                    <span className="text-[11px] font-black text-purple-700 uppercase tracking-wider bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100 shrink-0">
+                      Brand:
+                    </span>
+                    <button
+                      onClick={() => setSelectedBrand(null)}
+                      className={`px-3 py-1 rounded-xl text-[12px] font-black transition-all shrink-0 ${
+                        !selectedBrand
+                          ? "bg-purple-600 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      All {selectedSubCategory} Brands
+                    </button>
+                    {availableBrands.map((brand: any) => (
+                      <button
+                        key={brand.id || brand.name}
+                        onClick={() => setSelectedBrand(brand.name)}
+                        className={`px-3 py-1 rounded-xl text-[12px] font-bold transition-all shrink-0 ${
+                          selectedBrand === brand.name || selectedBrand === brand.id
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "bg-purple-50/60 text-purple-800 border border-purple-100 hover:bg-purple-100"
+                        }`}
+                      >
+                        {brand.name}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setIsManageCategoriesModalOpen(true)}
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-black text-purple-600 hover:bg-purple-50 border border-dashed border-purple-300 transition-colors shrink-0"
+                    >
+                      + Brand
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {isLoading ? (
                 <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex items-center justify-center min-h-[400px]">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -704,6 +914,10 @@ export default function InventoryPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onTransfer={handleTransfer}
+                  onBarcode={(item) => {
+                    setBarcodeProduct(item);
+                    setIsBarcodeModalOpen(true);
+                  }}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
                   onFilterToggle={() => setIsFilterModalOpen(true)}
@@ -1155,6 +1369,14 @@ export default function InventoryPage() {
         onClose={() => setIsManageCategoriesModalOpen(false)}
         onRefresh={fetchInventory}
       />
+
+      {isBarcodeModalOpen && (
+        <BarcodeLabelModal
+          product={barcodeProduct}
+          storeName={shopProfile?.name || user?.name}
+          onClose={() => setIsBarcodeModalOpen(false)}
+        />
+      )}
 
       {/* HIDDEN PRINT VIEW */}
       <InventoryReportView data={filteredData} dateRange={dateRange} />
