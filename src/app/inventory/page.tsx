@@ -27,11 +27,13 @@ import EditInventoryModal from "@/components/inventory/EditInventoryModal";
 import DeleteInventoryModal from "@/components/inventory/DeleteInventoryModal";
 import AddProductModal from "@/components/inventory/AddProductModal";
 import AddWarehouseModal from "@/components/inventory/AddWarehouseModal";
+import GlobalCatalogSearch from "@/components/inventory/GlobalCatalogSearch";
 import AdjustStockModal from "@/components/inventory/AdjustStockModal";
 import PhysicalStockCountModal from "@/components/inventory/PhysicalStockCountModal";
 import TransferStockModal from "@/components/inventory/TransferStockModal";
 import PurchaseOrderModal from "@/components/inventory/PurchaseOrderModal";
 import ImportExportModal from "@/components/inventory/ImportExportModal";
+import ManageCategoriesModal from "@/components/inventory/ManageCategoriesModal";
 import { DateRange } from "react-day-picker";
 import api from "@/api/axiosInstance";
 import {
@@ -64,6 +66,7 @@ export default function InventoryPage() {
   const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
+  const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -665,7 +668,11 @@ export default function InventoryPage() {
               onTransferStock={() => setIsTransferStockModalOpen(true)}
               onPurchaseOrder={() => setIsPurchaseOrderModalOpen(true)}
               onAddWarehouse={() => setIsAddWarehouseModalOpen(true)}
+              onManageCategories={() => setIsManageCategoriesModalOpen(true)}
             />
+
+            {/* 2.5 GLOBAL CATALOG SEARCH */}
+            <GlobalCatalogSearch onProductAdded={fetchInventory} />
 
             {/* 3. WAREHOUSE SELECTOR & INVENTORY TABLE */}
             <div className="flex flex-col gap-4">
@@ -1142,6 +1149,12 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      <ManageCategoriesModal
+        isOpen={isManageCategoriesModalOpen}
+        onClose={() => setIsManageCategoriesModalOpen(false)}
+        onRefresh={fetchInventory}
+      />
 
       {/* HIDDEN PRINT VIEW */}
       <InventoryReportView data={filteredData} dateRange={dateRange} />

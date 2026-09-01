@@ -1,23 +1,44 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+import api from './axiosInstance';
 
 export const shopApi = {
+  async getProfile() {
+    const res = await api.get('/shops/profile');
+    return res.data?.data || res.data;
+  },
+
+  async updateProfile(data: {
+    name?: string;
+    businessRegistration?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    district?: string;
+    province?: string;
+  }) {
+    const res = await api.patch('/shops/profile', data);
+    return res.data?.data || res.data;
+  },
+
+  async getSettings() {
+    const res = await api.get('/shops/settings');
+    return res.data?.data || res.data;
+  },
+
+  async updateSettings(data: Record<string, any>) {
+    const res = await api.patch('/shops/settings', data);
+    return res.data?.data || res.data;
+  },
+
   async uploadLogo(file: File, token: string) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/shops/logo`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
+    const res = await api.post('/shops/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    const json = await response.json();
-    if (!response.ok) {
-      throw new Error(json.message || 'Failed to upload logo');
-    }
-
-    return json.data || json;
+    const json = res.data?.data || res.data;
+    return json;
   },
 };

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const res = await fetch(`${backendUrl}/shop/self-report-payment`, {
+    const res = await fetch(`${backendUrl}/shops/self-report-payment`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });

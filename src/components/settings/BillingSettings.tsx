@@ -55,7 +55,7 @@ export default function BillingSettings({ setHasUnsavedChanges }: Props) {
     );
   }
 
-  const isDueSoon = subStatus?.daysUntilDue === null || subStatus?.daysUntilDue <= 14;
+  const isDueSoon = subStatus && (subStatus.daysUntilDue === null || subStatus.daysUntilDue === undefined || subStatus.daysUntilDue <= 14);
 
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
@@ -85,7 +85,7 @@ export default function BillingSettings({ setHasUnsavedChanges }: Props) {
           
           <div className="text-[12px] font-bold text-emerald-700 mb-6 space-y-1">
             <p>Next billing date: {subStatus?.nextPaymentDue ? new Date(subStatus.nextPaymentDue).toLocaleDateString() : 'Pending setup'}</p>
-            {subStatus?.daysUntilDue !== null && (
+            {subStatus && subStatus.daysUntilDue !== null && subStatus.daysUntilDue !== undefined && (
               <p>{subStatus.daysUntilDue < 0 ? `${Math.abs(subStatus.daysUntilDue)} days overdue` : `${subStatus.daysUntilDue} days remaining`}</p>
             )}
           </div>

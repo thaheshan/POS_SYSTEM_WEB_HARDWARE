@@ -1,4 +1,4 @@
-import { PlusCircle, ArrowUpDown, CheckSquare, ArrowLeftRight, FileText, CloudUpload } from 'lucide-react';
+import { PlusCircle, ArrowUpDown, CheckSquare, ArrowLeftRight, FileText, CloudUpload, Tags } from 'lucide-react';
 
 interface InventoryActionRowProps {
   onAddProduct: () => void;
@@ -7,6 +7,7 @@ interface InventoryActionRowProps {
   onTransferStock: () => void;
   onPurchaseOrder: () => void;
   onAddWarehouse: () => void;
+  onManageCategories?: () => void;
 }
 
 export default function InventoryActionRow({ 
@@ -15,7 +16,8 @@ export default function InventoryActionRow({
   onPhysicalStockCount,
   onTransferStock,
   onPurchaseOrder,
-  onAddWarehouse
+  onAddWarehouse,
+  onManageCategories
 }: InventoryActionRowProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 mt-8 mb-4">
@@ -44,6 +46,13 @@ export default function InventoryActionRow({
         <CloudUpload className="w-4 h-4 text-emerald-600" />
         Add Warehouse
       </button>
+
+      {onManageCategories && (
+        <button onClick={onManageCategories} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold transition-all shadow-sm uppercase tracking-tight">
+          <Tags className="w-4 h-4" />
+          Manage Categories & Tags
+        </button>
+      )}
     </div>
   );
 }
