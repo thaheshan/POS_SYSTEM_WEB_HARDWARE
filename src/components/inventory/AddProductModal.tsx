@@ -81,14 +81,65 @@ const TAX_RATES = [
   { label: "VAT (18%)", value: "18" },
 ];
 
-const UNIT_OPTIONS = [
-  "Pieces",
-  "Kg",
-  "Litres",
-  "Metres",
-  "Bags",
-  "Boxes",
-  "Pairs",
+export const ALL_MEASUREMENT_UNITS = [
+  {
+    category: "Count / Packaging",
+    units: [
+      "Pieces (pcs)",
+      "Boxes (box)",
+      "Packs (pk)",
+      "Sets (set)",
+      "Pairs (pr)",
+      "Rolls (roll)",
+      "Bags (bag)",
+      "Bundles (bdl)",
+      "Cartons (ctn)",
+      "Dozen (dz)",
+      "Sheets (sht)",
+      "Barrels (bbl)",
+      "Coils (coil)",
+      "Drums (drum)",
+    ],
+  },
+  {
+    category: "Length / Distance",
+    units: [
+      "Meters (m)",
+      "Centimeters (cm)",
+      "Millimeters (mm)",
+      "Feet (ft)",
+      "Inches (in)",
+      "Yards (yd)",
+    ],
+  },
+  {
+    category: "Weight / Mass",
+    units: [
+      "Kilograms (kg)",
+      "Grams (g)",
+      "Milligrams (mg)",
+      "Metric Tons (t)",
+      "Pounds (lbs)",
+    ],
+  },
+  {
+    category: "Volume / Liquid",
+    units: [
+      "Liters (L)",
+      "Milliliters (ml)",
+      "Gallons (gal)",
+      "Cubic Meters (m³)",
+      "Cubic Feet (cu ft)",
+    ],
+  },
+  {
+    category: "Area",
+    units: [
+      "Square Meters (sqm / m²)",
+      "Square Feet (sqft / ft²)",
+      "Square Inches (sqin)",
+    ],
+  },
 ];
 
 function SectionHeader({
@@ -162,12 +213,13 @@ export default function AddProductModal({
   const [existingProducts, setExistingProducts] = useState<Product[]>([]);
   const existingProductsRef = useRef<Product[]>([]);
 
-  const [categories, setCategories] = useState<{ id: string; name: string; subcategories?: { id: string; name: string }[] }[]>(
+  const [categories, setCategories] = useState<{ id: string; name: string; subcategories?: { id: string; name: string; brands?: { id: string; name: string }[] }[]; brands?: { id: string; name: string }[] }[]>(
     [],
   );
   const [subCategories, setSubCategories] = useState<
-    { id: string; name: string }[]
+    { id: string; name: string; brands?: { id: string; name: string }[] }[]
   >([]);
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>(
     [],
   );
@@ -180,6 +232,9 @@ export default function AddProductModal({
   const [newSubCatName, setNewSubCatName] = useState("");
   const [showNewSubCat, setShowNewSubCat] = useState(false);
   const [savingSubCat, setSavingSubCat] = useState(false);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [showNewBrand, setShowNewBrand] = useState(false);
+  const [savingBrand, setSavingBrand] = useState(false);
 
   /* ─── Auto-load subcategories when category changes ─── */
 
@@ -226,6 +281,25 @@ export default function AddProductModal({
     }
   };
 
+  const handleCreateBrand = async () => {
+    if (!newBrandName.trim() || !form.subCategoryId) return;
+    setSavingBrand(true);
+    try {
+      const res = await api.post(`/products/brands`, { name: newBrandName.trim(), categoryId: form.subCategoryId });
+      const brand = res.data?.data || res.data;
+      const newEntry = { id: brand.id, name: brand.name };
+      setBrands(prev => [...prev, newEntry].sort((a, b) => a.name.localeCompare(b.name)));
+      set("brandId", brand.id);
+      setNewBrandName("");
+      setShowNewBrand(false);
+      toastSuccess(`Brand "${brand.name}" created!`);
+    } catch {
+      toastError("Failed to create brand");
+    } finally {
+      setSavingBrand(false);
+    }
+  };
+
 const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -257,6 +331,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     // Organization
     categoryId: "",
     subCategoryId: "",
+    brandId: "",
     supplierId: "",
     warehouseId: "",
     // Image
@@ -284,6 +359,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!form.categoryId) {
       setSubCategories([]);
+      setBrands([]);
       setShowNewSubCat(false);
       return;
     }
@@ -299,9 +375,36 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         .catch(() => setSubCategories([]));
     }
     set("subCategoryId", "");
+    set("brandId", "");
+    setBrands([]);
     setShowNewSubCat(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.categoryId]);
+
+  /* ─── Auto-load brands when subcategory changes ─── */
+  useEffect(() => {
+    if (!form.subCategoryId) {
+      setBrands([]);
+      set("brandId", "");
+      setShowNewBrand(false);
+      return;
+    }
+    // First check the cached subcategory list
+    const sub = subCategories.find(s => s.id === form.subCategoryId);
+    if (sub?.brands && sub.brands.length > 0) {
+      setBrands(sub.brands);
+    } else {
+      api.get(`/products/brands`, { params: { subcategoryId: form.subCategoryId } })
+        .then(res => {
+          const data = res.data?.data || res.data || [];
+          setBrands(Array.isArray(data) ? data : []);
+        })
+        .catch(() => setBrands([]));
+    }
+    set("brandId", "");
+    setShowNewBrand(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.subCategoryId]);
 
   /* ─── Fetch dropdown data on open ─── */
   useEffect(() => {
@@ -391,6 +494,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       continueOOS: false,
       categoryId: "",
       subCategoryId: "",
+      brandId: "",
       supplierId: "",
       warehouseId: warehouses.length > 0 ? warehouses[0].id : "",
       imageFile: null,
@@ -477,6 +581,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       formData.append("sku", form.sku.trim());
       formData.append("categoryId", form.categoryId);
       if (form.subCategoryId) formData.append("subcategoryId", form.subCategoryId);
+      if (form.brandId) formData.append("brandId", form.brandId);
       formData.append(
         "sellingPrice",
         (parseFloat(form.sellingPrice) || 0).toString(),
@@ -564,7 +669,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -572,38 +677,38 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         />
 
         {/* Modal Container */}
-        <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-5xl flex flex-col max-h-[94vh] overflow-hidden">
+        <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-5xl flex flex-col max-h-[96vh] sm:max-h-[94vh] overflow-hidden">
           {/* ── TOP BAR ── */}
-          <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:px-7 sm:py-5 border-b border-gray-100 flex-shrink-0 bg-white gap-3">
             <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+              <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
                 Products &rsaquo; All Products &rsaquo; Add Product
               </p>
-              <h2 className="text-[20px] font-black text-gray-900 tracking-tight">
+              <h2 className="text-[18px] sm:text-[20px] font-black text-gray-900 tracking-tight">
                 Add New Product
               </h2>
-              <p className="text-[12px] text-gray-400 font-medium">
+              <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium">
                 Add a new product to your inventory
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               <button
                 onClick={onClose}
-                className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all"
+                className="py-2 px-3 sm:py-2.5 sm:px-5 rounded-xl text-xs sm:text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all flex-1 sm:flex-initial"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleSubmit(true)}
                 disabled={saving}
-                className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center gap-2"
+                className="py-2 px-3 sm:py-2.5 sm:px-5 rounded-xl text-xs sm:text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Save as Draft
+                <RefreshCw className="w-3.5 h-3.5" /> Save Draft
               </button>
               <button
                 onClick={() => handleSubmit(false)}
                 disabled={saving}
-                className="py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95"
+                className="py-2 px-4 sm:py-2.5 sm:px-6 rounded-xl text-xs sm:text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5 flex-1 sm:flex-initial active:scale-95"
               >
                 {saving ? (
                   <>
@@ -617,18 +722,18 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
               </button>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all ml-1"
+                className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all ml-1 shrink-0"
               >
-                <X className="w-4.5 h-4.5 text-gray-500" />
+                <X className="w-4 h-4 text-gray-400" />
               </button>
             </div>
           </div>
 
           {/* ── BODY ── */}
           <div className="flex-1 overflow-y-auto">
-            <div className="flex gap-0">
+            <div className="flex flex-col lg:flex-row gap-0">
               {/* ──── LEFT COLUMN ──── */}
-              <div className="flex-1 p-7 space-y-6 border-r border-gray-100 min-w-0">
+              <div className="flex-1 p-4 sm:p-7 space-y-6 border-b lg:border-b-0 lg:border-r border-gray-100 min-w-0">
                 {/* 1. Basic Information */}
                 <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
                   <SectionHeader
@@ -1188,7 +1293,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
               </div>
 
               {/* ──── RIGHT COLUMN ──── */}
-              <div className="w-[280px] flex-shrink-0 p-6 space-y-5 bg-gray-50/50">
+              <div className="w-full lg:w-[320px] xl:w-[380px] shrink-0 p-4 sm:p-6 space-y-5 bg-gray-50/50">
                 {/* Product Type */}
                 <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
                   <p className="text-[12px] font-black text-gray-500 uppercase tracking-widest mb-4">
@@ -1253,28 +1358,30 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
                     </div>
                   </label>
 
-                  {form.productType === "LOOSE" && (
-                    <div className="mt-3">
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5">
-                        Measurement Unit
-                      </label>
-                      <div className="relative">
-                        <select
-                          name="unit"
-                          value={form.unit}
-                          onChange={handleChange}
-                          className={selectCls}
-                        >
-                          {UNIT_OPTIONS.map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1.5">
+                      Measurement Unit <span className="text-gray-400 font-normal">(e.g. Pieces, Meters, Kg, Boxes, Liters)</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="unit"
+                        value={form.unit || "Pieces (pcs)"}
+                        onChange={handleChange}
+                        className={selectCls}
+                      >
+                        {ALL_MEASUREMENT_UNITS.map((group) => (
+                          <optgroup key={group.category} label={group.category}>
+                            {group.units.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Product Organization */}
@@ -1399,6 +1506,63 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
                       </div>
                     )}
 
+                    {/* Brand — only shows when a subcategory is selected */}
+                    {form.subCategoryId && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-bold text-gray-500">
+                            Brand <span className="text-gray-400 font-normal">(optional)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => { setShowNewBrand(v => !v); setShowNewSubCat(false); }}
+                            className="text-[10px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> New
+                          </button>
+                        </div>
+                        {showNewBrand && (
+                          <div className="flex gap-1 mb-2">
+                            <input
+                              autoFocus
+                              value={newBrandName}
+                              onChange={e => setNewBrandName(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleCreateBrand(); if (e.key === 'Escape') setShowNewBrand(false); }}
+                              placeholder="Brand name…"
+                              className="flex-1 px-2.5 py-1.5 text-[12px] bg-white border border-purple-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-300"
+                            />
+                            <button
+                              type="button"
+                              disabled={savingBrand || !newBrandName.trim()}
+                              onClick={handleCreateBrand}
+                              className="px-2.5 py-1.5 bg-purple-600 text-white rounded-lg text-[11px] font-bold disabled:opacity-50"
+                            >
+                              {savingBrand ? '…' : <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        )}
+                        <div className="relative">
+                          <select
+                            name="brandId"
+                            value={form.brandId}
+                            onChange={handleChange}
+                            className={`${selectCls} text-[12px]`}
+                          >
+                            <option value="">Select brand</option>
+                            {brands.length === 0 && (
+                              <option disabled>No brands yet — create one above</option>
+                            )}
+                            {brands.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
 
@@ -1499,29 +1663,29 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
           </div>
 
           {/* ── BOTTOM ACTION BAR ── */}
-          <div className="border-t border-gray-100 px-7 py-4 flex items-center justify-between bg-white flex-shrink-0">
-            <div className="flex items-center gap-2 text-[12px] font-bold text-gray-400">
+          <div className="border-t border-gray-100 p-4 sm:px-7 sm:py-4 flex flex-col sm:flex-row items-center justify-between bg-white flex-shrink-0 gap-3">
+            <div className="flex items-center gap-2 text-[11px] sm:text-[12px] font-bold text-gray-400">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
               Last saved: just now
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
               <button
                 onClick={onClose}
-                className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all"
+                className="py-2 px-3 sm:py-2.5 sm:px-5 rounded-xl text-xs sm:text-[13px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all flex-1 sm:flex-initial text-center"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleSubmit(true)}
                 disabled={saving}
-                className="py-2.5 px-5 rounded-xl text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center gap-2"
+                className="py-2 px-3 sm:py-2.5 sm:px-5 rounded-xl text-xs sm:text-[13px] font-bold text-gray-700 border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Save as Draft
+                <RefreshCw className="w-3.5 h-3.5" /> Save Draft
               </button>
               <button
                 onClick={() => handleSubmit(false)}
                 disabled={saving}
-                className="py-2.5 px-6 rounded-xl text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95"
+                className="py-2 px-4 sm:py-2.5 sm:px-6 rounded-xl text-xs sm:text-[13px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5 flex-1 sm:flex-initial active:scale-95"
               >
                 {saving ? (
                   <>

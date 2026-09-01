@@ -172,7 +172,7 @@ export default function ReportsPage() {
 </div>
 
 <div class="section-title">Performance Summary</div>
-<div class="kpi-grid">
+<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
   <div class="kpi">
     <div class="kpi-label">Total Revenue</div>
     <div class="kpi-value">Rs. ${totalRevenue}</div>
@@ -184,6 +184,11 @@ export default function ReportsPage() {
     <div class="kpi-sub">${margin}% gross margin</div>
   </div>
   <div class="kpi amber">
+    <div class="kpi-label">Credit Sales</div>
+    <div class="kpi-value">Rs. ${(data.creditSummary?.creditSalesTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="kpi-sub">${data.creditSummary?.creditTxnCount || 0} credit txns | Outstanding: Rs. ${(data.creditSummary?.totalOutstandingCredit || 0).toLocaleString('en-LK')}</div>
+  </div>
+  <div class="kpi">
     <div class="kpi-label">Transactions</div>
     <div class="kpi-value">${txnCount}</div>
     <div class="kpi-sub">Invoices in period</div>
@@ -356,8 +361,8 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* 4 TOP KPI CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        {/* 5 TOP KPI CARDS INCLUDING CREDIT MANAGEMENT */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
           <ReportStatCard 
              title="Total Revenue"
              value={loading ? '...' : `Rs. ${(data.summary.totalSales || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
@@ -371,6 +376,13 @@ export default function ReportsPage() {
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
              marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
+          />
+          <ReportStatCard 
+             title="Credit Sales"
+             value={loading ? '...' : `Rs. ${(data.creditSummary?.creditSalesTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
+             icon={<div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-amber-700" /></div>}
+             variant="white"
+             trendText={`${data.creditSummary?.creditTxnCount || 0} credit txns • Bal: Rs. ${(data.creditSummary?.totalOutstandingCredit || 0).toLocaleString('en-LK')}`}
           />
           <ReportStatCard 
              title="Transactions"

@@ -14,6 +14,7 @@ import AddLabourModal from '@/components/sales/AddLabourModal';
 import { toast } from 'sonner';
 import api from '@/api/axiosInstance';
 import AddCategoryModal from '@/components/pos/AddCategoryModal';
+import ManageCategoriesModal from '@/components/inventory/ManageCategoriesModal';
 import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import { useBarcodeScanner, openCashDrawer } from '@/utils/hardwareIntegration';
@@ -141,8 +142,8 @@ function QtyPopup({
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-1">{product.category}</p>
               <h3 className="text-[15px] font-black text-gray-900 leading-snug mb-1 line-clamp-2">{product.name}</h3>
-              <p className="text-[12px] font-bold text-gray-400">Rs. {product.price.toLocaleString()} / {isLoose ? (product.measurementUnit || 'unit') : 'unit'}</p>
-              <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {isLoose ? product.measurementUnit : ''}</p>
+              <p className="text-[12px] font-bold text-gray-500">Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{product.measurementUnit || (product as any).unit || (isLoose ? 'unit' : 'pc')}</span></p>
+              <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {product.measurementUnit || (product as any).unit || ''}</p>
             </div>
             <button
               onClick={onClose}
@@ -154,18 +155,21 @@ function QtyPopup({
 
           <div className="p-6 space-y-5">
             <div>
-              <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                {isLoose ? `Enter Measurement (${product.measurementUnit || 'kg/m'})` : 'Enter Quantity'}
-              </p>
-              <div className="flex items-center gap-4">
-                {!isLoose && (
-                  <button
-                    onClick={() => setQtyLocal(q => Math.max(1, (typeof q === 'number' ? q : 1) - 1))}
-                    className="w-14 h-14 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-all active:scale-90 shrink-0 border border-gray-200"
-                  >
-                    <Minus className="w-5 h-5" />
-                  </button>
-                )}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                  {isLoose ? `Enter Measurement` : 'Enter Quantity'}
+                </p>
+                <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                  {product.measurementUnit || (product as any).unit || (isLoose ? 'Measurement' : 'Pieces')}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setQtyLocal(q => Math.max(isLoose ? 0.1 : 1, Number((typeof q === 'number' ? q : 1) - (isLoose ? 0.5 : 1)).toFixed(2)))}
+                  className="w-14 h-14 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-all active:scale-90 shrink-0 border border-gray-200"
+                >
+                  <Minus className="w-5 h-5" />
+                </button>
                 <input
                   ref={inputRef}
                   type="number"
@@ -177,20 +181,36 @@ function QtyPopup({
                   onFocus={(e) => e.target.select()}
                   className="flex-1 w-full h-16 text-center text-[32px] font-black text-gray-900 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                {!isLoose && (
+                <button
+                  onClick={() => setQtyLocal(q => Number((typeof q === 'number' ? q : 1) + (isLoose ? 0.5 : 1)).toFixed(2))}
+                  className="w-14 h-14 rounded-2xl bg-[#059669] hover:bg-emerald-700 flex items-center justify-center text-white transition-all active:scale-90 shrink-0 shadow-lg shadow-emerald-500/20"
+                >
+                  <Plus className="w-6 h-6" strokeWidth={3} />
+                </button>
+              </div>
+
+              {/* Quick increment chips */}
+              <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar">
+                {(isLoose ? [0.25, 0.5, 1, 2.5, 5, 10] : [1, 2, 5, 10, 25, 50]).map((val) => (
                   <button
-                    onClick={() => setQtyLocal(q => (typeof q === 'number' ? q : 1) + 1)}
-                    className="w-14 h-14 rounded-xl bg-[#059669] hover:bg-emerald-700 flex items-center justify-center text-white transition-all active:scale-90 shrink-0 shadow-lg shadow-emerald-500/20"
+                    key={val}
+                    type="button"
+                    onClick={() => setQtyLocal(val.toString())}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-all shrink-0 ${
+                      parsedQty === val
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'
+                    }`}
                   >
-                    <Plus className="w-6 h-6" strokeWidth={3} />
+                    +{val} {product.measurementUnit || (product as any).unit || ''}
                   </button>
-                )}
+                ))}
               </div>
             </div>
 
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-gray-400">{parsedQty} × Rs. {product.price.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-gray-400">{parsedQty} {product.measurementUnit || (product as any).unit || ''} × Rs. {product.price.toLocaleString()}</p>
                 <p className="text-[11px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
               </div>
               <span className="text-[22px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
@@ -222,6 +242,7 @@ export default function POSPage() {
   const [viewState, setViewState] = useState<'pos' | 'confirm'>('pos');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
+  const [activeBrand, setActiveBrand] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -230,9 +251,10 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [categoriesData, setCategoriesData] = useState<{ id: string; name: string; subcategories?: { id: string; name: string }[] }[]>([]);
+  const [categoriesData, setCategoriesData] = useState<{ id: string; name: string; subcategories?: { id: string; name: string; brands?: { id: string; name: string }[] }[]; brands?: { id: string; name: string }[] }[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedParentIdForModal, setSelectedParentIdForModal] = useState<string | undefined>(undefined);
+  const [openBrandInputDirectly, setOpenBrandInputDirectly] = useState(false);
 
   const categories = useMemo(() => {
     const apiCatNames = categoriesData.map(c => c.name);
@@ -243,6 +265,23 @@ export default function POSPage() {
   const activeCategoryObj = useMemo(() => {
     return categoriesData.find(c => c.name.trim().toLowerCase() === activeCategory.trim().toLowerCase());
   }, [categoriesData, activeCategory]);
+
+  const activeSubcategoryObj = useMemo(() => {
+    return activeCategoryObj?.subcategories?.find(s => s.name.trim().toLowerCase() === activeSubcategory.trim().toLowerCase());
+  }, [activeCategoryObj, activeSubcategory]);
+
+  const availableBrands = useMemo(() => {
+    if (activeSubcategory !== 'All' && activeSubcategoryObj) {
+      return activeSubcategoryObj.brands || [];
+    }
+    if (activeCategoryObj) {
+      const subBrands = (activeCategoryObj.subcategories || []).flatMap(s => s.brands || []);
+      const catBrands = activeCategoryObj.brands || [];
+      const combined = [...catBrands, ...subBrands];
+      return Array.from(new Map(combined.map(b => [b.id, b])).values());
+    }
+    return [];
+  }, [activeSubcategory, activeSubcategoryObj, activeCategoryObj]);
 
   useEffect(() => {
     fetchProducts();
@@ -519,10 +558,14 @@ export default function POSPage() {
   const filteredProducts = useMemo(() => productsList.filter(p => {
     const matchCat = activeCategory === 'All' || p.category === activeCategory || p.subCategory === activeCategory;
     const matchSubCat = activeSubcategory === 'All' || p.subCategory === activeSubcategory || p.category === activeSubcategory;
+    const matchBrand = activeBrand === 'All' || 
+      (p as any).brand?.name?.toLowerCase() === activeBrand.toLowerCase() ||
+      (p as any).brandName?.toLowerCase() === activeBrand.toLowerCase() ||
+      (typeof (p as any).brand === 'string' && (p as any).brand.toLowerCase() === activeBrand.toLowerCase());
     const searchLower = (searchQuery || '').toLowerCase();
     const matchSearch = (p.name || '').toLowerCase().includes(searchLower) || (p.sku || '').toLowerCase().includes(searchLower);
-    return matchCat && matchSubCat && matchSearch;
-  }), [activeCategory, activeSubcategory, searchQuery, productsList]);
+    return matchCat && matchSubCat && matchBrand && matchSearch;
+  }), [activeCategory, activeSubcategory, activeBrand, searchQuery, productsList]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -567,19 +610,19 @@ export default function POSPage() {
         isOpen={isLabourModalOpen}
         onClose={() => setIsLabourModalOpen(false)}
       />
-      <AddCategoryModal
+      <ManageCategoriesModal
         isOpen={isCategoryModalOpen}
         onClose={() => {
           setIsCategoryModalOpen(false);
           setSelectedParentIdForModal(undefined);
+          setOpenBrandInputDirectly(false);
         }}
-        onSuccess={() => {
-          setIsCategoryModalOpen(false);
-          setSelectedParentIdForModal(undefined);
+        onRefresh={() => {
           fetchCategories();
           fetchProducts();
         }}
-        defaultParentId={selectedParentIdForModal}
+        initialSubcategoryId={selectedParentIdForModal}
+        openBrandInputDirectly={openBrandInputDirectly}
       />
       {isCustomerModalOpen && (
         <AddCustomerModal 
@@ -682,6 +725,7 @@ export default function POSPage() {
                         onClick={() => {
                           setActiveCategory(cat);
                           setActiveSubcategory('All');
+                          setActiveBrand('All');
                         }}
                         className={`px-5 py-2.5 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
                           activeCategory === cat
@@ -713,7 +757,7 @@ export default function POSPage() {
                         <Tag className="w-3.5 h-3.5 text-blue-600" /> Subcategory:
                       </span>
                       <button
-                        onClick={() => setActiveSubcategory('All')}
+                        onClick={() => { setActiveSubcategory('All'); setActiveBrand('All'); }}
                         className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
                           activeSubcategory === 'All'
                             ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
@@ -725,7 +769,7 @@ export default function POSPage() {
                       {(activeCategoryObj?.subcategories || []).map((sub, idx) => (
                         <button
                           key={`${sub.id}-${idx}`}
-                          onClick={() => setActiveSubcategory(sub.name)}
+                          onClick={() => { setActiveSubcategory(sub.name); setActiveBrand('All'); }}
                           className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
                             activeSubcategory === sub.name
                               ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
@@ -745,6 +789,51 @@ export default function POSPage() {
                     >
                       <Plus className="w-4 h-4" strokeWidth={3} />
                       Subcategory
+                    </button>
+                  </div>
+                )}
+
+                {/* Brand Row (shown when any category except 'All' is selected) */}
+                {activeCategory !== 'All' && (
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mb-1 flex-1 items-center">
+                      <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mr-2 shrink-0 flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-purple-500" /> Brand:
+                      </span>
+                      <button
+                        onClick={() => setActiveBrand('All')}
+                        className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
+                          activeBrand === 'All'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200'
+                            : 'bg-white text-gray-400 border-gray-100 hover:border-purple-200 hover:text-purple-600'
+                        }`}
+                      >
+                        All Brands
+                      </button>
+                      {availableBrands.map((brand, idx) => (
+                        <button
+                          key={`${brand.id}-${idx}`}
+                          onClick={() => setActiveBrand(brand.name)}
+                          className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
+                            activeBrand === brand.name
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200'
+                              : 'bg-white text-gray-400 border-gray-100 hover:border-purple-200 hover:text-purple-600'
+                          }`}
+                        >
+                          {brand.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedParentIdForModal(activeSubcategoryObj?.id);
+                        setOpenBrandInputDirectly(true);
+                        setIsCategoryModalOpen(true);
+                      }}
+                      className="ml-4 px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border-2 border-purple-200 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" strokeWidth={3} />
+                      Brand
                     </button>
                   </div>
                 )}
@@ -800,7 +889,7 @@ export default function POSPage() {
                             </div>
                             {inCart && (
                               <div className="absolute top-3 left-3 bg-[#059669] text-white text-[11px] font-black px-2.5 py-1 rounded-lg shadow-md">
-                                {inCart.qty} {inCart.qty === 1 ? 'pc' : 'pcs'}
+                                {inCart.qty} {product.measurementUnit || (product as any).unit || 'pcs'}
                               </div>
                             )}
                           </div>
@@ -825,11 +914,18 @@ export default function POSPage() {
                               </h3>
                             </div>
 
-                            <div className="mt-auto pt-4 flex flex-col border-t border-gray-50">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Price</span>
-                              <span className="text-[18px] font-black text-gray-900 tracking-tighter">
-                                Rs. {product.price.toLocaleString()}
-                              </span>
+                            <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-50">
+                              <div>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 block">Price</span>
+                                <span className="text-[18px] font-black text-gray-900 tracking-tighter">
+                                  Rs. {product.price.toLocaleString()}
+                                </span>
+                              </div>
+                              {(product.measurementUnit || (product as any).unit) && (
+                                <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+                                  / {product.measurementUnit || (product as any).unit}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

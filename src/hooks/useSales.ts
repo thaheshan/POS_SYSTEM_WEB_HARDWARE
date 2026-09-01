@@ -7,6 +7,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
     catA: { core: 0, vat: 0, avg: 0, items: 0, txns: 0, recentTxns: [], allTxns: [] },
     catB: { core: 0, overflow: 0, baseNonTax: 0, avg: 0, items: 0, txns: 0, recentTxns: [], allTxns: [], topProducts: [] },
     catC: { core: 0, labour: 0, install: 0, misc: 0, entries: 0, recentEntries: [], allTxns: [], breakdown: [] },
+    creditSummary: { creditSalesTotal: 0, creditTxnCount: 0, cashSalesTotal: 0, cashTxnCount: 0, totalOutstandingCredit: 0 },
     summary: { totalSales: 0, totalPurchases: 0, totalExpenses: 0, netProfit: 0 },
   });
   const [loading, setLoading] = useState(true);
@@ -24,11 +25,12 @@ export function useSalesData(dateRange: DateRange | undefined) {
         params.endDate = dateRange.to.toISOString().split('T')[0]; // YYYY-MM-DD
       }
 
-      // Fetch sales invoices, expenses, and summary in parallel
-      const [salesRes, expensesRes, summaryRes] = await Promise.all([
+      // Fetch sales invoices, expenses, summary, and customers in parallel
+      const [salesRes, expensesRes, summaryRes, customersRes] = await Promise.all([
         api.get('/sales', { params }),
         api.get('/expenses', { params: { startDate: params.startDate, endDate: params.endDate } }),
         api.get('/dashboard/summary', { params: { startDate: params.startDate, endDate: params.endDate } }).catch(() => ({ data: { totalSales: 0, totalPurchases: 0, totalExpenses: 0, netProfit: 0 } })),
+        api.get('/customers').catch(() => ({ data: [] })),
       ]);
 
       // ── SALES PROCESSING ─────────────────────────────────────────────────────
@@ -56,6 +58,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
       let catBTxns = 0;
       let catAItemCount = 0;
       let catBItemCount = 0;
+      let creditSalesTotal = 0;
+      let cashSalesTotal = 0;
+      let creditTxnCount = 0;
+      let cashTxnCount = 0;
       const recentCatATxns: any[] = [];
       const recentCatBTxns: any[] = [];
       const allCatATxns: any[] = [];
@@ -72,6 +78,22 @@ export function useSalesData(dateRange: DateRange | undefined) {
         }
 
         const amt = Number(inv.totalAmount || 0);
+        const isCredit =
+          (inv.saleType || '').toString().toUpperCase() === 'CREDIT' ||
+          (inv.paymentMethod || '').toString().toUpperCase() === 'CREDIT' ||
+          (inv.paymentStatus || '').toString().toUpperCase() === 'PARTIAL' ||
+          (inv.paymentStatus || '').toString().toUpperCase() === 'UNPAID' ||
+          Number(inv.balance || 0) > 0 ||
+          Number(inv.creditAmount || 0) > 0 ||
+          inv.isCredit === true;
+
+        if (isCredit) {
+          creditSalesTotal += amt;
+          creditTxnCount += 1;
+        } else {
+          cashSalesTotal += amt;
+          cashTxnCount += 1;
+        }
         const rawId = inv.id || inv._id || '';
         const time = new Date(inv.createdAt).toLocaleTimeString([], {
           hour: '2-digit',
@@ -185,6 +207,22 @@ export function useSalesData(dateRange: DateRange | undefined) {
       const summaryPayload = summaryRes.data?.data ?? summaryRes.data ?? {};
       const summaryRaw = summaryPayload;
 
+      // Calculate total customer credit balance
+      let customersList: any[] = [];
+      const custData = customersRes.data;
+      if (Array.isArray(custData?.data?.items)) {
+        customersList = custData.data.items;
+      } else if (Array.isArray(custData?.data)) {
+        customersList = custData.data;
+      } else if (Array.isArray(custData)) {
+        customersList = custData;
+      }
+
+      const totalOutstandingCredit = customersList.reduce(
+        (sum: number, c: any) => sum + Number(c.outstandingBalance || c.outstanding_balance || c.creditBalance || c.credit_balance || c.totalCredit || 0),
+        0
+      );
+
       setData({
         catA: {
           core: catACore,
@@ -227,6 +265,13 @@ export function useSalesData(dateRange: DateRange | undefined) {
             { name: 'jobs completed', value: labourTotal },
             { name: 'jobs completed', value: miscTotal },
           ],
+        },
+        creditSummary: {
+          creditSalesTotal,
+          creditTxnCount,
+          cashSalesTotal,
+          cashTxnCount,
+          totalOutstandingCredit,
         },
         summary: {
           totalSales: summaryRaw?.totalSales || runningTotal,
