@@ -36,8 +36,15 @@ type CartItem = {
   discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
   maxAllowedDiscount?: number;
   defaultDiscountValue?: number;
-  discountAmount?: number; // LKR discount amount per unit
-  discountPercentage?: number; // applied percentage discount
+  discountAmount?: number; // Total LKR discount amount per unit
+  discountPercentage?: number; // Total applied percentage discount
+  primaryDiscountValue?: number;
+  primaryDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  // Double / Secondary Discount properties
+  hasSecondaryDiscount?: boolean;
+  secondaryDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  secondaryDiscountValue?: number;
+  secondaryDiscountAmount?: number;
 };
 
 type Product = {
@@ -455,19 +462,59 @@ export default function POSPage() {
 
 
   // ── Cart helpers
-  const handleApplyItemDiscount = (itemId: string, val: number, type: 'PERCENTAGE' | 'FIXED_AMOUNT') => {
+  const handleApplyItemDiscount = (
+    itemId: string,
+    val: number,
+    type: 'PERCENTAGE' | 'FIXED_AMOUNT',
+    hasSecondary?: boolean,
+    secVal?: number,
+    secType?: 'PERCENTAGE' | 'FIXED_AMOUNT'
+  ) => {
     setCart((prev) => prev.map(item => {
       if (item.id === itemId) {
-        let discountAmount = 0;
-        let discountPercentage = 0;
+        const originalPrice = item.price;
+        const parsedVal = val || 0;
+
+        let primaryDiscountAmount = 0;
+        let primaryDiscountPercentage = 0;
         if (type === 'PERCENTAGE') {
-          discountPercentage = val;
-          discountAmount = Number(((item.price * val) / 100).toFixed(2));
+          primaryDiscountPercentage = parsedVal;
+          primaryDiscountAmount = Number(((originalPrice * parsedVal) / 100).toFixed(2));
         } else {
-          discountAmount = val;
-          discountPercentage = Number(((val / item.price) * 100).toFixed(2));
+          primaryDiscountAmount = parsedVal;
+          primaryDiscountPercentage = Number(((parsedVal / originalPrice) * 100).toFixed(2));
         }
-        return { ...item, discountAmount, discountPercentage };
+
+        const priceAfterPrimary = Math.max(0, originalPrice - primaryDiscountAmount);
+
+        let secondaryDiscountAmount = 0;
+        let secondaryDiscountPercentage = 0;
+        const parsedSecVal = secVal || 0;
+
+        if (hasSecondary && parsedSecVal > 0) {
+          if (secType === 'PERCENTAGE') {
+            secondaryDiscountPercentage = parsedSecVal;
+            secondaryDiscountAmount = Number(((priceAfterPrimary * parsedSecVal) / 100).toFixed(2));
+          } else {
+            secondaryDiscountAmount = parsedSecVal;
+            secondaryDiscountPercentage = Number(((parsedSecVal / (priceAfterPrimary || 1)) * 100).toFixed(2));
+          }
+        }
+
+        const totalDiscountAmount = Number((primaryDiscountAmount + secondaryDiscountAmount).toFixed(2));
+        const totalDiscountPercentage = Number(((totalDiscountAmount / originalPrice) * 100).toFixed(2));
+
+        return {
+          ...item,
+          discountAmount: totalDiscountAmount,
+          discountPercentage: totalDiscountPercentage,
+          primaryDiscountValue: val,
+          primaryDiscountType: type,
+          hasSecondaryDiscount: hasSecondary,
+          secondaryDiscountType: secType,
+          secondaryDiscountValue: secVal,
+          secondaryDiscountAmount: secondaryDiscountAmount,
+        };
       }
       return item;
     }));
@@ -1305,11 +1352,14 @@ export default function POSPage() {
         {selectedCartItemForDiscount && (
           <ProductDiscountModal
             item={selectedCartItemForDiscount}
-            onConfirm={(val, type) =>
+            onConfirm={(val, type, hasSecondary, secVal, secType) =>
               handleApplyItemDiscount(
                 selectedCartItemForDiscount.id,
                 val,
                 type,
+                hasSecondary,
+                secVal,
+                secType
               )
             }
             onClose={() => setSelectedCartItemForDiscount(null)}
@@ -1320,83 +1370,118 @@ export default function POSPage() {
   );
 }
 
-// ── Product Discount Popup Modal ───────────────────────────────────────────────────
+// ── Product Discount Popup Modal (With Primary & Double Secondary Discounting) ─────────────
 function ProductDiscountModal({
   item,
   onConfirm,
   onClose,
 }: {
   item: CartItem;
-  onConfirm: (val: number, type: "PERCENTAGE" | "FIXED_AMOUNT") => void;
+  onConfirm: (
+    val: number,
+    type: "PERCENTAGE" | "FIXED_AMOUNT",
+    hasSecondary?: boolean,
+    secVal?: number,
+    secType?: "PERCENTAGE" | "FIXED_AMOUNT"
+  ) => void;
   onClose: () => void;
 }) {
+  // Primary discount state
   const [val, setVal] = useState<number | string>(
-    item.discountAmount && item.discountAmount > 0
-      ? item.discountPercentage && item.discountPercentage > 0
-        ? item.discountPercentage ?? 0
-        : item.discountAmount ?? 0
-      : "",
+    item.primaryDiscountValue !== undefined
+      ? item.primaryDiscountValue
+      : item.discountPercentage && item.discountPercentage > 0
+      ? item.discountPercentage
+      : item.discountAmount && item.discountAmount > 0
+      ? item.discountAmount
+      : ""
   );
   const [type, setType] = useState<"PERCENTAGE" | "FIXED_AMOUNT">(
-    item.discountType || "PERCENTAGE",
+    item.primaryDiscountType || item.discountType || "PERCENTAGE"
   );
+
+  // Double / Secondary discount state
+  const [hasSecondary, setHasSecondary] = useState<boolean>(
+    Boolean(item.hasSecondaryDiscount)
+  );
+  const [secVal, setSecVal] = useState<number | string>(
+    item.secondaryDiscountValue !== undefined ? item.secondaryDiscountValue : ""
+  );
+  const [secType, setSecType] = useState<"PERCENTAGE" | "FIXED_AMOUNT">(
+    item.secondaryDiscountType || "PERCENTAGE"
+  );
+
   const [error, setError] = useState<string | null>(null);
 
   const originalPrice = item.price;
   const maxAllowed = Number(item.maxAllowedDiscount ?? 0);
 
+  // 1. Primary Discount Calculation
   const parsedVal = parseFloat(String(val)) || 0;
-  const discountAmount = Number((
-    type === "PERCENTAGE" ? (originalPrice * parsedVal) / 100 : parsedVal
-  ).toFixed(2));
-  const discountedPrice = Math.max(0, Number((originalPrice - discountAmount).toFixed(2)));
-  const totalAmount = Number((discountedPrice * item.qty).toFixed(2));
+  const primaryDiscountAmount = Number(
+    (type === "PERCENTAGE" ? (originalPrice * parsedVal) / 100 : parsedVal).toFixed(2)
+  );
+  const priceAfterPrimary = Math.max(
+    0,
+    Number((originalPrice - primaryDiscountAmount).toFixed(2))
+  );
+
+  // 2. Secondary (Double) Discount Calculation on Leftover Price
+  const parsedSecVal = parseFloat(String(secVal)) || 0;
+  const secondaryDiscountAmount = Number(
+    (hasSecondary && parsedSecVal > 0
+      ? secType === "PERCENTAGE"
+        ? (priceAfterPrimary * parsedSecVal) / 100
+        : parsedSecVal
+      : 0
+    ).toFixed(2)
+  );
+
+  const finalDiscountedPrice = Math.max(
+    0,
+    Number((priceAfterPrimary - secondaryDiscountAmount).toFixed(2))
+  );
+  const totalDiscountAmount = Number(
+    (primaryDiscountAmount + secondaryDiscountAmount).toFixed(2)
+  );
+  const effectiveDiscountPercentage = Number(
+    ((totalDiscountAmount / originalPrice) * 100).toFixed(2)
+  );
+  const totalAmount = Number((finalDiscountedPrice * item.qty).toFixed(2));
 
   const handleApply = () => {
     if (val === "" || isNaN(parsedVal) || parsedVal < 0) {
-      setError("Please enter a valid positive value.");
+      setError("Please enter a valid positive discount value.");
       return;
     }
 
-    if (type === "PERCENTAGE") {
-      if (item.discountType === "PERCENTAGE" && parsedVal > maxAllowed) {
-        setError(`Value exceeds maximum approved limit of ${maxAllowed}%`);
+    if (hasSecondary && (secVal === "" || isNaN(parsedSecVal) || parsedSecVal < 0)) {
+      setError("Please enter a valid double discount value.");
+      return;
+    }
+
+    // Limit Validation
+    if (maxAllowed > 0) {
+      if (item.discountType === "PERCENTAGE" && effectiveDiscountPercentage > maxAllowed) {
+        setError(
+          `Combined discount (${effectiveDiscountPercentage}%) exceeds maximum approved limit of ${maxAllowed}%`
+        );
         return;
       }
-      if (item.discountType === "FIXED_AMOUNT") {
-        const limitInPercentage = (maxAllowed / originalPrice) * 100;
-        if (parsedVal > limitInPercentage) {
-          setError(
-            `Value exceeds maximum approved limit (Rs. ${maxAllowed} / ${limitInPercentage.toFixed(1)}%)`,
-          );
-          return;
-        }
-      }
-      if (parsedVal > 100) {
-        setError("Discount cannot exceed 100%");
-        return;
-      }
-    } else {
-      if (item.discountType === "FIXED_AMOUNT" && parsedVal > maxAllowed) {
-        setError(`Value exceeds maximum approved limit of Rs. ${maxAllowed}`);
-        return;
-      }
-      if (item.discountType === "PERCENTAGE") {
-        const limitInFixed = (originalPrice * maxAllowed) / 100;
-        if (parsedVal > limitInFixed) {
-          setError(
-            `Value exceeds maximum approved limit (Rs. ${limitInFixed.toLocaleString()} / ${maxAllowed}%)`,
-          );
-          return;
-        }
-      }
-      if (parsedVal > originalPrice) {
-        setError("Discount cannot exceed original unit price.");
+      if (item.discountType === "FIXED_AMOUNT" && totalDiscountAmount > maxAllowed) {
+        setError(
+          `Combined discount (Rs. ${totalDiscountAmount}) exceeds maximum approved limit of Rs. ${maxAllowed}`
+        );
         return;
       }
     }
 
-    onConfirm(parsedVal, type);
+    if (totalDiscountAmount > originalPrice) {
+      setError("Total discount cannot exceed original unit price.");
+      return;
+    }
+
+    onConfirm(parsedVal, type, hasSecondary, parsedSecVal, secType);
     onClose();
   };
 
@@ -1406,37 +1491,39 @@ function ProductDiscountModal({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="p-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h3 className="text-base font-black text-gray-900">
               Configure Product Discount
             </h3>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+            <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
               Eligibility: Approved
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
           >
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
-          <div className="bg-emerald-50/60 border border-emerald-100 p-3.5 rounded-2xl">
+        <div className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+          {/* Product Info Card */}
+          <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-2xl">
             <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-0.5">
               Product Details
             </p>
-            <h4 className="text-[13px] font-black text-emerald-950 leading-snug">
+            <h4 className="text-[14px] font-black text-emerald-950 leading-snug">
               {item.name}
             </h4>
-            <div className="flex justify-between items-center mt-3 text-[12px] font-semibold text-emerald-900 border-t border-emerald-100/50 pt-2.5">
-              <span>Original Price: Rs. {originalPrice.toLocaleString()}</span>
-              <span>
+            <div className="flex justify-between items-center mt-3 text-[12px] font-semibold text-emerald-900 border-t border-emerald-100/60 pt-2.5">
+              <span>Original Price: <strong className="font-mono">Rs. {originalPrice.toLocaleString()}</strong></span>
+              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold text-[11px]">
                 Limit:{" "}
                 {item.discountType === "PERCENTAGE"
                   ? `${maxAllowed}%`
@@ -1445,45 +1532,45 @@ function ProductDiscountModal({
             </div>
           </div>
 
-          {/* Type Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              Discount Type
-            </label>
+          {/* 1. Primary Discount Section */}
+          <div className="space-y-2 bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
+            <div className="flex justify-between items-center">
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                Primary Discount
+              </label>
+              {type === "PERCENTAGE" && parsedVal > 0 && (
+                <span className="text-[11px] font-bold text-emerald-700">
+                  -Rs. {primaryDiscountAmount.toLocaleString()}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setType("PERCENTAGE")}
-                className={`flex-1 py-2.5 text-xs font-black uppercase rounded-lg border transition-all ${
+                onClick={() => { setType("PERCENTAGE"); setError(null); }}
+                className={`flex-1 py-2 text-[11px] font-black uppercase rounded-lg border transition-all ${
                   type === "PERCENTAGE"
-                    ? "bg-[#059669] text-white border-[#059669]"
-                    : "bg-white text-gray-400 border-gray-200"
+                    ? "bg-[#059669] text-white border-[#059669] shadow-sm"
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-100"
                 }`}
               >
                 % Percent
               </button>
               <button
                 type="button"
-                onClick={() => setType("FIXED_AMOUNT")}
-                className={`flex-1 py-2.5 text-xs font-black uppercase rounded-lg border transition-all ${
+                onClick={() => { setType("FIXED_AMOUNT"); setError(null); }}
+                className={`flex-1 py-2 text-[11px] font-black uppercase rounded-lg border transition-all ${
                   type === "FIXED_AMOUNT"
-                    ? "bg-[#059669] text-white border-[#059669]"
-                    : "bg-white text-gray-400 border-gray-200"
+                    ? "bg-[#059669] text-white border-[#059669] shadow-sm"
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-100"
                 }`}
               >
                 LKR Amount
               </button>
             </div>
-          </div>
-
-          {/* Input Value */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              Discount Value
-            </label>
             <div className="relative">
               {type === "FIXED_AMOUNT" && (
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">
                   Rs.
                 </span>
               )}
@@ -1494,40 +1581,135 @@ function ProductDiscountModal({
                   setVal(e.target.value);
                   setError(null);
                 }}
-                placeholder={type === "PERCENTAGE" ? "e.g. 10" : "e.g. 100"}
-                className={`w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pr-4 text-base font-black text-gray-800 outline-none focus:bg-white focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all ${
-                  type === "FIXED_AMOUNT" ? "pl-10" : "pl-4"
+                placeholder={type === "PERCENTAGE" ? "e.g. 53" : "e.g. 26.50"}
+                className={`w-full bg-white border border-gray-200 rounded-xl py-2.5 pr-4 text-sm font-black text-gray-800 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all ${
+                  type === "FIXED_AMOUNT" ? "pl-9" : "pl-3.5"
                 }`}
                 min="0"
               />
             </div>
-            {error && (
-              <p className="text-[10px] text-red-500 font-semibold">{error}</p>
+            <p className="text-[11px] font-bold text-gray-500 text-right">
+              Price after 1st discount: <strong className="font-mono text-gray-800">Rs. {priceAfterPrimary.toLocaleString()}</strong>
+            </p>
+          </div>
+
+          {/* 2. Secondary (Double) Discount Section */}
+          <div className="space-y-2.5 bg-blue-50/40 p-3.5 rounded-2xl border border-blue-100/70">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasSecondary}
+                  onChange={(e) => {
+                    setHasSecondary(e.target.checked);
+                    setError(null);
+                  }}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                />
+                <span className="text-[11px] font-black text-blue-900 uppercase tracking-widest">
+                  + Add Double Discount (Secondary)
+                </span>
+              </label>
+              {hasSecondary && secondaryDiscountAmount > 0 && (
+                <span className="text-[11px] font-bold text-blue-700">
+                  -Rs. {secondaryDiscountAmount.toLocaleString()}
+                </span>
+              )}
+            </div>
+
+            {hasSecondary && (
+              <div className="space-y-2 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <p className="text-[10px] text-blue-600 font-bold">
+                  Applied on leftover balance (Rs. {priceAfterPrimary.toLocaleString()}) after 1st discount
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSecType("PERCENTAGE"); setError(null); }}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all ${
+                      secType === "PERCENTAGE"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    % Percent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSecType("FIXED_AMOUNT"); setError(null); }}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all ${
+                      secType === "FIXED_AMOUNT"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    LKR Amount
+                  </button>
+                </div>
+                <div className="relative">
+                  {secType === "FIXED_AMOUNT" && (
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">
+                      Rs.
+                    </span>
+                  )}
+                  <input
+                    type="number"
+                    value={secVal}
+                    onChange={(e) => {
+                      setSecVal(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder={secType === "PERCENTAGE" ? "e.g. 6" : "e.g. 1.41"}
+                    className={`w-full bg-white border border-gray-200 rounded-xl py-2.5 pr-4 text-sm font-black text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all ${
+                      secType === "FIXED_AMOUNT" ? "pl-9" : "pl-3.5"
+                    }`}
+                    min="0"
+                  />
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Dynamic Calculations */}
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-2">
-            <div className="flex justify-between text-xs font-medium text-gray-500">
+          {/* Validation Error Banner */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 p-3 rounded-xl flex items-start gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500 mt-1 shrink-0" />
+              <p className="text-[11px] text-red-700 font-bold leading-tight">{error}</p>
+            </div>
+          )}
+
+          {/* Dynamic Calculations Summary */}
+          <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-gray-500">
+              <span>Primary Discount ({type === 'PERCENTAGE' ? `${parsedVal}%` : `Rs. ${parsedVal}`}):</span>
+              <span className="font-mono text-red-600">-Rs. {primaryDiscountAmount.toLocaleString()}</span>
+            </div>
+            {hasSecondary && (
+              <div className="flex justify-between text-xs font-semibold text-gray-500">
+                <span>Double Discount ({secType === 'PERCENTAGE' ? `${parsedSecVal}% of Rs. ${priceAfterPrimary}` : `Rs. ${parsedSecVal}`}):</span>
+                <span className="font-mono text-red-600">-Rs. {secondaryDiscountAmount.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xs font-bold text-gray-700 border-t border-gray-200/60 pt-2">
               <span>Discounted Unit Price:</span>
-              <span className="font-mono">
-                Rs. {discountedPrice.toLocaleString()}
+              <span className="font-mono text-emerald-700">
+                Rs. {finalDiscountedPrice.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between text-xs font-medium text-gray-500">
               <span>Quantity:</span>
-              <span>{item.qty}</span>
+              <span className="font-bold text-gray-800">{item.qty}</span>
             </div>
-            <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200/50 pt-2">
+            <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200 pt-2">
               <span>New Line Total:</span>
-              <span className="font-mono text-emerald-600">
+              <span className="font-mono text-emerald-600 text-base">
                 Rs. {totalAmount.toLocaleString()}
               </span>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-3 pt-2">
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
@@ -1538,7 +1720,7 @@ function ProductDiscountModal({
             <button
               type="button"
               onClick={handleApply}
-              className="flex-1 py-3 text-xs font-black uppercase text-white bg-[#059669] hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
+              className="flex-1 py-3 text-xs font-black uppercase text-white bg-[#059669] hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
             >
               Apply
             </button>
