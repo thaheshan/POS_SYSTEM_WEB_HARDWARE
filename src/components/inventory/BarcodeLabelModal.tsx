@@ -45,8 +45,8 @@ export default function BarcodeLabelModal({
     "medium"
   );
   const [barWidth, setBarWidth] = useState<"1mm" | "2mm" | "3mm">("2mm");
-  const [showPrice, setShowPrice] = useState(true);
-  const [showStoreName, setShowStoreName] = useState(true);
+  const [showPrice, setShowPrice] = useState(false);
+  const [showStoreName, setShowStoreName] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
