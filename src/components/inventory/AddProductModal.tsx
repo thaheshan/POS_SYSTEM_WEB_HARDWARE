@@ -363,17 +363,20 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       setShowNewSubCat(false);
       return;
     }
+    // Always fetch fresh from API to ensure latest data; seed with cache immediately if available
     const parent = categories.find(c => c.id === form.categoryId);
     if (parent?.subcategories && parent.subcategories.length > 0) {
       setSubCategories(parent.subcategories);
-    } else {
-      api.get(`/products/categories/${form.categoryId}/subcategories`)
-        .then(res => {
-          const data = res.data?.data || res.data || [];
-          setSubCategories(Array.isArray(data) ? data : []);
-        })
-        .catch(() => setSubCategories([]));
     }
+    // Always also fetch from API to get fresh data (catches newly created subcategories)
+    api.get(`/products/categories/${form.categoryId}/subcategories`)
+      .then(res => {
+        const raw = res.data?.data || res.data || [];
+        const arr = Array.isArray(raw) ? raw : [];
+        if (arr.length > 0) setSubCategories(arr);
+      })
+      .catch(() => {/* keep cache if API fails */});
+
     set("subCategoryId", "");
     set("brandId", "");
     setBrands([]);
@@ -389,22 +392,24 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       setShowNewBrand(false);
       return;
     }
-    // First check the cached subcategory list
+    // Seed from cache if available, then always fetch fresh from API
     const sub = subCategories.find(s => s.id === form.subCategoryId);
     if (sub?.brands && sub.brands.length > 0) {
       setBrands(sub.brands);
-    } else {
-      api.get(`/products/brands`, { params: { subcategoryId: form.subCategoryId } })
-        .then(res => {
-          const data = res.data?.data || res.data || [];
-          setBrands(Array.isArray(data) ? data : []);
-        })
-        .catch(() => setBrands([]));
     }
+    // Always fetch from API for fresh / newly added brands
+    api.get(`/products/brands`, { params: { subcategoryId: form.subCategoryId } })
+      .then(res => {
+        const raw = res.data?.data || res.data || [];
+        const arr = Array.isArray(raw) ? raw : [];
+        setBrands(arr); // API is authoritative
+      })
+      .catch(() => {/* keep cache if API fails */});
+
     set("brandId", "");
     setShowNewBrand(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.subCategoryId]);
+  }, [form.subCategoryId, subCategories]);
 
   /* ─── Fetch dropdown data on open ─── */
   useEffect(() => {
