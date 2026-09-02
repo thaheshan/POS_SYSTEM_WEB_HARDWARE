@@ -122,12 +122,18 @@ function QtyPopup({
     onConfirm(finalQty);
   };
 
+  const rawUnit = product.measurementUnit || (product as any).unit || (isLoose ? 'm' : 'pcs');
+  const displayUnit = rawUnit
+    .replace(/\s*\(.*\)/, '')
+    .trim();
+  const shortUnit = displayUnit.toLowerCase() === 'meters' ? 'm' : displayUnit.toLowerCase() === 'liters' ? 'L' : displayUnit.toLowerCase() === 'kilograms' ? 'kg' : displayUnit.toLowerCase() === 'pieces' ? 'pcs' : displayUnit;
+
   return (
     <>
       <StockErrorModal 
         isOpen={showError} 
         onClose={() => setShowError(false)} 
-        message={`Cannot add ${parsedQty}. Only ${product.stock} ${isLoose ? (product.measurementUnit || 'units') : 'items'} available in stock.`} 
+        message={`Cannot add ${parsedQty}. Only ${product.stock} ${shortUnit} available in stock.`} 
       />
       <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={onClose}>
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -142,8 +148,8 @@ function QtyPopup({
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-1">{product.category}</p>
               <h3 className="text-[15px] font-black text-gray-900 leading-snug mb-1 line-clamp-2">{product.name}</h3>
-              <p className="text-[12px] font-bold text-gray-500">Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{product.measurementUnit || (product as any).unit || (isLoose ? 'unit' : 'pc')}</span></p>
-              <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {product.measurementUnit || (product as any).unit || ''}</p>
+              <p className="text-[12px] font-bold text-gray-500">Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{shortUnit}</span></p>
+              <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {shortUnit}</p>
             </div>
             <button
               onClick={onClose}
@@ -160,7 +166,7 @@ function QtyPopup({
                   {isLoose ? `Enter Measurement` : 'Enter Quantity'}
                 </p>
                 <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                  {product.measurementUnit || (product as any).unit || (isLoose ? 'Measurement' : 'Pieces')}
+                  {shortUnit}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -212,7 +218,7 @@ function QtyPopup({
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'
                     }`}
                   >
-                    +{val} {product.measurementUnit || (product as any).unit || ''}
+                    +{val} {shortUnit}
                   </button>
                 ))}
               </div>
@@ -220,7 +226,7 @@ function QtyPopup({
 
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-gray-400">{parsedQty} {product.measurementUnit || (product as any).unit || ''} × Rs. {product.price.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-gray-400">{parsedQty} {shortUnit} × Rs. {product.price.toLocaleString()}</p>
                 <p className="text-[11px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
               </div>
               <span className="text-[22px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
@@ -597,6 +603,8 @@ export default function POSPage() {
         (p) =>
           p.barcode?.toLowerCase() === code ||
           p.sku?.toLowerCase() === code ||
+          p.id?.toLowerCase() === code ||
+          p.name?.toLowerCase() === code ||
           p.name?.toLowerCase().includes(code)
       );
       if (found) {
@@ -611,6 +619,8 @@ export default function POSPage() {
       }
     },
     enabled: viewState === 'pos',
+    minCharLength: 2,
+    maxDelayMs: 100,
   });
 
 
@@ -708,9 +718,30 @@ export default function POSPage() {
                     <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search product name, SKU..."
+                      placeholder="Search product name, SKU, or scan barcode..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && searchQuery.trim()) {
+                          const q = searchQuery.trim().toLowerCase();
+                          const match = productsList.find(p =>
+                            p.barcode?.toLowerCase() === q ||
+                            p.sku?.toLowerCase() === q ||
+                            p.id?.toLowerCase() === q ||
+                            p.name?.toLowerCase() === q ||
+                            p.name?.toLowerCase().includes(q)
+                          );
+                          if (match) {
+                            if (match.stock <= 0) {
+                              toast.error(`"${match.name}" is out of stock!`);
+                            } else {
+                              setPendingProduct(match);
+                              setSearchQuery("");
+                              e.preventDefault();
+                            }
+                          }
+                        }
+                      }}
                       className="w-full bg-white border border-gray-200 rounded-lg py-3.5 pl-12 pr-4 text-[14px] font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
                     />
                   </div>
