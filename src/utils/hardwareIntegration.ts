@@ -147,8 +147,8 @@ export async function printThermalReceipt(
 export function useBarcodeScanner({
   onScan,
   enabled = true,
-  minCharLength = 3,
-  maxDelayMs = 50,
+  minCharLength = 2,
+  maxDelayMs = 100,
 }: {
   onScan: (barcode: string) => void;
   enabled?: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, Printer, Download, Barcode, Plus, Minus } from "lucide-react";
+import { X, Printer, Download, Barcode, Plus, Minus, Image as ImageIcon, FileText } from "lucide-react";
 
 interface BarcodeLabelModalProps {
   product: {
@@ -44,21 +44,21 @@ export default function BarcodeLabelModal({
   const [labelSize, setLabelSize] = useState<"small" | "medium" | "large">(
     "medium"
   );
+  const [barWidth, setBarWidth] = useState<"1mm" | "2mm" | "3mm">("2mm");
   const [showPrice, setShowPrice] = useState(true);
   const [showStoreName, setShowStoreName] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const skuCode = product?.sku || product?.id?.slice(0, 12) || "NOSKU";
 
   // Label size configs (mm dimensions for reference, px for preview)
   const sizeConfig = {
-    small:  { w: 200, h: 80,  barcodeH: 35, font: 9 },
-    medium: { w: 280, h: 110, barcodeH: 50, font: 11 },
-    large:  { w: 380, h: 140, barcodeH: 65, font: 13 },
+    small:  { w: 220, h: 90,  barcodeH: 40, font: 10 },
+    medium: { w: 300, h: 120, barcodeH: 55, font: 12 },
+    large:  { w: 390, h: 150, barcodeH: 70, font: 14 },
   };
   const cfg = sizeConfig[labelSize];
-
-  const [barWidth, setBarWidth] = useState<"1mm" | "2mm" | "3mm">("2mm");
 
   const barWidthScale = {
     "1mm": 1.0,
@@ -101,7 +101,7 @@ export default function BarcodeLabelModal({
         border:1.5px solid #d1d5db;border-radius:8px;
         background:#fff;padding:8px 12px;
         display:flex;flex-direction:column;align-items:center;
-        justify-style:space-between;
+        justify-content:space-between;
         font-family:'Segoe UI',sans-serif;
         page-break-inside:avoid;
         box-shadow:0 1px 3px rgba(0,0,0,0.08);
@@ -147,7 +147,98 @@ export default function BarcodeLabelModal({
     }
   };
 
-  const handleDownload = () => {
+  // ─── Download Label as PNG / JPEG Image ──────────────────────────────────
+  const handleDownloadImage = (format: "png" | "jpeg") => {
+    if (!svgRef.current || !product) return;
+
+    const canvas = document.createElement("canvas");
+    const scale = 3; // 3x high-DPI scaling for sharp barcode lines
+    canvas.width = cfg.w * scale;
+    canvas.height = cfg.h * scale;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.scale(scale, scale);
+
+    // Draw Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cfg.w, cfg.h);
+
+    // Draw Border
+    ctx.strokeStyle = "#d1d5db";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if ((ctx as any).roundRect) {
+      (ctx as any).roundRect(2, 2, cfg.w - 4, cfg.h - 4, 8);
+    } else {
+      ctx.rect(2, 2, cfg.w - 4, cfg.h - 4);
+    }
+    ctx.stroke();
+
+    // SVG Barcode to Image
+    const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
+    svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const svgBlob = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+
+    const img = new Image();
+    img.onload = () => {
+      let y = 16;
+
+      // Store Name
+      if (showStoreName && storeName) {
+        ctx.font = `800 ${cfg.font - 1}px "Segoe UI", sans-serif`;
+        ctx.fillStyle = "#059669";
+        ctx.textAlign = "center";
+        ctx.fillText(storeName.toUpperCase(), cfg.w / 2, y);
+        y += cfg.font + 4;
+      }
+
+      // Product Name
+      ctx.font = `900 ${cfg.font + 1}px "Segoe UI", sans-serif`;
+      ctx.fillStyle = "#111827";
+      ctx.textAlign = "center";
+      ctx.fillText(product.name, cfg.w / 2, y, cfg.w - 24);
+      y += 8;
+
+      // Barcode Image
+      const barcodeW = cfg.w - 32;
+      ctx.drawImage(img, (cfg.w - barcodeW) / 2, y, barcodeW, cfg.barcodeH);
+      y += cfg.barcodeH + 14;
+
+      // SKU Text
+      ctx.font = `800 ${cfg.font}px "Segoe UI", sans-serif`;
+      ctx.fillStyle = "#374151";
+      ctx.textAlign = "center";
+      ctx.fillText(skuCode, cfg.w / 2, y);
+      y += cfg.font + 4;
+
+      // Price
+      if (showPrice && price) {
+        ctx.font = `900 ${cfg.font + 3}px "Segoe UI", sans-serif`;
+        ctx.fillStyle = "#059669";
+        ctx.textAlign = "center";
+        ctx.fillText(`Rs. ${parseFloat(price).toLocaleString()}`, cfg.w / 2, y);
+      }
+
+      // Export & Download
+      const mime = format === "png" ? "image/png" : "image/jpeg";
+      const ext = format === "png" ? "png" : "jpg";
+      const dataUrl = canvas.toDataURL(mime, 0.95);
+
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `barcode-${skuCode}.${ext}`;
+      a.click();
+      setShowDownloadMenu(false);
+    };
+
+    img.src = svgBlob;
+  };
+
+  // ─── Download Label as HTML File ─────────────────────────────────────────
+  const handleDownloadHTML = () => {
     if (!svgRef.current) return;
     const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -161,6 +252,7 @@ export default function BarcodeLabelModal({
     a.download = `barcode-label-${skuCode}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
+    setShowDownloadMenu(false);
   };
 
   return (
@@ -173,7 +265,7 @@ export default function BarcodeLabelModal({
               <Barcode className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-[15px] font-black text-gray-900">Barcode Label</h2>
+              <h2 className="text-[15px] font-black text-gray-900">Barcode Label Generator</h2>
               <p className="text-[11px] text-gray-400 font-medium">{product.name}</p>
             </div>
           </div>
@@ -326,21 +418,38 @@ export default function BarcodeLabelModal({
             </label>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-1">
-            <button
-              onClick={handleDownload}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] font-black transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Save / Download
-            </button>
+          {/* Save & Print Action Buttons */}
+          <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => handleDownloadImage("png")}
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[12px] font-black transition-colors border border-blue-200"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                PNG Image
+              </button>
+              <button
+                onClick={() => handleDownloadImage("jpeg")}
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-[12px] font-black transition-colors border border-purple-200"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                JPEG Image
+              </button>
+              <button
+                onClick={handleDownloadHTML}
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-black transition-colors border border-gray-200"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                HTML File
+              </button>
+            </div>
+
             <button
               onClick={handlePrint}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-black transition-colors shadow-md"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-black transition-colors shadow-md active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              Print {qty > 1 ? `(${qty} labels)` : "Label"}
+              Print Thermal / Sticker Label {qty > 1 ? `(${qty} copies)` : ""}
             </button>
           </div>
         </div>
