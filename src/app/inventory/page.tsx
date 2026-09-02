@@ -371,6 +371,9 @@ export default function InventoryPage() {
           purchasePrice:
             item.product?.purchasePrice ?? item.purchase_price ?? 0,
           sellingPrice: item.product?.sellingPrice ?? item.selling_price ?? 0,
+          categoryId: item.category_id || item.product?.categoryId || item.product?.category?.id,
+          subCategoryId: item.subcategory_id || item.product?.subcategoryId || item.product?.subCategory?.id,
+          brandId: item.brand_id || item.product?.brandId || item.product?.brand?.id,
           warehouseId: item.warehouse_id,
           productId: item.product_id,
           isDiscountEnabled: item.isDiscountEnabled || item.product?.isDiscountEnabled || false,
@@ -394,6 +397,9 @@ export default function InventoryPage() {
             category: p.category?.name || "Uncategorized",
             subCategory: p.subCategory?.name || p.subcategory?.name || p.subCategoryName || "—",
             brand: p.brand?.name || p.brandName || (typeof p.brand === "string" ? p.brand : "—"),
+            categoryId: p.categoryId || p.category?.id,
+            subCategoryId: p.subcategoryId || p.subCategory?.id,
+            brandId: p.brandId || p.brand?.id,
             warehouse: "—",
             image: p.images?.[0]?.imageUrl || null,
             qty: 0,
@@ -464,7 +470,10 @@ export default function InventoryPage() {
         s.name?.toLowerCase() === selectedSubCategory.toLowerCase() ||
         s.id === selectedSubCategory
     );
-    return sub?.brands || [];
+    const brandsList = sub?.brands || [];
+    return [...brandsList].sort((a: any, b: any) =>
+      (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+    );
   }, [availableSubCategories, selectedSubCategory]);
 
   // Filter Stats

@@ -366,14 +366,22 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     // Always fetch fresh from API to ensure latest data; seed with cache immediately if available
     const parent = categories.find(c => c.id === form.categoryId);
     if (parent?.subcategories && parent.subcategories.length > 0) {
-      setSubCategories(parent.subcategories);
+      const sorted = [...parent.subcategories].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+      );
+      setSubCategories(sorted);
     }
     // Always also fetch from API to get fresh data (catches newly created subcategories)
     api.get(`/products/categories/${form.categoryId}/subcategories`)
       .then(res => {
         const raw = res.data?.data || res.data || [];
         const arr = Array.isArray(raw) ? raw : [];
-        if (arr.length > 0) setSubCategories(arr);
+        if (arr.length > 0) {
+          const sorted = [...arr].sort((a, b) =>
+            (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+          );
+          setSubCategories(sorted);
+        }
       })
       .catch(() => {/* keep cache if API fails */});
 
@@ -395,14 +403,20 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     // Seed from cache if available, then always fetch fresh from API
     const sub = subCategories.find(s => s.id === form.subCategoryId);
     if (sub?.brands && sub.brands.length > 0) {
-      setBrands(sub.brands);
+      const sorted = [...sub.brands].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+      );
+      setBrands(sorted);
     }
     // Always fetch from API for fresh / newly added brands
     api.get(`/products/brands`, { params: { subcategoryId: form.subCategoryId } })
       .then(res => {
         const raw = res.data?.data || res.data || [];
         const arr = Array.isArray(raw) ? raw : [];
-        setBrands(arr); // API is authoritative
+        const sorted = [...arr].sort((a, b) =>
+          (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+        );
+        setBrands(sorted); // API is authoritative
       })
       .catch(() => {/* keep cache if API fails */});
 
@@ -585,7 +599,10 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       formData.append("name", form.name.trim());
       formData.append("sku", form.sku.trim());
       formData.append("categoryId", form.categoryId);
-      if (form.subCategoryId) formData.append("subcategoryId", form.subCategoryId);
+      if (form.subCategoryId) {
+        formData.append("subcategoryId", form.subCategoryId);
+        formData.append("subCategoryId", form.subCategoryId);
+      }
       if (form.brandId) formData.append("brandId", form.brandId);
       formData.append(
         "sellingPrice",
