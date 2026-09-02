@@ -74,6 +74,8 @@ function downloadInvoicePDF({
   paymentMethod,
   amountTendered,
   change,
+  creditLeftover = 0,
+  totalOutstandingCredit = 0,
   subtotal,
   discount,
   total,
@@ -87,6 +89,8 @@ function downloadInvoicePDF({
   paymentMethod: string;
   amountTendered: number;
   change: number;
+  creditLeftover?: number;
+  totalOutstandingCredit?: number;
   subtotal: number;
   discount: number;
   total: number;
