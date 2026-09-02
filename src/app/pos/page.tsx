@@ -165,7 +165,12 @@ function QtyPopup({
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setQtyLocal(q => Math.max(isLoose ? 0.1 : 1, Number((typeof q === 'number' ? q : 1) - (isLoose ? 0.5 : 1)).toFixed(2)))}
+                  onClick={() => {
+                    const cur = typeof qty === 'number' ? qty : parseFloat(String(qty)) || 1;
+                    const step = isLoose ? 0.5 : 1;
+                    const nextVal = parseFloat((cur - step).toFixed(2));
+                    setQtyLocal(Math.max(isLoose ? 0.1 : 1, nextVal));
+                  }}
                   className="w-14 h-14 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-all active:scale-90 shrink-0 border border-gray-200"
                 >
                   <Minus className="w-5 h-5" />
@@ -182,7 +187,12 @@ function QtyPopup({
                   className="flex-1 w-full h-16 text-center text-[32px] font-black text-gray-900 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
-                  onClick={() => setQtyLocal(q => Number((typeof q === 'number' ? q : 1) + (isLoose ? 0.5 : 1)).toFixed(2))}
+                  onClick={() => {
+                    const cur = typeof qty === 'number' ? qty : parseFloat(String(qty)) || 1;
+                    const step = isLoose ? 0.5 : 1;
+                    const nextVal = parseFloat((cur + step).toFixed(2));
+                    setQtyLocal(nextVal);
+                  }}
                   className="w-14 h-14 rounded-2xl bg-[#059669] hover:bg-emerald-700 flex items-center justify-center text-white transition-all active:scale-90 shrink-0 shadow-lg shadow-emerald-500/20"
                 >
                   <Plus className="w-6 h-6" strokeWidth={3} />
