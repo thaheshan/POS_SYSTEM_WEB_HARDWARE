@@ -247,7 +247,9 @@ export default function EditInventoryModal({
       }
 
       // Pre-select Category matching
-      if (item?.category && !item?.categoryId) {
+      if (item?.categoryId) {
+        setCategoryId(item.categoryId);
+      } else if (item?.category) {
         const matchingCat = catArr.find(
           (c: any) => c.name?.toLowerCase() === item.category?.toLowerCase()
         );
@@ -268,16 +270,30 @@ export default function EditInventoryModal({
       return;
     }
     const cat = categories.find((c) => c.id === categoryId);
+    let subList: any[] = [];
     if (cat?.subcategories && cat.subcategories.length > 0) {
-      setSubCategories(cat.subcategories);
-    } else {
-      api.get(`/products/categories/${categoryId}/subcategories`)
-        .then((res) => {
-          const data = res.data?.data || res.data || [];
-          setSubCategories(Array.isArray(data) ? data : []);
-        })
-        .catch(() => setSubCategories([]));
+      subList = cat.subcategories;
+      setSubCategories(subList);
     }
+    api.get(`/products/categories/${categoryId}/subcategories`)
+      .then((res) => {
+        const data = res.data?.data || res.data || [];
+        const arr = Array.isArray(data) ? data : [];
+        if (arr.length > 0) {
+          subList = arr;
+          setSubCategories(arr);
+        }
+        // Auto-match subcategory by name if subCategoryId not set
+        if (item?.subCategory && item.subCategory !== "—" && !subCategoryId) {
+          const match = subList.find(
+            (s: any) => s.name?.toLowerCase() === item.subCategory?.toLowerCase()
+          );
+          if (match) setSubCategoryId(match.id);
+        }
+      })
+      .catch(() => {
+        if (subList.length > 0) setSubCategories(subList);
+      });
   }, [categoryId, categories]);
 
   // Auto-load brands when subCategoryId changes
@@ -287,16 +303,34 @@ export default function EditInventoryModal({
       return;
     }
     const sub = subCategories.find((s) => s.id === subCategoryId);
+    let brandList: any[] = [];
     if (sub?.brands && sub.brands.length > 0) {
-      setBrands(sub.brands);
-    } else {
-      api.get(`/products/brands`, { params: { subcategoryId: subCategoryId } })
-        .then((res) => {
-          const data = res.data?.data || res.data || [];
-          setBrands(Array.isArray(data) ? data : []);
-        })
-        .catch(() => setBrands([]));
+      brandList = sub.brands;
+      const sorted = [...brandList].sort((a: any, b: any) =>
+        (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+      );
+      setBrands(sorted);
     }
+    api.get(`/products/brands`, { params: { subcategoryId: subCategoryId } })
+      .then((res) => {
+        const data = res.data?.data || res.data || [];
+        const arr = Array.isArray(data) ? data : [];
+        if (arr.length > 0 || brandList.length === 0) {
+          brandList = arr;
+          const sorted = [...arr].sort((a: any, b: any) =>
+            (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+          );
+          setBrands(sorted);
+        }
+        // Auto-match brand by name if brandId not set
+        if (item?.brand && item.brand !== "—" && !brandId) {
+          const match = brandList.find(
+            (b: any) => b.name?.toLowerCase() === item.brand?.toLowerCase()
+          );
+          if (match) setBrandId(match.id);
+        }
+      })
+      .catch(() => {/* fallback to cache */});
   }, [subCategoryId, subCategories]);
 
   // Inline Category / Subcategory / Brand Creation
@@ -412,6 +446,7 @@ export default function EditInventoryModal({
         continueOOS,
         categoryId,
         subCategoryId,
+        subcategoryId: subCategoryId,
         brandId,
         warehouseId,
         supplierId,
