@@ -341,6 +341,17 @@ export default function InventoryPage() {
             item.category_name ||
             item.product?.category?.name ||
             "Uncategorized",
+          subCategory:
+            item.subcategory_name ||
+            item.product?.subCategory?.name ||
+            item.product?.subcategory?.name ||
+            item.product?.subCategoryName ||
+            "—",
+          brand:
+            item.brand_name ||
+            item.product?.brand?.name ||
+            item.product?.brandName ||
+            (typeof item.product?.brand === "string" ? item.product?.brand : "—"),
           warehouse:
             item.warehouse_name || item.warehouse?.name || "Main Warehouse",
           image:
@@ -381,6 +392,8 @@ export default function InventoryPage() {
             sku: p.sku || "N/A",
             skuInfo: p.sku || "N/A",
             category: p.category?.name || "Uncategorized",
+            subCategory: p.subCategory?.name || p.subcategory?.name || p.subCategoryName || "—",
+            brand: p.brand?.name || p.brandName || (typeof p.brand === "string" ? p.brand : "—"),
             warehouse: "—",
             image: p.images?.[0]?.imageUrl || null,
             qty: 0,

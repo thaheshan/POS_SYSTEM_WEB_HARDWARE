@@ -152,7 +152,9 @@ export default function InventoryTable({
                 </div>
               </th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">SKU</th>
-              <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Category</th>
+              <th className="px-4 py-4 text-[10px] font-black text-emerald-600 uppercase tracking-widest whitespace-nowrap">Category</th>
+              <th className="px-4 py-4 text-[10px] font-black text-blue-600 uppercase tracking-widest whitespace-nowrap">Subcategory</th>
+              <th className="px-4 py-4 text-[10px] font-black text-purple-600 uppercase tracking-widest whitespace-nowrap">Brand</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Qty</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Unit Cost</th>
               <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap text-right">Total Value</th>
@@ -187,7 +189,24 @@ export default function InventoryTable({
                     </div>
                   </td>
                   <td className="px-4 py-4 text-emerald-600 font-bold whitespace-nowrap">{item.sku}</td>
-                  <td className="px-4 py-4 text-gray-600 font-medium whitespace-nowrap">{item.category}</td>
+                  {/* Category Column */}
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-100/80">
+                      {item.category || '—'}
+                    </span>
+                  </td>
+                  {/* Subcategory Column */}
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-100/80">
+                      {item.subCategory || '—'}
+                    </span>
+                  </td>
+                  {/* Brand Column */}
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-purple-50 text-purple-700 border border-purple-100/80">
+                      {item.brand || '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-4 text-right">
                     <div className="flex flex-col items-end gap-1">
                       <span className="font-bold text-gray-900">{item.qty}</span>
@@ -227,7 +246,7 @@ export default function InventoryTable({
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="px-6 py-14 text-center">
+                <td colSpan={12} className="px-6 py-14 text-center">
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <Search className="w-8 h-8 opacity-20" />
                     <p className="text-[13px] font-bold">No products found matching your filters.</p>
