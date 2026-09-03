@@ -57,6 +57,7 @@ type Product = {
   status: string;
   category: string;
   subCategory?: string | null;
+  brand?: string | null;
   img: string;
   warehouseId?: string;
   branchId?: string;
@@ -293,18 +294,61 @@ export default function POSPage() {
     return activeCategoryObj?.subcategories?.find(s => s.name.trim().toLowerCase() === activeSubcategory.trim().toLowerCase());
   }, [activeCategoryObj, activeSubcategory]);
 
+  const availableSubcategories = useMemo(() => {
+    if (activeCategory === 'All') return [];
+    
+    const catSubs = activeCategoryObj?.subcategories || [];
+    const subMap = new Map<string, { id: string; name: string }>();
+    catSubs.forEach(s => {
+      if (s.name) subMap.set(s.name.trim().toLowerCase(), { id: s.id || s.name, name: s.name.trim() });
+    });
+
+    const targetCat = activeCategory.trim().toLowerCase();
+    productsList.forEach(p => {
+      if ((p.category || '').trim().toLowerCase() === targetCat && p.subCategory) {
+        const key = p.subCategory.trim().toLowerCase();
+        if (!subMap.has(key)) {
+          subMap.set(key, { id: key, name: p.subCategory.trim() });
+        }
+      }
+    });
+
+    return Array.from(subMap.values());
+  }, [activeCategory, activeCategoryObj, productsList]);
+
   const availableBrands = useMemo(() => {
+    if (activeCategory === 'All') return [];
+
+    let catBrandObjects: { id: string; name: string }[] = [];
     if (activeSubcategory !== 'All' && activeSubcategoryObj) {
-      return activeSubcategoryObj.brands || [];
-    }
-    if (activeCategoryObj) {
+      catBrandObjects = activeSubcategoryObj.brands || [];
+    } else if (activeCategoryObj) {
       const subBrands = (activeCategoryObj.subcategories || []).flatMap(s => s.brands || []);
       const catBrands = activeCategoryObj.brands || [];
-      const combined = [...catBrands, ...subBrands];
-      return Array.from(new Map(combined.map(b => [b.id, b])).values());
+      catBrandObjects = [...catBrands, ...subBrands];
     }
-    return [];
-  }, [activeSubcategory, activeSubcategoryObj, activeCategoryObj]);
+
+    const targetCat = activeCategory.trim().toLowerCase();
+    const targetSubCat = activeSubcategory.trim().toLowerCase();
+
+    const brandMap = new Map<string, { id: string; name: string }>();
+    catBrandObjects.forEach(b => {
+      if (b.name) brandMap.set(b.name.trim().toLowerCase(), { id: b.id || b.name, name: b.name.trim() });
+    });
+
+    productsList.forEach(p => {
+      const matchCat = targetCat === 'all' || (p.category || '').trim().toLowerCase() === targetCat;
+      const matchSubCat = targetSubCat === 'all' || (p.subCategory || '').trim().toLowerCase() === targetSubCat;
+      if (matchCat && matchSubCat && p.brand) {
+        const key = p.brand.trim().toLowerCase();
+        if (!brandMap.has(key)) {
+          brandMap.set(key, { id: key, name: p.brand.trim() });
+        }
+      }
+    });
+
+    return Array.from(brandMap.values());
+  }, [activeCategory, activeSubcategory, activeCategoryObj, activeSubcategoryObj, productsList]);
 
   useEffect(() => {
     fetchProducts();
@@ -370,7 +414,8 @@ export default function POSPage() {
           stock: qty,
           status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
           category: item.product?.category?.name || item.category_name || 'All',
-          subCategory: item.product?.subCategory?.name || item.subCategory?.name || originalProduct?.subCategory?.name || null,
+          subCategory: item.product?.subCategory?.name || item.product?.subcategory?.name || item.subCategory?.name || item.subcategory?.name || item.subcategory_name || item.subCategoryName || originalProduct?.subCategory?.name || originalProduct?.subcategory?.name || originalProduct?.subCategoryName || null,
+          brand: item.product?.brand?.name || item.brand?.name || item.brand_name || item.brandName || originalProduct?.brand?.name || originalProduct?.brandName || (typeof item.product?.brand === 'string' ? item.product?.brand : (typeof originalProduct?.brand === 'string' ? originalProduct?.brand : null)) || null,
           img: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
           warehouseId: item.warehouseId || item.warehouse_id,
           branchId: item.branchId || item.branch_id,
@@ -414,7 +459,8 @@ export default function POSPage() {
             stock: 0,
             status: 'Out of Stock',
             category: p.category?.name || 'All',
-            subCategory: p.subCategory?.name || null,
+            subCategory: p.subCategory?.name || p.subcategory?.name || p.subCategoryName || null,
+            brand: p.brand?.name || p.brandName || (typeof p.brand === 'string' ? p.brand : null) || null,
             img: p.images?.[0]?.imageUrl || null,
             warehouseId: undefined,
             branchId: undefined,
@@ -619,14 +665,24 @@ export default function POSPage() {
   }, [cart, productsList]);
 
   const filteredProducts = useMemo(() => productsList.filter(p => {
-    const matchCat = activeCategory === 'All' || p.category === activeCategory || p.subCategory === activeCategory;
-    const matchSubCat = activeSubcategory === 'All' || p.subCategory === activeSubcategory || p.category === activeSubcategory;
-    const matchBrand = activeBrand === 'All' || 
-      (p as any).brand?.name?.toLowerCase() === activeBrand.toLowerCase() ||
-      (p as any).brandName?.toLowerCase() === activeBrand.toLowerCase() ||
-      (typeof (p as any).brand === 'string' && (p as any).brand.toLowerCase() === activeBrand.toLowerCase());
-    const searchLower = (searchQuery || '').toLowerCase();
-    const matchSearch = (p.name || '').toLowerCase().includes(searchLower) || (p.sku || '').toLowerCase().includes(searchLower);
+    const pCat = (p.category || '').trim().toLowerCase();
+    const pSubCat = (p.subCategory || '').trim().toLowerCase();
+    const pBrand = (p.brand || '').trim().toLowerCase();
+
+    const targetCat = activeCategory.trim().toLowerCase();
+    const targetSubCat = activeSubcategory.trim().toLowerCase();
+    const targetBrand = activeBrand.trim().toLowerCase();
+
+    const matchCat = targetCat === 'all' || pCat === targetCat;
+    const matchSubCat = targetSubCat === 'all' || pSubCat === targetSubCat;
+    const matchBrand = targetBrand === 'all' || pBrand === targetBrand;
+
+    const searchLower = (searchQuery || '').trim().toLowerCase();
+    const matchSearch = !searchLower ||
+      (p.name || '').toLowerCase().includes(searchLower) ||
+      (p.sku || '').toLowerCase().includes(searchLower) ||
+      (p.barcode || '').toLowerCase().includes(searchLower);
+
     return matchCat && matchSubCat && matchBrand && matchSearch;
   }), [activeCategory, activeSubcategory, activeBrand, searchQuery, productsList]);
 
@@ -854,12 +910,12 @@ export default function POSPage() {
                       >
                         All {activeCategory}
                       </button>
-                      {(activeCategoryObj?.subcategories || []).map((sub, idx) => (
+                      {availableSubcategories.map((sub, idx) => (
                         <button
                           key={`${sub.id}-${idx}`}
                           onClick={() => { setActiveSubcategory(sub.name); setActiveBrand('All'); }}
                           className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
-                            activeSubcategory === sub.name
+                            activeSubcategory.trim().toLowerCase() === sub.name.trim().toLowerCase()
                               ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
                               : 'bg-white text-gray-400 border-gray-100 hover:border-blue-200 hover:text-blue-600'
                           }`}
@@ -903,7 +959,7 @@ export default function POSPage() {
                           key={`${brand.id}-${idx}`}
                           onClick={() => setActiveBrand(brand.name)}
                           className={`px-5 py-2 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shrink-0 border-2 ${
-                            activeBrand === brand.name
+                            activeBrand.trim().toLowerCase() === brand.name.trim().toLowerCase()
                               ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200'
                               : 'bg-white text-gray-400 border-gray-100 hover:border-purple-200 hover:text-purple-600'
                           }`}
@@ -984,16 +1040,26 @@ export default function POSPage() {
 
                           <div className="p-5 flex-1 flex flex-col pointer-events-none">
                             <div className="mb-3">
-                              <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                                 <span className="text-[10px] font-black text-[#059669] uppercase tracking-[0.15em] bg-emerald-50 px-2 py-0.5 rounded-md">
                                   {product.category}
                                 </span>
-                                {product.warehouseName && (
+                                {product.subCategory && (
                                   <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                                    {product.subCategory}
+                                  </span>
+                                )}
+                                {product.brand && (
+                                  <span className="text-[9px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                                    {product.brand}
+                                  </span>
+                                )}
+                                {product.warehouseName && (
+                                  <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
                                     {product.warehouseName}
                                   </span>
                                 )}
-                                <span className="text-[11px] font-bold text-gray-400 font-mono">
+                                <span className="text-[11px] font-bold text-gray-400 font-mono ml-auto">
                                   {product.sku}
                                 </span>
                               </div>
