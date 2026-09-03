@@ -341,6 +341,10 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     discountType: "PERCENTAGE" as "PERCENTAGE" | "FIXED_AMOUNT",
     maxAllowedDiscount: "" as number | "",
     defaultDiscountValue: "" as number | "",
+    hasSecondaryDiscount: false,
+    secondaryDiscountType: "PERCENTAGE" as "PERCENTAGE" | "FIXED_AMOUNT",
+    maxSecondaryDiscount: "" as number | "",
+    defaultSecondaryDiscount: "" as number | "",
     // Barcode Printing Configuration
     autoPrintBarcode: false,
     barcodePrintSize: "2.0x1.0" as '2.0x1.0' | '1.5x1.0' | '1.25x1.0' | '1.0x0.5',
