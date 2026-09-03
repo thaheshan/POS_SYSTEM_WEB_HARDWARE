@@ -27,7 +27,7 @@ import EditInventoryModal from "@/components/inventory/EditInventoryModal";
 import DeleteInventoryModal from "@/components/inventory/DeleteInventoryModal";
 import AddProductModal from "@/components/inventory/AddProductModal";
 import AddWarehouseModal from "@/components/inventory/AddWarehouseModal";
-import GlobalCatalogSearch from "@/components/inventory/GlobalCatalogSearch";
+
 import AdjustStockModal from "@/components/inventory/AdjustStockModal";
 import PhysicalStockCountModal from "@/components/inventory/PhysicalStockCountModal";
 import TransferStockModal from "@/components/inventory/TransferStockModal";
@@ -327,7 +327,7 @@ export default function InventoryPage() {
       const mappedStock = stockItems.map((item: any) => {
         const qty = item.available_quantity ?? item.quantity ?? 0;
         const minStock = item.minimum_stock_level ?? 0;
-        const cost = item.selling_price ?? item.product?.sellingPrice ?? 0;
+        const cost = item.purchase_price ?? item.product?.purchasePrice ?? 0;
         const totalVal = qty * cost;
         const status =
           qty <= 0 ? "Out of Stock" : item.low_stock ? "Low Stock" : "In Stock";
@@ -388,7 +388,7 @@ export default function InventoryPage() {
       const mappedNoStock = allProducts
         .filter((p: any) => !stockProductIds.has(p.id))
         .map((p: any) => {
-          const cost = Number(p.sellingPrice) || 0;
+          const cost = Number(p.purchasePrice) || 0;
           return {
             id: p.id,
             name: p.name || "Unknown",
@@ -773,9 +773,6 @@ export default function InventoryPage() {
               onAddWarehouse={() => setIsAddWarehouseModalOpen(true)}
               onManageCategories={() => setIsManageCategoriesModalOpen(true)}
             />
-
-            {/* 2.5 GLOBAL CATALOG SEARCH */}
-            <GlobalCatalogSearch onProductAdded={fetchInventory} />
 
             {/* 3. WAREHOUSE SELECTOR & INVENTORY TABLE */}
             <div className="flex flex-col gap-4">
