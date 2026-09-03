@@ -81,48 +81,70 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
         </div>
       </div>
 
-      {/* PRODUCT LISTING TABLE */}
-      <section className="mb-10">
-         <div className="flex items-center gap-4 mb-6">
-            <h3 className="text-[16px] font-black text-blue-900 uppercase tracking-tight">Detailed Inventory Breakdown</h3>
-            <div className="flex-1 h-[2px] bg-blue-50"></div>
-         </div>
-         <table className="w-full text-left border-collapse">
-            <thead>
-               <tr className="border-b-2 border-blue-900">
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50">Product & SKU</th>
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50">Category</th>
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50 text-right">Qty</th>
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50 text-right">Unit Cost</th>
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50 text-right">Total Value</th>
-                  <th className="py-3 px-2 text-[10px] font-black uppercase tracking-widest text-blue-900/50 text-center">Status</th>
-               </tr>
-            </thead>
-            <tbody className="text-[11px]">
-               {data.map((item, idx) => (
-               <tr key={idx} className="border-b border-blue-50/50">
-                  <td className="py-4 px-2 font-bold text-slate-700">
-                    <p className="text-[12px]">{item.name}</p>
-                    <p className="text-[9px] text-slate-400">{item.sku}</p>
-                  </td>
-                  <td className="py-4 px-2 font-medium text-slate-500">{item.category}</td>
-                  <td className="py-4 px-2 text-right font-black text-slate-900">{item.qty}</td>
-                  <td className="py-4 px-2 text-right font-bold text-slate-600">{item.unitCost}</td>
-                  <td className="py-4 px-2 text-right font-black text-blue-900">{item.totalValue}</td>
-                  <td className="py-4 px-2 text-center">
-                    <span className={`px-2 py-1 rounded-md text-[9px] font-black ${
-                      item.status === 'In Stock' ? 'bg-emerald-50 text-emerald-700' :
-                      item.status === 'Low Stock' ? 'bg-amber-50 text-amber-700' :
-                      'bg-red-50 text-red-700'
-                    }`}>
-                      {item.status.toUpperCase()}
-                    </span>
-                  </td>
-               </tr>
-               ))}
-            </tbody>
-         </table>
-      </section>
+      {/* PRODUCT LISTING TABLE BY CATEGORY */}
+      {(() => {
+        // Group by category
+        const categoriesMap = new Map<string, any[]>();
+        data.forEach((item) => {
+          const cat = item.category || 'Uncategorized';
+          if (!categoriesMap.has(cat)) categoriesMap.set(cat, []);
+          categoriesMap.get(cat)!.push(item);
+        });
+
+        return Array.from(categoriesMap.entries()).map(([catName, items], catIdx) => (
+          <section key={catName} className={`mb-10 ${catIdx > 0 ? 'print:break-before-page pt-6' : ''}`}>
+            <div className="flex items-center gap-4 mb-4 pb-2 border-b-2 border-blue-900">
+              <h3 className="text-[16px] font-black text-blue-900 uppercase tracking-tight flex items-center gap-2">
+                <span className="w-3 h-3 bg-blue-900 rounded-full inline-block"></span>
+                {catName} ({items.length} Products)
+              </h3>
+              <div className="flex-1 h-[2px] bg-blue-100"></div>
+            </div>
+
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-200 bg-slate-50">
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Product & SKU</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Barcode</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Subcategory</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Brand</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Qty</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Unit Cost</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Total Value</th>
+                  <th className="py-2.5 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="text-[11px]">
+                {items.map((item, idx) => (
+                  <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-3 px-2 font-bold text-slate-900">
+                      <p className="text-[12px]">{item.name}</p>
+                      <p className="text-[9px] font-mono text-slate-400">{item.sku}</p>
+                    </td>
+                    <td className="py-3 px-2 text-center font-mono font-bold text-emerald-700 text-[10px]">
+                      {item.barcode || item.sku || '—'}
+                    </td>
+                    <td className="py-3 px-2 font-medium text-slate-600">{item.subCategory || item.subcategory || '—'}</td>
+                    <td className="py-3 px-2 font-medium text-slate-600">{item.brand || '—'}</td>
+                    <td className="py-3 px-2 text-right font-black text-slate-900">{item.qty}</td>
+                    <td className="py-3 px-2 text-right font-bold text-slate-600">{item.unitCost}</td>
+                    <td className="py-3 px-2 text-right font-black text-blue-900">{item.totalValue}</td>
+                    <td className="py-3 px-2 text-center">
+                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-black ${
+                        item.status === 'In Stock' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                        item.status === 'Low Stock' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                        'bg-red-50 text-red-700 border border-red-200'
+                      }`}>
+                        {item.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ));
+      })()}
 
       {/* PROFESSIONAL FOOTER */}
       <div className="mt-20 pt-10 border-t border-blue-100 grid grid-cols-2 gap-20">

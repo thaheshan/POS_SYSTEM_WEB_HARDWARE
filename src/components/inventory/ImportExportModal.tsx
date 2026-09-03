@@ -1,6 +1,7 @@
-import { X, CloudUpload, Download, Upload } from 'lucide-react';
+import { X, CloudUpload, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import React, { useState } from 'react';
 import api from '@/api/axiosInstance';
+import { exportInventoryToExcel } from '@/utils/inventoryExport';
 
 interface ImportExportModalProps {
   isOpen: boolean;
@@ -13,16 +14,25 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [importing, setImporting] = useState(false);
 
+  const handleExportExcelSheet = () => {
+    exportInventoryToExcel(inventoryData);
+  };
+
   const handleExportCSV = () => {
-    const headers = ['Product Name', 'SKU', 'Category', 'Available Qty', 'Warehouse', 'Low Stock', 'Out of Stock'];
+    const headers = ['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand', 'Available Qty', 'Unit Cost', 'Total Value', 'Warehouse', 'Status', 'Reorder'];
     const rows = inventoryData.map((item: any) => [
       item.product_name || item.name || '',
       item.sku || '',
+      item.barcode || item.sku || '',
       item.category || '',
+      item.subCategory || item.subcategory || '—',
+      item.brand || '—',
       item.available_quantity ?? item.qty ?? 0,
+      item.cost ?? item.unitCost ?? 0,
+      item.totalValue ?? 0,
       item.warehouse_name || item.warehouse || '',
-      item.low_stock ? 'Yes' : 'No',
-      item.out_of_stock ? 'Yes' : 'No',
+      item.status || '',
+      item.reorder || 'good',
     ]);
 
     const csvContent = [headers, ...rows]
@@ -99,7 +109,7 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden">
         
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -107,8 +117,8 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
               <CloudUpload className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Import / Export</h2>
-              <p className="text-sm text-gray-500">Bulk update inventory via CSV</p>
+              <h2 className="text-xl font-bold text-gray-900">Import / Export Inventory</h2>
+              <p className="text-sm text-gray-500">Download Excel Sheets or Bulk Update via CSV</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X className="w-5 h-5" /></button>
@@ -120,7 +130,7 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
             onClick={() => setActiveTab('export')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'export' ? 'bg-white text-teal-600 shadow border border-teal-100' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> Export Excel / CSV
           </button>
           <button
             onClick={() => setActiveTab('import')}
@@ -133,19 +143,23 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
         <div className="p-6 pt-0 space-y-4">
           {activeTab === 'export' ? (
             <div className="space-y-4">
-              <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-teal-800">
-                <p className="font-bold mb-1">Export your full inventory to CSV</p>
-                <p className="text-teal-600">Downloads all products with current stock levels, warehouse info, and status flags.</p>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-sm text-emerald-900">
+                <p className="font-bold mb-1 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Excel Sheet (.xlsx / .xls) Export
+                </p>
+                <p className="text-emerald-700 text-xs leading-relaxed">
+                  Downloads a multi-tab Excel Workbook containing <strong>All Products</strong> + <strong>Category Sheets</strong> (e.g. Pvc Fittings, Garden Horses, etc.). Every row includes <strong>Barcode numbers</strong>, Subcategory, Brand, Quantities, Unit Cost, and Total Values.
+                </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">CSV Columns Included</p>
-                <div className="flex flex-wrap gap-2">
-                  {['Product Name', 'SKU', 'Category', 'Available Qty', 'Warehouse', 'Low Stock', 'Out of Stock'].map(col => (
-                    <span key={col} className="bg-white border border-gray-200 text-gray-600 text-xs font-medium px-2 py-1 rounded-md">{col}</span>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Structured Columns Included</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand', 'Qty', 'Unit Cost', 'Total Value', 'Status', 'Reorder', 'Warehouse'].map(col => (
+                    <span key={col} className="bg-white border border-gray-200 text-gray-600 text-[11px] font-bold px-2 py-0.5 rounded-md">{col}</span>
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-gray-400">{inventoryData.length} products will be exported.</p>
+              <p className="text-xs text-gray-400">{inventoryData.length} products ready for export.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -165,12 +179,17 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
           )}
         </div>
 
-        <div className="border-t border-gray-100 p-4 flex justify-end gap-3 bg-gray-50">
-          <button onClick={onClose} className="py-2 px-6 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-100">Close</button>
+        <div className="border-t border-gray-100 p-4 flex items-center justify-end gap-2 bg-gray-50">
+          <button onClick={onClose} className="py-2 px-4 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-100">Close</button>
           {activeTab === 'export' && (
-            <button onClick={handleExportCSV} className="py-2 px-6 rounded-lg text-sm font-bold bg-teal-600 text-white hover:bg-teal-700 flex items-center gap-2">
-              <Download className="w-4 h-4" /> Download CSV
-            </button>
+            <>
+              <button onClick={handleExportCSV} className="py-2 px-4 rounded-lg text-sm font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+                <Download className="w-4 h-4" /> Download CSV
+              </button>
+              <button onClick={handleExportExcelSheet} className="py-2 px-5 rounded-lg text-sm font-black bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-2 shadow-sm">
+                <FileSpreadsheet className="w-4 h-4" /> Excel Sheet (.xlsx)
+              </button>
+            </>
           )}
         </div>
       </div>
