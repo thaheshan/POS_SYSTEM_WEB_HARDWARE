@@ -162,6 +162,12 @@ export default function EditInventoryModal({
   const [maxAllowedDiscount, setMaxAllowedDiscount] = useState<number | "">("");
   const [defaultDiscountValue, setDefaultDiscountValue] = useState<number | "">("");
 
+  // Double / Secondary Discount State
+  const [hasSecondaryDiscount, setHasSecondaryDiscount] = useState(false);
+  const [secondaryDiscountType, setSecondaryDiscountType] = useState<"PERCENTAGE" | "FIXED_AMOUNT">("PERCENTAGE");
+  const [maxSecondaryDiscount, setMaxSecondaryDiscount] = useState<number | "">("");
+  const [defaultSecondaryDiscount, setDefaultSecondaryDiscount] = useState<number | "">("");
+
   // Populate item data on open
   useEffect(() => {
     if (!isOpen || !item) return;
@@ -207,6 +213,19 @@ export default function EditInventoryModal({
     setDefaultDiscountValue(
       item.defaultDiscountValue !== undefined && item.defaultDiscountValue !== null
         ? Number(item.defaultDiscountValue)
+        : ""
+    );
+
+    setHasSecondaryDiscount(item.hasSecondaryDiscount || false);
+    setSecondaryDiscountType(item.secondaryDiscountType || "PERCENTAGE");
+    setMaxSecondaryDiscount(
+      item.maxSecondaryDiscount !== undefined && item.maxSecondaryDiscount !== null
+        ? Number(item.maxSecondaryDiscount)
+        : ""
+    );
+    setDefaultSecondaryDiscount(
+      item.defaultSecondaryDiscount !== undefined && item.defaultSecondaryDiscount !== null
+        ? Number(item.defaultSecondaryDiscount)
         : ""
     );
     setError(null);
@@ -1088,7 +1107,7 @@ export default function EditInventoryModal({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Product Discount Settings</h3>
-                <p className="text-xs text-gray-400 font-medium">Configure maximum allowed discounts for POS cashiers</p>
+                <p className="text-xs text-gray-400 font-medium">Configure primary and double (secondary) discount limits for POS cashiers</p>
               </div>
               <button
                 type="button"
@@ -1106,44 +1125,108 @@ export default function EditInventoryModal({
             </div>
 
             {isDiscountEnabled && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-200">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Discount Type</label>
-                  <div className="relative">
-                    <select
-                      value={discountType}
-                      onChange={(e: any) => setDiscountType(e.target.value)}
-                      className="w-full appearance-none px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer"
-                    >
-                      <option value="PERCENTAGE">Percentage (%)</option>
-                      <option value="FIXED_AMOUNT">Fixed Amount (LKR)</option>
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-3 pointer-events-none" />
+              <div className="space-y-4 pt-2 border-t border-gray-200">
+                {/* Primary Discount */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Primary Discount Type</label>
+                    <div className="relative">
+                      <select
+                        value={discountType}
+                        onChange={(e: any) => setDiscountType(e.target.value)}
+                        className="w-full appearance-none px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer"
+                      >
+                        <option value="PERCENTAGE">Percentage (%)</option>
+                        <option value="FIXED_AMOUNT">Fixed Amount (LKR)</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-3 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Max Primary Limit *</label>
+                    <input
+                      type="number"
+                      value={maxAllowedDiscount}
+                      onChange={(e) => setMaxAllowedDiscount(e.target.value !== "" ? Number(e.target.value) : "")}
+                      placeholder={discountType === "PERCENTAGE" ? "e.g. 15%" : "e.g. 200 LKR"}
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Default Primary Value</label>
+                    <input
+                      type="number"
+                      value={defaultDiscountValue}
+                      onChange={(e) => setDefaultDiscountValue(e.target.value !== "" ? Number(e.target.value) : "")}
+                      placeholder={discountType === "PERCENTAGE" ? "e.g. 5%" : "e.g. 50 LKR"}
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                      min="0"
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Max Allowed Limit *</label>
-                  <input
-                    type="number"
-                    value={maxAllowedDiscount}
-                    onChange={(e) => setMaxAllowedDiscount(e.target.value !== "" ? Number(e.target.value) : "")}
-                    placeholder={discountType === "PERCENTAGE" ? "e.g. 15%" : "e.g. 200 LKR"}
-                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                    min="0"
-                  />
-                </div>
+                {/* Double / Secondary Discount Toggle & Inputs */}
+                <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-purple-600" /> Enable Double (Secondary) Discount
+                      </span>
+                      <p className="text-[11px] text-purple-600 font-medium">Applied on the leftover balance after the 1st discount</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={hasSecondaryDiscount}
+                      onChange={(e) => setHasSecondaryDiscount(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Default Value (Optional)</label>
-                  <input
-                    type="number"
-                    value={defaultDiscountValue}
-                    onChange={(e) => setDefaultDiscountValue(e.target.value !== "" ? Number(e.target.value) : "")}
-                    placeholder={discountType === "PERCENTAGE" ? "e.g. 5%" : "e.g. 50 LKR"}
-                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                    min="0"
-                  />
+                  {hasSecondaryDiscount && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-purple-200/60">
+                      <div>
+                        <label className="block text-xs font-bold text-purple-900 mb-1.5">Secondary Discount Type</label>
+                        <div className="relative">
+                          <select
+                            value={secondaryDiscountType}
+                            onChange={(e: any) => setSecondaryDiscountType(e.target.value)}
+                            className="w-full appearance-none px-3.5 py-2.5 bg-white border border-purple-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer"
+                          >
+                            <option value="PERCENTAGE">Percentage (%)</option>
+                            <option value="FIXED_AMOUNT">Fixed Amount (LKR)</option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-purple-400 absolute right-3 top-3 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-purple-900 mb-1.5">Max Secondary Limit</label>
+                        <input
+                          type="number"
+                          value={maxSecondaryDiscount}
+                          onChange={(e) => setMaxSecondaryDiscount(e.target.value !== "" ? Number(e.target.value) : "")}
+                          placeholder={secondaryDiscountType === "PERCENTAGE" ? "e.g. 6%" : "e.g. 50 LKR"}
+                          className="w-full px-3.5 py-2.5 bg-white border border-purple-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                          min="0"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-purple-900 mb-1.5">Default Secondary Value</label>
+                        <input
+                          type="number"
+                          value={defaultSecondaryDiscount}
+                          onChange={(e) => setDefaultSecondaryDiscount(e.target.value !== "" ? Number(e.target.value) : "")}
+                          placeholder="e.g. 2"
+                          className="w-full px-3.5 py-2.5 bg-white border border-purple-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

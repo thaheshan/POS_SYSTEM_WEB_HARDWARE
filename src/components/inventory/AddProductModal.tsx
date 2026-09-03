@@ -521,6 +521,10 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       discountType: "PERCENTAGE",
       maxAllowedDiscount: "",
       defaultDiscountValue: "",
+      hasSecondaryDiscount: false,
+      secondaryDiscountType: "PERCENTAGE",
+      maxSecondaryDiscount: "",
+      defaultSecondaryDiscount: "",
       autoPrintBarcode: false,
       barcodePrintSize: "2.0x1.0",
       barcodePrintQty: "1",
@@ -540,9 +544,12 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     >,
   ) => {
     const { name, value, type } = e.target;
-    const val =
-      type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-    set(name, val);
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+      set(name, checked);
+    } else {
+      set(name, value);
+    }
   };
 
   /* ─── Image handling ─── */
@@ -563,7 +570,9 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = "Product name is required";
     if (!form.sku.trim()) errs.sku = "SKU is required";
-    if (!form.sellingPrice) errs.sellingPrice = "Selling price is required";
+    if (!form.sellingPrice || parseFloat(form.sellingPrice) <= 0) {
+      errs.sellingPrice = "Valid selling price is required";
+    }
     if (!form.categoryId) errs.categoryId = "Category is required";
 
     if (form.isDiscountEnabled) {
@@ -649,6 +658,16 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
           defaultDiscountValue:
             form.isDiscountEnabled && form.defaultDiscountValue !== ""
               ? parseFloat(String(form.defaultDiscountValue)) || 0
+              : 0,
+          hasSecondaryDiscount: form.isDiscountEnabled ? form.hasSecondaryDiscount : false,
+          secondaryDiscountType: form.secondaryDiscountType,
+          maxSecondaryDiscount:
+            form.isDiscountEnabled && form.hasSecondaryDiscount
+              ? parseFloat(String(form.maxSecondaryDiscount)) || 0
+              : 0,
+          defaultSecondaryDiscount:
+            form.isDiscountEnabled && form.hasSecondaryDiscount && form.defaultSecondaryDiscount !== ""
+              ? parseFloat(String(form.defaultSecondaryDiscount)) || 0
               : 0,
         });
 
@@ -1246,67 +1265,130 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
                       </div>
 
                       {form.isDiscountEnabled && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in duration-150">
-                          <Field label="Discount Type">
-                            <div className="relative">
-                              <select
-                                name="discountType"
-                                value={form.discountType}
+                        <div className="space-y-4 animate-in fade-in duration-150">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Field label="Primary Discount Type">
+                              <div className="relative">
+                                <select
+                                  name="discountType"
+                                  value={form.discountType}
+                                  onChange={handleChange}
+                                  className={selectCls}
+                                >
+                                  <option value="PERCENTAGE">
+                                    Percentage (%)
+                                  </option>
+                                  <option value="FIXED_AMOUNT">
+                                    Fixed Amount (LKR)
+                                  </option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </Field>
+
+                            <Field label="Max Allowed Limit">
+                              <input
+                                name="maxAllowedDiscount"
+                                type="number"
+                                value={form.maxAllowedDiscount}
                                 onChange={handleChange}
-                                className={selectCls}
-                              >
-                                <option value="PERCENTAGE">
-                                  Percentage (%)
-                                </option>
-                                <option value="FIXED_AMOUNT">
-                                  Fixed Amount (LKR)
-                                </option>
-                              </select>
-                              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                placeholder={
+                                  form.discountType === "PERCENTAGE"
+                                    ? "e.g. 15"
+                                    : "e.g. 200"
+                                }
+                                className={`${inputCls} ${errors.maxAllowedDiscount ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                                min="0"
+                              />
+                              {errors.maxAllowedDiscount && (
+                                <p className="text-[11px] text-red-500 mt-1 font-medium">
+                                  {errors.maxAllowedDiscount}
+                                </p>
+                              )}
+                            </Field>
+
+                            <Field label="Default Value (Opt)">
+                              <input
+                                name="defaultDiscountValue"
+                                type="number"
+                                value={form.defaultDiscountValue}
+                                onChange={handleChange}
+                                placeholder={
+                                  form.discountType === "PERCENTAGE"
+                                    ? "e.g. 5"
+                                    : "e.g. 50"
+                                }
+                                className={`${inputCls} ${errors.defaultDiscountValue ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                                min="0"
+                              />
+                              {errors.defaultDiscountValue && (
+                                <p className="text-[11px] text-red-500 mt-1 font-medium">
+                                  {errors.defaultDiscountValue}
+                                </p>
+                              )}
+                            </Field>
+                          </div>
+
+                          {/* Double / Secondary Discount Toggle & Inputs */}
+                          <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-[12px] font-black text-purple-900 flex items-center gap-1.5">
+                                  <Tag className="w-3.5 h-3.5 text-purple-600" /> Enable Double (Secondary) Discount
+                                </span>
+                                <p className="text-[11px] text-purple-600 font-medium">Applied on the leftover balance after 1st discount</p>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={form.hasSecondaryDiscount}
+                                onChange={(e) => set("hasSecondaryDiscount", e.target.checked)}
+                                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
                             </div>
-                          </Field>
 
-                          <Field label="Max Allowed Limit">
-                            <input
-                              name="maxAllowedDiscount"
-                              type="number"
-                              value={form.maxAllowedDiscount}
-                              onChange={handleChange}
-                              placeholder={
-                                form.discountType === "PERCENTAGE"
-                                  ? "e.g. 15"
-                                  : "e.g. 200"
-                              }
-                              className={`${inputCls} ${errors.maxAllowedDiscount ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                              min="0"
-                            />
-                            {errors.maxAllowedDiscount && (
-                              <p className="text-[11px] text-red-500 mt-1 font-medium">
-                                {errors.maxAllowedDiscount}
-                              </p>
-                            )}
-                          </Field>
+                            {form.hasSecondaryDiscount && (
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                                <Field label="Secondary Type">
+                                  <div className="relative">
+                                    <select
+                                      name="secondaryDiscountType"
+                                      value={form.secondaryDiscountType}
+                                      onChange={handleChange}
+                                      className={selectCls}
+                                    >
+                                      <option value="PERCENTAGE">Percentage (%)</option>
+                                      <option value="FIXED_AMOUNT">Fixed Amount (LKR)</option>
+                                    </select>
+                                    <ChevronDown className="w-4 h-4 text-purple-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                  </div>
+                                </Field>
 
-                          <Field label="Default Value (Opt)">
-                            <input
-                              name="defaultDiscountValue"
-                              type="number"
-                              value={form.defaultDiscountValue}
-                              onChange={handleChange}
-                              placeholder={
-                                form.discountType === "PERCENTAGE"
-                                  ? "e.g. 5"
-                                  : "e.g. 50"
-                              }
-                              className={`${inputCls} ${errors.defaultDiscountValue ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                              min="0"
-                            />
-                            {errors.defaultDiscountValue && (
-                              <p className="text-[11px] text-red-500 mt-1 font-medium">
-                                {errors.defaultDiscountValue}
-                              </p>
+                                <Field label="Max Secondary Limit">
+                                  <input
+                                    name="maxSecondaryDiscount"
+                                    type="number"
+                                    value={form.maxSecondaryDiscount}
+                                    onChange={handleChange}
+                                    placeholder={form.secondaryDiscountType === "PERCENTAGE" ? "e.g. 6%" : "e.g. 50"}
+                                    className={inputCls}
+                                    min="0"
+                                  />
+                                </Field>
+
+                                <Field label="Default Secondary Val">
+                                  <input
+                                    name="defaultSecondaryDiscount"
+                                    type="number"
+                                    value={form.defaultSecondaryDiscount}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 2"
+                                    className={inputCls}
+                                    min="0"
+                                  />
+                                </Field>
+                              </div>
                             )}
-                          </Field>
+                          </div>
                         </div>
                       )}
                     </div>

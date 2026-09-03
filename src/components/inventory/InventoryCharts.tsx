@@ -71,7 +71,7 @@ export default function InventoryCharts({ data, dateRange }: InventoryChartsProp
   const barData = Object.entries(categoryValues)
     .map(([name, value]: [string, any]) => ({
       name,
-      value: Math.floor(value / 1000), // In thousands for graph scaling
+      value: parseFloat((value / 1000).toFixed(2)), // In thousands with up to 2 decimal places
       color: name.includes('Steel') ? '#8b5cf6' : 
              name.includes('Cement') ? '#3b82f6' :
              name.includes('Electric') ? '#1e3a8a' :

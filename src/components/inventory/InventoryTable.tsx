@@ -94,7 +94,7 @@ export default function InventoryTable({
       
       {/* TABLE HEADER WITH SEARCH + FILTER - SALES STYLE */}
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <h3 className="text-[14px] font-black text-gray-900">Inventory Products</h3>
           <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{data.length} items total</span>
           {hasActiveFilters && (
@@ -106,16 +106,16 @@ export default function InventoryTable({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {/* Search Input */}
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-emerald-400 focus-within:bg-white transition-all">
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          {/* Search Input — wider */}
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-emerald-400 focus-within:bg-white transition-all flex-1 max-w-[480px]">
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => { onSearchChange(e.target.value); setCurrentPage(1); }}
               placeholder="Search product, SKU..."
-              className="text-[12.5px] font-medium outline-none border-none bg-transparent w-[190px] placeholder:text-gray-400"
+              className="text-[12.5px] font-medium outline-none border-none bg-transparent w-full placeholder:text-gray-400"
             />
             {searchTerm && (
               <button onClick={() => { onSearchChange(''); setCurrentPage(1); }} className="text-gray-400 hover:text-gray-600 transition">
@@ -125,11 +125,11 @@ export default function InventoryTable({
           </div>
           {/* Filter Button */}
           {hasActiveFilters ? (
-            <button onClick={onClearFilters} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[12.5px] font-black hover:bg-red-100 transition-all">
+            <button onClick={onClearFilters} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[12.5px] font-black hover:bg-red-100 transition-all shrink-0">
               <X className="w-3.5 h-3.5" /> Clear Filter
             </button>
           ) : (
-            <button onClick={onFilterToggle} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12.5px] font-black hover:bg-gray-50 transition-all">
+            <button onClick={onFilterToggle} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12.5px] font-black hover:bg-gray-50 transition-all shrink-0">
               <Filter className="w-3.5 h-3.5" /> Filter
             </button>
           )}
