@@ -19,7 +19,7 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
   };
 
   const handleExportCSV = () => {
-    const headers = ['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand', 'Available Qty', 'Unit Cost', 'Total Value', 'Warehouse', 'Status', 'Reorder'];
+    const headers = ['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand'];
     const rows = inventoryData.map((item: any) => [
       item.product_name || item.name || '',
       item.sku || '',
@@ -27,13 +27,21 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
       item.category || '',
       item.subCategory || item.subcategory || '—',
       item.brand || '—',
-      item.available_quantity ?? item.qty ?? 0,
-      item.cost ?? item.unitCost ?? 0,
-      item.totalValue ?? 0,
-      item.warehouse_name || item.warehouse || '',
-      item.status || '',
-      item.reorder || 'good',
     ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
 
     const csvContent = [headers, ...rows]
       .map(row => row.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(','))
@@ -148,13 +156,13 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
                   <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Excel Sheet (.xlsx / .xls) Export
                 </p>
                 <p className="text-emerald-700 text-xs leading-relaxed">
-                  Downloads a multi-tab Excel Workbook containing <strong>All Products</strong> + <strong>Category Sheets</strong> (e.g. Pvc Fittings, Garden Horses, etc.). Every row includes <strong>Barcode numbers</strong>, Subcategory, Brand, Quantities, Unit Cost, and Total Values.
+                  Downloads a multi-tab Excel Workbook containing <strong>All Products</strong> + <strong>Category Sheets</strong> (e.g. Pvc Fittings, Garden Horses, etc.). Every row includes <strong>Barcode numbers</strong>, Category, Subcategory and Brand.
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Structured Columns Included</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand', 'Qty', 'Unit Cost', 'Total Value', 'Status', 'Reorder', 'Warehouse'].map(col => (
+                  {['Product Name', 'SKU', 'Barcode', 'Category', 'Subcategory', 'Brand'].map(col => (
                     <span key={col} className="bg-white border border-gray-200 text-gray-600 text-[11px] font-bold px-2 py-0.5 rounded-md">{col}</span>
                   ))}
                 </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Barcode } from 'lucide-react';
 import Image from 'next/image';
 
@@ -34,8 +34,15 @@ export default function InventoryTable({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-  const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+
+  // Reset to Page 1 whenever data or filter counts change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length, searchTerm, activeFilterCount, hasActiveFilters]);
+
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedData = data.slice((effectivePage - 1) * itemsPerPage, effectivePage * itemsPerPage);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === paginatedData.length) {
@@ -261,13 +268,13 @@ export default function InventoryTable({
       {/* Pagination - Functional */}
       <div className="p-4 px-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/30 text-sm">
         <span className="text-[12px] font-bold text-gray-400">
-          Showing {paginatedData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, data.length)} of {data.length} products
+          Showing {paginatedData.length > 0 ? (effectivePage - 1) * itemsPerPage + 1 : 0}–{Math.min(effectivePage * itemsPerPage, data.length)} of {data.length} products
         </span>
         <div className="flex gap-1">
           <button 
-            disabled={currentPage === 1}
-            onClick={() => handlePageChange(currentPage - 1)}
-            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${currentPage === 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
+            disabled={effectivePage === 1}
+            onClick={() => handlePageChange(effectivePage - 1)}
+            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${effectivePage === 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             Previous
           </button>
@@ -276,16 +283,16 @@ export default function InventoryTable({
             <button
               key={i + 1}
               onClick={() => handlePageChange(i + 1)}
-              className={`px-3 py-1.5 rounded text-[12px] font-bold transition ${currentPage === i + 1 ? 'bg-emerald-600 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 rounded text-[12px] font-bold transition ${effectivePage === i + 1 ? 'bg-emerald-600 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
             >
               {i + 1}
             </button>
           ))}
 
           <button 
-            disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() => handlePageChange(currentPage + 1)}
-            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${currentPage === totalPages || totalPages === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+            disabled={effectivePage === totalPages || totalPages === 0}
+            onClick={() => handlePageChange(effectivePage + 1)}
+            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${effectivePage === totalPages || totalPages === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             Next
           </button>
