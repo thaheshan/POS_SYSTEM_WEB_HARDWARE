@@ -15,7 +15,10 @@ import {
   ShoppingBag,
   Percent,
   DollarSign,
+  FileSpreadsheet,
+  FileDown,
 } from "lucide-react";
+import { exportInventoryToExcel } from "@/utils/inventoryExport";
 import { toast } from "sonner";
 import InventoryKPICards from "@/components/inventory/InventoryKPICards";
 import InventoryActionRow from "@/components/inventory/InventoryActionRow";
@@ -47,7 +50,7 @@ import {
 } from "date-fns";
 import SalesDatePicker from "@/components/sales/SalesDatePicker";
 import * as Popover from "@radix-ui/react-popover";
-import { Calendar as CalendarIcon, FileDown } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import InventoryReportView from "@/components/inventory/InventoryReportView";
 import { useRouter } from "next/navigation";
 
@@ -724,10 +727,17 @@ export default function InventoryPage() {
             </Popover.Root>
 
             <button
+              onClick={() => exportInventoryToExcel(filteredData)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-[13px] font-black shadow-lg shadow-emerald-700/20 hover:bg-emerald-800 transition-all active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Export Excel Sheet (.xlsx)
+            </button>
+
+            <button
               onClick={() => window.print()}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-900 text-white rounded-xl text-[13px] font-black shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-95"
             >
-              <FileDown className="w-4 h-4" /> Download Report
+              <FileDown className="w-4 h-4" /> Print / PDF Report
             </button>
           </div>
         </div>

@@ -92,6 +92,142 @@ function StockErrorModal({ isOpen, onClose, message }: { isOpen: boolean; onClos
   );
 }
 
+function parseShortUnit(rawUnit?: string, isLoose?: boolean): string {
+  if (!rawUnit || rawUnit.toLowerCase() === 'unit' || rawUnit.toLowerCase() === 'units') {
+    return isLoose ? 'm' : 'pcs';
+  }
+  const matchParen = rawUnit.match(/\(([^)]+)\)/);
+  if (matchParen && matchParen[1]) {
+    return matchParen[1].trim();
+  }
+  const clean = rawUnit.replace(/\s*\(.*\)/, '').trim().toLowerCase();
+  if (clean === 'meters' || clean === 'meter') return 'm';
+  if (clean === 'kilograms' || clean === 'kilogram') return 'kg';
+  if (clean === 'liters' || clean === 'liter') return 'L';
+  if (clean === 'pieces' || clean === 'piece') return 'pcs';
+  if (clean === 'feet' || clean === 'foot') return 'ft';
+  if (clean === 'inches' || clean === 'inch') return 'in';
+  if (clean === 'yards' || clean === 'yard') return 'yd';
+  if (clean === 'grams' || clean === 'gram') return 'g';
+  if (clean === 'boxes' || clean === 'box') return 'box';
+  if (clean === 'packs' || clean === 'pack') return 'pk';
+  if (clean === 'rolls' || clean === 'roll') return 'roll';
+  if (clean === 'sets' || clean === 'set') return 'set';
+  if (clean === 'pairs' || clean === 'pair') return 'pr';
+  if (clean === 'bags' || clean === 'bag') return 'bag';
+  if (clean === 'bundles' || clean === 'bundle') return 'bdl';
+  if (clean === 'cartons' || clean === 'carton') return 'ctn';
+  return rawUnit.trim();
+}
+
+function extractProductSellTypeAndUnit(item: any, originalProduct: any) {
+  const name = item?.product?.name || item?.product_name || item?.name || '';
+  const nameLower = name.toLowerCase();
+
+  const rawSellType = String(
+    item?.product?.sellType ||
+    item?.product?.sell_type ||
+    item?.product?.productType ||
+    item?.product?.product_type ||
+    item?.sell_type ||
+    item?.sellType ||
+    item?.productType ||
+    item?.product_type ||
+    originalProduct?.sellType ||
+    originalProduct?.sell_type ||
+    originalProduct?.productType ||
+    originalProduct?.product_type ||
+    ''
+  ).toUpperCase();
+
+  let sellType: 'fixed' | 'loose' = 'fixed';
+  if (
+    rawSellType === 'LOOSE' ||
+    rawSellType === 'MEASURED' ||
+    rawSellType.includes('LOOSE') ||
+    rawSellType.includes('MEASUR')
+  ) {
+    sellType = 'loose';
+  } else if (
+    rawSellType === 'FIX' ||
+    rawSellType === 'FIXED' ||
+    rawSellType === 'COUNTABLE'
+  ) {
+    sellType = 'fixed';
+  } else {
+    if (
+      nameLower.includes('pipe') ||
+      nameLower.includes('pype') ||
+      nameLower.includes('hose') ||
+      nameLower.includes('rod') ||
+      nameLower.includes('wire') ||
+      nameLower.includes('cable') ||
+      nameLower.includes('rope') ||
+      nameLower.includes('sand') ||
+      nameLower.includes('metal') ||
+      nameLower.includes('gravel') ||
+      nameLower.includes('cement (loose)') ||
+      nameLower.includes('nails') ||
+      nameLower.includes('screws') ||
+      nameLower.includes('(per m)') ||
+      nameLower.includes('(per kg)') ||
+      nameLower.includes('(per m³)') ||
+      nameLower.includes('(per l)')
+    ) {
+      sellType = 'loose';
+    }
+  }
+
+  const rawUnit = String(
+    item?.product?.measurementUnit ||
+    item?.product?.measurement_unit ||
+    item?.product?.unit ||
+    item?.measurement_unit ||
+    item?.measurementUnit ||
+    item?.unit ||
+    originalProduct?.measurementUnit ||
+    originalProduct?.measurement_unit ||
+    originalProduct?.unit ||
+    ''
+  ).trim();
+
+  let measurementUnit = 'pcs';
+  if (rawUnit && rawUnit.toLowerCase() !== 'unit' && rawUnit.toLowerCase() !== 'units') {
+    measurementUnit = rawUnit;
+  } else {
+    if (
+      nameLower.includes('pipe') ||
+      nameLower.includes('pype') ||
+      nameLower.includes('hose') ||
+      nameLower.includes('rod') ||
+      nameLower.includes('wire') ||
+      nameLower.includes('cable') ||
+      nameLower.includes('rope') ||
+      nameLower.includes('(per m)')
+    ) {
+      measurementUnit = 'Meters (m)';
+    } else if (
+      nameLower.includes('sand') ||
+      nameLower.includes('metal') ||
+      nameLower.includes('gravel') ||
+      nameLower.includes('cement') ||
+      nameLower.includes('nails') ||
+      nameLower.includes('screws') ||
+      nameLower.includes('(per kg)')
+    ) {
+      measurementUnit = 'Kilograms (kg)';
+    } else if (nameLower.includes('(per m³)')) {
+      measurementUnit = 'm³';
+    } else if (nameLower.includes('(per l)') || nameLower.includes('liters') || nameLower.includes('liter')) {
+      measurementUnit = 'Liters (L)';
+    } else {
+      measurementUnit = sellType === 'loose' ? 'Meters (m)' : 'Pieces (pcs)';
+    }
+  }
+
+  return { sellType, measurementUnit };
+}
+
 // ── Quantity Popup ──────────────────────────────────────────────────────────────
 function QtyPopup({
   product,
@@ -104,7 +240,8 @@ function QtyPopup({
   onConfirm: (qty: number) => void;
   onClose: () => void;
 }) {
-  const isLoose = product.sellType === 'loose';
+  const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
+  const isLoose = product.sellType === 'loose' || shortUnit === 'm' || shortUnit === 'kg' || shortUnit === 'L' || shortUnit === 'ft' || shortUnit === 'in' || shortUnit === 'yd' || shortUnit === 'g';
   const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,11 +267,13 @@ function QtyPopup({
     onConfirm(finalQty);
   };
 
-  const rawUnit = product.measurementUnit || (product as any).unit || (isLoose ? 'm' : 'pcs');
-  const displayUnit = rawUnit
-    .replace(/\s*\(.*\)/, '')
-    .trim();
-  const shortUnit = displayUnit.toLowerCase() === 'meters' ? 'm' : displayUnit.toLowerCase() === 'liters' ? 'L' : displayUnit.toLowerCase() === 'kilograms' ? 'kg' : displayUnit.toLowerCase() === 'pieces' ? 'pcs' : displayUnit;
+  const quickChips = useMemo(() => {
+    if (shortUnit === 'kg' || shortUnit === 'g') return [0.25, 0.5, 1, 2.5, 5, 10];
+    if (shortUnit === 'm' || shortUnit === 'ft' || shortUnit === 'yd' || shortUnit === 'in') return [0.5, 1, 2, 5, 10, 25];
+    if (shortUnit === 'L') return [0.5, 1, 2, 5, 10, 20];
+    if (isLoose) return [0.25, 0.5, 1, 2.5, 5, 10];
+    return [1, 2, 5, 10, 25, 50];
+  }, [shortUnit, isLoose]);
 
   return (
     <>
@@ -171,7 +310,7 @@ function QtyPopup({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                  {isLoose ? `Enter Measurement` : 'Enter Quantity'}
+                  {isLoose ? `Enter Measurement (${shortUnit})` : `Enter Quantity (${shortUnit})`}
                 </p>
                 <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
                   {shortUnit}
@@ -215,7 +354,7 @@ function QtyPopup({
 
               {/* Quick increment chips */}
               <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar">
-                {(isLoose ? [0.25, 0.5, 1, 2.5, 5, 10] : [1, 2, 5, 10, 25, 50]).map((val) => (
+                {quickChips.map((val) => (
                   <button
                     key={val}
                     type="button"
@@ -389,22 +528,11 @@ export default function POSPage() {
       // Map products that have stock records
       const mappedStockProducts: Product[] = stockItems.map((item: any, index: number) => {
         const name = item.product?.name || item.product_name || 'Unknown';
-        const nameLower = name.toLowerCase();
-        
-        let sellType: 'fixed' | 'loose' = 'fixed';
-        let measurementUnit = 'unit';
-        
-        if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
-          sellType = 'loose';
-          measurementUnit = 'm';
-        } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
-          sellType = 'loose';
-          measurementUnit = 'kg';
-        }
-
-        const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
         const prodId = String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`);
         const originalProduct = allProducts.find((p: any) => String(p.id) === prodId);
+
+        const { sellType, measurementUnit } = extractProductSellTypeAndUnit(item, originalProduct);
+        const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
 
         return {
           id: prodId,
@@ -437,18 +565,7 @@ export default function POSPage() {
         .filter((p: any) => !stockProductIds.has(String(p.id)))
         .map((p: any) => {
           const name = p.name || 'Unknown';
-          const nameLower = name.toLowerCase();
-          
-          let sellType: 'fixed' | 'loose' = 'fixed';
-          let measurementUnit = 'unit';
-          
-          if (nameLower.includes('rod') || nameLower.includes('wire') || nameLower.includes('cable') || nameLower.includes('pipe') || nameLower.includes('rope')) {
-            sellType = 'loose';
-            measurementUnit = 'm';
-          } else if (nameLower.includes('sand') || nameLower.includes('metal') || nameLower.includes('gravel') || nameLower.includes('cement (loose)') || nameLower.includes('nails') || nameLower.includes('screws')) {
-            sellType = 'loose';
-            measurementUnit = 'kg';
-          }
+          const { sellType, measurementUnit } = extractProductSellTypeAndUnit(p, p);
 
           return {
             id: String(p.id),
@@ -1033,7 +1150,7 @@ export default function POSPage() {
                             </div>
                             {inCart && (
                               <div className="absolute top-3 left-3 bg-[#059669] text-white text-[11px] font-black px-2.5 py-1 rounded-lg shadow-md">
-                                {inCart.qty} {product.measurementUnit || (product as any).unit || 'pcs'}
+                                {inCart.qty} {parseShortUnit(product.measurementUnit, product.sellType === 'loose')}
                               </div>
                             )}
                           </div>
@@ -1077,7 +1194,7 @@ export default function POSPage() {
                               </div>
                               {(product.measurementUnit || (product as any).unit) && (
                                 <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
-                                  / {product.measurementUnit || (product as any).unit}
+                                  / {parseShortUnit(product.measurementUnit, product.sellType === 'loose')}
                                 </span>
                               )}
                             </div>
