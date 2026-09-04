@@ -323,7 +323,22 @@ export default function BarcodeLabelModal({
                   {storeName}
                 </p>
               )}
-              <p className="font-black text-gray-900 text-center truncate w-full" style={{ fontSize: cfg.font + 1, maxWidth: cfg.w - 24 }}>
+              <p
+                className="font-black text-gray-900 text-center w-full leading-tight"
+                style={{
+                  fontSize:
+                    product.name.length > 45 ? cfg.font - 3 :
+                    product.name.length > 35 ? cfg.font - 2 :
+                    product.name.length > 25 ? cfg.font - 1 :
+                    cfg.font + 1,
+                  maxWidth: cfg.w - 24,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                }}
+              >
                 {product.name}
               </p>
               <svg ref={svgRef} style={{ width: cfg.w - 24, height: cfg.barcodeH }} />

@@ -17,6 +17,7 @@ import {
   DollarSign,
   FileSpreadsheet,
   FileDown,
+  QrCode,
 } from "lucide-react";
 import { exportInventoryToExcel } from "@/utils/inventoryExport";
 import { toast } from "sonner";
@@ -38,6 +39,8 @@ import PurchaseOrderModal from "@/components/inventory/PurchaseOrderModal";
 import ImportExportModal from "@/components/inventory/ImportExportModal";
 import ManageCategoriesModal from "@/components/inventory/ManageCategoriesModal";
 import BarcodeLabelModal from "@/components/inventory/BarcodeLabelModal";
+import QRBatchTestModal from "@/components/inventory/QRBatchTestModal";
+import ZPLGeneratorModal from "@/components/inventory/ZPLGeneratorModal";
 import { shopApi } from "@/api/shop";
 import { DateRange } from "react-day-picker";
 import api from "@/api/axiosInstance";
@@ -73,6 +76,8 @@ export default function InventoryPage() {
   const [isAddWarehouseModalOpen, setIsAddWarehouseModalOpen] = useState(false);
   const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [isQRBatchTestModalOpen, setIsQRBatchTestModalOpen] = useState(false);
+  const [isZPLGeneratorOpen, setIsZPLGeneratorOpen] = useState(false);
   const [barcodeProduct, setBarcodeProduct] = useState<any>(null);
   const [shopProfile, setShopProfile] = useState<any>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -725,6 +730,20 @@ export default function InventoryPage() {
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
+
+            <button
+              onClick={() => setIsQRBatchTestModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-[13px] font-black shadow-lg shadow-emerald-600/20 hover:from-emerald-700 hover:to-teal-700 transition-all active:scale-95 border border-emerald-500/30"
+            >
+              <QrCode className="w-4 h-4 text-emerald-100" /> 🖨️ Print Test (2 Labels)
+            </button>
+
+            <button
+              onClick={() => setIsZPLGeneratorOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-700 to-cyan-700 text-white rounded-xl text-[13px] font-black shadow-lg shadow-teal-700/20 hover:from-teal-800 hover:to-cyan-800 transition-all active:scale-95 border border-teal-600/30"
+            >
+              <FileDown className="w-4 h-4 text-teal-100" /> ⬇️ Download ZPL Labels
+            </button>
 
             <button
               onClick={() => exportInventoryToExcel(filteredData)}
@@ -1406,6 +1425,17 @@ export default function InventoryPage() {
           onClose={() => setIsBarcodeModalOpen(false)}
         />
       )}
+
+      <ZPLGeneratorModal
+        isOpen={isZPLGeneratorOpen}
+        onClose={() => setIsZPLGeneratorOpen(false)}
+      />
+
+      <QRBatchTestModal
+        products={inventoryData}
+        isOpen={isQRBatchTestModalOpen}
+        onClose={() => setIsQRBatchTestModalOpen(false)}
+      />
 
       {/* HIDDEN PRINT VIEW */}
       <InventoryReportView data={filteredData} dateRange={dateRange} />
