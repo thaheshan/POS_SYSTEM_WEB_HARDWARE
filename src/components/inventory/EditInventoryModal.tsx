@@ -528,7 +528,45 @@ export default function EditInventoryModal({
             </div>
           )}
 
-          {/* 1. BASIC INFORMATION */}
+          {/* 1. PRODUCT MEDIA (AT TOP) */}
+          <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Camera className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Product Photo / Media</h3>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-2xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Product" className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="w-8 h-8 text-gray-300" />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <input
+                  type="file"
+                  ref={fileRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleImageFile(f);
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+                >
+                  <Upload className="w-3.5 h-3.5 text-blue-600" /> Upload New Photo
+                </button>
+                <p className="text-[11px] text-gray-400">PNG, JPG, WEBP up to 5MB</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. BASIC INFORMATION */}
           <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-4 h-4 text-emerald-600" />
@@ -569,44 +607,6 @@ export default function EditInventoryModal({
                   placeholder="Enter detailed technical specifications..."
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                 />
-              </div>
-            </div>
-          </div>
-
-          {/* 2. PRODUCT MEDIA */}
-          <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Camera className="w-4 h-4 text-blue-600" />
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Product Photo / Media</h3>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-2xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Product" className="w-full h-full object-cover" />
-                ) : (
-                  <Package className="w-8 h-8 text-gray-300" />
-                )}
-              </div>
-              <div className="flex-1 space-y-2">
-                <input
-                  type="file"
-                  ref={fileRef}
-                  accept="image/*"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleImageFile(f);
-                  }}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2 shadow-sm"
-                >
-                  <Upload className="w-3.5 h-3.5 text-blue-600" /> Upload New Photo
-                </button>
-                <p className="text-[11px] text-gray-400">PNG, JPG, WEBP up to 5MB</p>
               </div>
             </div>
           </div>

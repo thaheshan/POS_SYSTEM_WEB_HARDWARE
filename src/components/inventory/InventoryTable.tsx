@@ -173,8 +173,12 @@ export default function InventoryTable({
           <tbody className="divide-y divide-gray-50 text-[13px]">
             {paginatedData.length > 0 ? (
               paginatedData.map((item) => (
-                <tr key={item.id} className="hover:bg-emerald-50/30 transition-all cursor-pointer">
-                  <td className="px-6 py-4">
+                <tr
+                  key={item.id}
+                  onClick={() => onEdit?.(item)}
+                  className="hover:bg-emerald-50/30 transition-all cursor-pointer"
+                >
+                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                       checked={selectedIds.includes(item.id)}
                       onChange={() => toggleSelect(item.id)}
@@ -266,33 +270,63 @@ export default function InventoryTable({
       </div>
 
       {/* Pagination - Functional */}
-      <div className="p-4 px-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/30 text-sm">
+      <div className="p-4 px-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/30 text-sm flex-wrap gap-3">
         <span className="text-[12px] font-bold text-gray-400">
           Showing {paginatedData.length > 0 ? (effectivePage - 1) * itemsPerPage + 1 : 0}–{Math.min(effectivePage * itemsPerPage, data.length)} of {data.length} products
         </span>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto max-w-full">
           <button 
             disabled={effectivePage === 1}
             onClick={() => handlePageChange(effectivePage - 1)}
-            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${effectivePage === 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
+            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition shrink-0 ${effectivePage === 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             Previous
           </button>
           
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => handlePageChange(i + 1)}
-              className={`px-3 py-1.5 rounded text-[12px] font-bold transition ${effectivePage === i + 1 ? 'bg-emerald-600 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {(() => {
+            const pages: (number | string)[] = [];
+            if (totalPages <= 7) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              pages.push(1);
+              if (effectivePage > 3) pages.push('...');
+
+              const start = Math.max(2, effectivePage - 1);
+              const end = Math.min(totalPages - 1, effectivePage + 1);
+
+              for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+              }
+
+              if (effectivePage < totalPages - 2) pages.push('...');
+              pages.push(totalPages);
+            }
+
+            return pages.map((p, idx) => {
+              if (typeof p === 'string') {
+                return (
+                  <span key={`dots-${idx}`} className="px-2 py-1 text-[12px] font-bold text-gray-400 shrink-0">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={p}
+                  onClick={() => handlePageChange(p)}
+                  className={`px-3 py-1.5 rounded text-[12px] font-bold transition shrink-0 ${effectivePage === p ? 'bg-emerald-600 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {p}
+                </button>
+              );
+            });
+          })()}
 
           <button 
             disabled={effectivePage === totalPages || totalPages === 0}
             onClick={() => handlePageChange(effectivePage + 1)}
-            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition ${effectivePage === totalPages || totalPages === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+            className={`px-3 py-1.5 border border-gray-200 rounded text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition shrink-0 ${effectivePage === totalPages || totalPages === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             Next
           </button>
