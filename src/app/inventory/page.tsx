@@ -19,6 +19,8 @@ import {
   FileDown,
   QrCode,
 } from "lucide-react";
+import { useBarcodeScanner } from "@/utils/hardwareIntegration";
+import { matchAndScoreProduct } from "@/utils/searchUtils";
 import { exportInventoryToExcel } from "@/utils/inventoryExport";
 import { toast } from "sonner";
 import InventoryKPICards from "@/components/inventory/InventoryKPICards";
@@ -502,11 +504,11 @@ export default function InventoryPage() {
 
   // Dynamic Filtering Logic
   const filteredData = useMemo(() => {
-    return inventoryData.filter((item) => {
-      // 1. Text Search
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const scored: Array<{ item: typeof inventoryData[0]; score: number }> = [];
+
+    for (const item of inventoryData) {
+      // 1. Text Search & Relevance Score
+      const { matches: matchesSearch, score } = matchAndScoreProduct(item, searchTerm);
 
       // 2. 3-Tier Hierarchy & Select Filters
       const matchesCategory =
@@ -554,7 +556,7 @@ export default function InventoryPage() {
         }
       }
 
-      return (
+      if (
         matchesSearch &&
         matchesCategory &&
         matchesSubCategory &&
@@ -562,8 +564,16 @@ export default function InventoryPage() {
         matchesWarehouse &&
         matchesStatus &&
         matchesDate
-      );
-    });
+      ) {
+        scored.push({ item, score });
+      }
+    }
+
+    if (searchTerm.trim()) {
+      scored.sort((a, b) => b.score - a.score);
+    }
+
+    return scored.map(s => s.item);
   }, [
     searchTerm,
     selectedCategory,
@@ -588,6 +598,47 @@ export default function InventoryPage() {
     setSelectedItem(item);
     setIsEditModalOpen(true);
   };
+
+  // Hardware Barcode Scanner Listener for Inventory Page
+  useBarcodeScanner({
+    onScan: (scannedCode) => {
+      const raw = scannedCode.trim();
+      const code = raw.toLowerCase();
+      const cleanCode = code.replace(/[^a-z0-9]/g, "");
+
+      const found = inventoryData.find((p) => {
+        const pBarcode = (p.barcode || "").toLowerCase();
+        const pSku = (p.sku || "").toLowerCase();
+        const pId = (p.id || "").toLowerCase();
+        const pName = (p.name || "").toLowerCase();
+
+        const cleanBarcode = pBarcode.replace(/[^a-z0-9]/g, "");
+        const cleanSku = pSku.replace(/[^a-z0-9]/g, "");
+        const cleanId = pId.replace(/[^a-z0-9]/g, "");
+
+        return (
+          pBarcode === code ||
+          pSku === code ||
+          pId === code ||
+          cleanBarcode === cleanCode ||
+          cleanSku === cleanCode ||
+          cleanId === cleanCode ||
+          pName === code ||
+          pName.includes(code)
+        );
+      });
+      if (found) {
+        setSelectedItem(found);
+        setIsEditModalOpen(true);
+        toast.success(`Scanned: ${found.name}. Opening edit form.`);
+      } else {
+        toast.error(`Barcode / SKU '${scannedCode}' not found in inventory.`);
+      }
+    },
+    enabled: activeTab === "inventory",
+    minCharLength: 2,
+    maxDelayMs: 150,
+  });
 
   const handleTransfer = (item: any) => {
     setSelectedItem(item);

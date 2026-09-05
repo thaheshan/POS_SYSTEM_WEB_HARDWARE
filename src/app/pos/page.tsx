@@ -18,6 +18,7 @@ import ManageCategoriesModal from '@/components/inventory/ManageCategoriesModal'
 import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import { useBarcodeScanner, openCashDrawer } from '@/utils/hardwareIntegration';
+import { matchAndScoreProduct } from '@/utils/searchUtils';
 
 
 type CartItem = {
@@ -781,27 +782,36 @@ export default function POSPage() {
     });
   }, [cart, productsList]);
 
-  const filteredProducts = useMemo(() => productsList.filter(p => {
-    const pCat = (p.category || '').trim().toLowerCase();
-    const pSubCat = (p.subCategory || '').trim().toLowerCase();
-    const pBrand = (p.brand || '').trim().toLowerCase();
-
+  const filteredProducts = useMemo(() => {
     const targetCat = activeCategory.trim().toLowerCase();
     const targetSubCat = activeSubcategory.trim().toLowerCase();
     const targetBrand = activeBrand.trim().toLowerCase();
 
-    const matchCat = targetCat === 'all' || pCat === targetCat;
-    const matchSubCat = targetSubCat === 'all' || pSubCat === targetSubCat;
-    const matchBrand = targetBrand === 'all' || pBrand === targetBrand;
+    const scored: Array<{ product: typeof productsList[0]; score: number }> = [];
 
-    const searchLower = (searchQuery || '').trim().toLowerCase();
-    const matchSearch = !searchLower ||
-      (p.name || '').toLowerCase().includes(searchLower) ||
-      (p.sku || '').toLowerCase().includes(searchLower) ||
-      (p.barcode || '').toLowerCase().includes(searchLower);
+    for (const p of productsList) {
+      const pCat = (p.category || '').trim().toLowerCase();
+      const pSubCat = (p.subCategory || '').trim().toLowerCase();
+      const pBrand = (p.brand || '').trim().toLowerCase();
 
-    return matchCat && matchSubCat && matchBrand && matchSearch;
-  }), [activeCategory, activeSubcategory, activeBrand, searchQuery, productsList]);
+      const matchCat = targetCat === 'all' || pCat === targetCat;
+      const matchSubCat = targetSubCat === 'all' || pSubCat === targetSubCat;
+      const matchBrand = targetBrand === 'all' || pBrand === targetBrand;
+
+      if (!matchCat || !matchSubCat || !matchBrand) continue;
+
+      const { matches, score } = matchAndScoreProduct(p, searchQuery);
+      if (matches) {
+        scored.push({ product: p, score });
+      }
+    }
+
+    if (searchQuery.trim()) {
+      scored.sort((a, b) => b.score - a.score);
+    }
+
+    return scored.map(s => s.product);
+  }, [activeCategory, activeSubcategory, activeBrand, searchQuery, productsList]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -818,15 +828,31 @@ export default function POSPage() {
   // Hardware Barcode Scanner Listener
   useBarcodeScanner({
     onScan: (scannedCode) => {
-      const code = scannedCode.trim().toLowerCase();
-      const found = productsList.find(
-        (p) =>
-          p.barcode?.toLowerCase() === code ||
-          p.sku?.toLowerCase() === code ||
-          p.id?.toLowerCase() === code ||
-          p.name?.toLowerCase() === code ||
-          p.name?.toLowerCase().includes(code)
-      );
+      const raw = scannedCode.trim();
+      const code = raw.toLowerCase();
+      const cleanCode = code.replace(/[^a-z0-9]/g, "");
+
+      const found = productsList.find((p) => {
+        const pBarcode = (p.barcode || "").toLowerCase();
+        const pSku = (p.sku || "").toLowerCase();
+        const pId = (p.id || "").toLowerCase();
+        const pName = (p.name || "").toLowerCase();
+
+        const cleanBarcode = pBarcode.replace(/[^a-z0-9]/g, "");
+        const cleanSku = pSku.replace(/[^a-z0-9]/g, "");
+        const cleanId = pId.replace(/[^a-z0-9]/g, "");
+
+        return (
+          pBarcode === code ||
+          pSku === code ||
+          pId === code ||
+          cleanBarcode === cleanCode ||
+          cleanSku === cleanCode ||
+          cleanId === cleanCode ||
+          pName === code ||
+          pName.includes(code)
+        );
+      });
       if (found) {
         if (found.stock <= 0) {
           toast.error(`Scanned item "${found.name}" is out of stock!`);
@@ -840,7 +866,7 @@ export default function POSPage() {
     },
     enabled: viewState === 'pos',
     minCharLength: 2,
-    maxDelayMs: 100,
+    maxDelayMs: 150,
   });
 
 

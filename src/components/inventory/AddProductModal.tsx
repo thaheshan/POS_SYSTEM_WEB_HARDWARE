@@ -30,7 +30,7 @@ interface Product {
 }
 
 const generateNextSku = (products: Product[]): string => {
-  const skuPattern = /^SKU_(\d+)$/i;
+  const skuPattern = /^(?:HKU|SKU)_(\d+)$/i;
   let maxNum = 0;
 
   products.forEach((p) => {
@@ -46,8 +46,8 @@ const generateNextSku = (products: Product[]): string => {
   });
 
   const nextNum = maxNum + 1;
-  const paddedNum = String(nextNum).padStart(3, "0");
-  return `SKU_${paddedNum}`;
+  const paddedNum = String(nextNum).padStart(2, "0");
+  return `HKU_${paddedNum}`;
 };
 
 const generateNextBarcode = (products: Product[]): string => {

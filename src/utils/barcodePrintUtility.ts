@@ -27,7 +27,8 @@ export function generateCode39SVG(text: string): string {
   const cleanText = text.toUpperCase();
   const fullText = `*${cleanText}*`;
   
-  let x = 0;
+  const quietZone = 15; // Mandatory quiet zone for optical barcode scanners
+  let x = quietZone;
   const narrowWidth = 1.5;
   const wideWidth = 4.0;
   const intercharacterGap = 1.5;
@@ -55,8 +56,10 @@ export function generateCode39SVG(text: string): string {
     x += intercharacterGap;
   }
 
+  const totalWidth = x + quietZone;
+
   return `
-    <svg width="100%" height="100%" viewBox="0 0 ${x} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="100%" height="100%" viewBox="0 0 ${totalWidth} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
       ${rects.join('')}
     </svg>
   `;
