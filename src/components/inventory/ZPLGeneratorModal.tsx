@@ -14,6 +14,8 @@ import {
   Printer,
   FolderArchive,
   FileSpreadsheet,
+  Sparkles,
+  Tag,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
 import { generateCode39SVG } from "@/utils/barcodePrintUtility";
@@ -56,6 +58,7 @@ interface NormalizedProduct {
   sku: string;
   category: string;
   subcategory: string;
+  stockQty?: number;
 }
 
 interface ZPLGeneratorModalProps {
@@ -132,12 +135,12 @@ function generateZPL(products: NormalizedProduct[]): string {
           lines.push(`^FO10,30^A0N,16,14^FD${nameLine2}^FS`);
         }
 
-        // Barcode — Code 128, centered on left label (^BY2 = thick 2-dot module for sharp scanning)
+        // Barcode — Code 128 (Subset B), centered on left label (^BY2,2.5 = perfect density for scanner beam)
         const bcY = nameLine2 ? 48 : 38;
-        lines.push(`^FO12,${bcY}^BY2,3,68^BCN,68,Y,N,N^FD${sku}^FS`);
+        lines.push(`^FO15,${bcY}^BY2,2.5,70^BCN,70,Y,N,N^FD>;${sku}^FS`);
 
         // SKU text below barcode
-        lines.push(`^FO10,172^A0N,18,16^FD${sku}^FS`);
+        lines.push(`^FO15,174^A0N,18,16^FD${sku}^FS`);
 
         // Vertical divider line between two labels
         lines.push(`^FO398,0^GB2,200,2^FS`);
@@ -145,14 +148,14 @@ function generateZPL(products: NormalizedProduct[]): string {
         // ── RIGHT LABEL (col 1) — same product ───────────────────────────
         const RX = 402; // Right label X origin (402 dots = ~50mm)
 
-        lines.push(`^FO${RX + 10},8^A0N,20,18^FD${nameLine1}^FS`);
+        lines.push(`^FO${RX + 15},8^A0N,20,18^FD${nameLine1}^FS`);
         if (nameLine2) {
-          lines.push(`^FO${RX + 10},30^A0N,16,14^FD${nameLine2}^FS`);
+          lines.push(`^FO${RX + 15},30^A0N,16,14^FD${nameLine2}^FS`);
         }
         lines.push(
-          `^FO${RX + 12},${bcY}^BY2,3,68^BCN,68,Y,N,N^FD${sku}^FS`
+          `^FO${RX + 15},${bcY}^BY2,2.5,70^BCN,70,Y,N,N^FD>;${sku}^FS`
         );
-        lines.push(`^FO${RX + 10},172^A0N,18,16^FD${nameLine2 ? sku : sku}^FS`);
+        lines.push(`^FO${RX + 15},174^A0N,18,16^FD${sku}^FS`);
 
         lines.push(`^PQ1`); // Print 1 copy of this row
         lines.push(`^XZ`);
@@ -185,12 +188,28 @@ function normalizeProduct(p: LiveProduct): NormalizedProduct {
         p.subcategoryName ||
         "";
 
+  // Extract stock quantity from API product object (supports Prisma stock relation, quantity, availableQuantity, etc.)
+  let rawStock = 0;
+  if (Array.isArray((p as any).stocks) && (p as any).stocks.length > 0) {
+    rawStock = (p as any).stocks.reduce((acc: number, s: any) => acc + (Number(s.quantity || s.availableQuantity) || 0), 0);
+  } else {
+    rawStock = (p as any).stockQty ?? (p as any).stock ?? (p as any).quantity ?? (p as any).availableQuantity ?? (p as any).totalStock ?? 0;
+  }
+  const stockQty = Math.max(0, typeof rawStock === "number" ? rawStock : parseInt(String(rawStock), 10) || 0);
+
+  // Standardize Bajaj Ceiling Fan names (remove 56" so 56" and normal fans of same color consolidate)
+  let name = p.name || "Unknown Product";
+  if (name.toLowerCase().includes("bajaj") && name.toLowerCase().includes("ceiling fan")) {
+    name = name.replace(/56["”'\s]*/gi, "").replace(/\s+/g, " ").trim();
+  }
+
   return {
     id: p.id,
-    name: p.name || "Unknown Product",
+    name,
     sku: p.sku || p.skuCode || p.barcode || p.id.slice(0, 12),
     category,
     subcategory,
+    stockQty,
   };
 }
 
@@ -224,7 +243,7 @@ export default function ZPLGeneratorModal({
   const [allProducts, setAllProducts] = useState<NormalizedProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterMode, setFilterMode] = useState<"pvc" | "all">("pvc");
+  const [filterMode, setFilterMode] = useState<"batch7" | "batch6" | "new_batch" | "pvc" | "all">("batch7");
   const [searchText, setSearchText] = useState("");
   const [generated, setGenerated] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
@@ -257,11 +276,37 @@ export default function ZPLGeneratorModal({
         return [];
       };
 
+      // Fetch live stock records from /stock endpoint (matching inventory page)
+      const stockMap = new Map<string, number>();
+      try {
+        const stocksRes = await api.get("/stock").catch(() => api.get("/stocks", { params: { limit: 1000 } }));
+        const stocksData = stocksRes.data;
+        const stocksList = Array.isArray(stocksData)
+          ? stocksData
+          : Array.isArray(stocksData?.data)
+          ? stocksData.data
+          : Array.isArray(stocksData?.items)
+          ? stocksData.items
+          : [];
+        stocksList.forEach((st: any) => {
+          const prodId = st.productId || st.product_id || st.product?.id || st.id;
+          const q = Number(st.available_quantity ?? st.quantity ?? st.availableQuantity ?? st.qty) || 0;
+          if (prodId) {
+            stockMap.set(prodId, (stockMap.get(prodId) || 0) + q);
+          }
+        });
+      } catch (e) {
+        console.warn("Could not fetch /stock endpoint", e);
+      }
+
       const productMap = new Map<string, NormalizedProduct>();
 
       const items1 = extractItems(data1);
       items1.forEach((p) => {
         const norm = normalizeProduct(p);
+        if (stockMap.has(p.id)) {
+          norm.stockQty = stockMap.get(p.id)!;
+        }
         productMap.set(norm.id || norm.sku, norm);
       });
 
@@ -290,6 +335,9 @@ export default function ZPLGeneratorModal({
           if (r.status === "fulfilled") {
             extractItems(r.value.data).forEach((p) => {
               const norm = normalizeProduct(p);
+              if (stockMap.has(p.id)) {
+                norm.stockQty = stockMap.get(p.id)!;
+              }
               productMap.set(norm.id || norm.sku, norm);
             });
             setFetchedPages((prev) => prev + 1);
@@ -297,7 +345,19 @@ export default function ZPLGeneratorModal({
         });
       }
 
-      setAllProducts(Array.from(productMap.values()));
+      // Consolidate products with identical standardized names (e.g. Bajaj Ceiling Fan (Black) + Bajaj Ceiling Fan 56" (Black))
+      const consolidatedMap = new Map<string, NormalizedProduct>();
+      productMap.forEach((prod) => {
+        const key = `${prod.name.toLowerCase().trim()}:${prod.category.toLowerCase().trim()}`;
+        if (consolidatedMap.has(key)) {
+          const existing = consolidatedMap.get(key)!;
+          existing.stockQty = (existing.stockQty || 0) + (prod.stockQty || 0);
+        } else {
+          consolidatedMap.set(key, { ...prod });
+        }
+      });
+
+      setAllProducts(Array.from(consolidatedMap.values()));
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
@@ -317,14 +377,74 @@ export default function ZPLGeneratorModal({
 
   // Filter products
   const filtered = allProducts.filter((p) => {
-    const matchesPVC = filterMode === "all" ? true : isPVCItem(p);
+    let matchesMode = true;
+    if (filterMode === "batch7") {
+      const skuUpper = (p.sku || "").toUpperCase();
+      const hkuMatch = skuUpper.match(/HKU_(\d+)/);
+      if (hkuMatch) {
+        const num = parseInt(hkuMatch[1], 10);
+        // Batch 7 items are HKU_60 to HKU_144
+        matchesMode = num >= 60 && num <= 144;
+      } else {
+        const skuNum = parseInt((p.sku || "").replace(/[^0-9]/g, ""), 10);
+        matchesMode = skuNum >= 346 && skuNum <= 350;
+      }
+    } else if (filterMode === "batch6") {
+      const skuUpper = (p.sku || "").toUpperCase();
+      const hkuMatch = skuUpper.match(/HKU_(\d+)/);
+      if (hkuMatch) {
+        const num = parseInt(hkuMatch[1], 10);
+        // Batch 6 items are HKU_01 to HKU_59
+        matchesMode = num >= 1 && num <= 59;
+      } else {
+        matchesMode = false;
+      }
+    } else if (filterMode === "pvc") {
+      matchesMode = isPVCItem(p);
+    } else if (filterMode === "new_batch") {
+      const skuStr = (p.sku || "").toUpperCase();
+      const isHkuSku = skuStr.includes("HKU_");
+      const skuNum = parseInt((p.sku || "").replace(/[^0-9]/g, ""), 10);
+      const isNewSku = !isNaN(skuNum) && skuNum >= 355;
+      const isAuditItem =
+        p.name.toLowerCase().includes("havells") ||
+        p.name.toLowerCase().includes("regnis") ||
+        p.name.toLowerCase().includes("ingco") ||
+        p.name.toLowerCase().includes("makute") ||
+        p.name.toLowerCase().includes("singer") ||
+        p.name.toLowerCase().includes("broom") ||
+        p.name.toLowerCase().includes("mop") ||
+        p.name.toLowerCase().includes("wiper") ||
+        p.name.toLowerCase().includes("cobweb");
+      // Exclude HKU items (which belong to Batch 6 & Batch 7)
+      matchesMode = !isHkuSku && (isNewSku || isAuditItem);
+    } else if (filterMode === "all") {
+      // Exclude Batch 6, Batch 7, and New Batch audit items from "All Products"
+      const skuUpper = (p.sku || "").toUpperCase();
+      const isHkuSku = skuUpper.includes("HKU_");
+      const skuNum = parseInt((p.sku || "").replace(/[^0-9]/g, ""), 10);
+      const isNewSku = !isNaN(skuNum) && skuNum >= 346 && skuNum <= 350;
+      const isAuditItem =
+        p.name.toLowerCase().includes("havells") ||
+        p.name.toLowerCase().includes("regnis") ||
+        p.name.toLowerCase().includes("ingco") ||
+        p.name.toLowerCase().includes("makute") ||
+        p.name.toLowerCase().includes("singer") ||
+        p.name.toLowerCase().includes("broom") ||
+        p.name.toLowerCase().includes("mop") ||
+        p.name.toLowerCase().includes("wiper") ||
+        p.name.toLowerCase().includes("cobweb");
+
+      matchesMode = !isHkuSku && !isNewSku && !isAuditItem;
+    }
+
     const matchesSearch =
       searchText.trim() === "" ||
       p.name.toLowerCase().includes(searchText.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchText.toLowerCase()) ||
       p.category.toLowerCase().includes(searchText.toLowerCase()) ||
       p.subcategory.toLowerCase().includes(searchText.toLowerCase());
-    return matchesPVC && matchesSearch;
+    return matchesMode && matchesSearch;
   });
 
   const handleDownloadZPL = () => {
@@ -388,10 +508,15 @@ export default function ZPLGeneratorModal({
         const item = filtered[i];
         setZipProgress(`Generating PNG ${i + 1} / ${filtered.length}: ${item.name}`);
 
-        const categoryFolder = (item.category || "General")
+        const catName = (item.category || "General")
           .replace(/[\\/:*?"<>|]/g, "_")
           .trim();
-        const folder = zip.folder(categoryFolder);
+        const subCatName = item.subcategory
+          ? item.subcategory.replace(/[\\/:*?"<>|]/g, "_").trim()
+          : "";
+
+        const folderPath = subCatName ? `${catName}/${subCatName}` : catName;
+        const folder = zip.folder(folderPath);
 
         const barcodeValue = item.sku || item.id.slice(0, 12);
         const barcodeSVG = generateCode39SVG(barcodeValue);
@@ -459,7 +584,8 @@ export default function ZPLGeneratorModal({
 
           await new Promise((resolve) => {
             img.onload = () => {
-              ctx.drawImage(img, 20, barcodeStartY, 360, barcodeHeight);
+              // Draw barcode with 40px left/right Quiet Zone margin for scanner detection
+              ctx.drawImage(img, 40, barcodeStartY, 320, barcodeHeight);
               URL.revokeObjectURL(url);
               resolve(true);
             };
@@ -478,7 +604,9 @@ export default function ZPLGeneratorModal({
         const pngDataUrl = canvas.toDataURL("image/png");
         const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, "");
 
-        const safeFileName = `${item.name.replace(/[\\/:*?"<>|]/g, "_")}_${barcodeValue}.png`;
+        // Prefix PNG file name strictly with the product's live inventory stock quantity (e.g., 200_25 mm Elbow 45°_SKU_006.png)
+        const qtyPrefix = typeof item.stockQty === "number" ? `${item.stockQty}` : "0";
+        const safeFileName = `${qtyPrefix}_${item.name.replace(/[\\/:*?"<>|]/g, "_")}_${barcodeValue}.png`;
         folder.file(safeFileName, base64Data, { base64: true });
       }
 
@@ -488,7 +616,15 @@ export default function ZPLGeneratorModal({
       const zipUrl = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = zipUrl;
-      a.download = `Catalog_Barcodes_ByCategory_${filtered.length}items_${Date.now()}.zip`;
+      const prefix =
+        filterMode === "batch7"
+          ? "Batch7_HKU_Labels"
+          : filterMode === "batch6"
+          ? "Batch6_HKU_Labels"
+          : filterMode === "pvc"
+          ? "PVC_Fittings_Labels"
+          : "Catalog_Barcodes";
+      a.download = `${prefix}_${filtered.length}items_${Date.now()}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -689,11 +825,44 @@ ${labelPairs.join("")}
           {/* Controls bar */}
           <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/80 shrink-0 space-y-2">
             {/* Filter mode toggles */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-white border border-gray-200 p-1 rounded-xl">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 bg-white border border-gray-200 p-1 rounded-xl overflow-x-auto max-w-full">
+                <button
+                  onClick={() => setFilterMode("batch7")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
+                    filterMode === "batch7"
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Tag className="w-3 h-3 text-purple-200" />
+                  🏷️ Batch 7 (HKU_60–144)
+                </button>
+                <button
+                  onClick={() => setFilterMode("batch6")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
+                    filterMode === "batch6"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Tag className="w-3 h-3 text-indigo-200" />
+                  🏷️ Batch 6 (HKU_01–59)
+                </button>
+                <button
+                  onClick={() => setFilterMode("new_batch")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
+                    filterMode === "new_batch"
+                      ? "bg-amber-600 text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-amber-200" />
+                  ✨ New Batch (Audit 4/9/26)
+                </button>
                 <button
                   onClick={() => setFilterMode("pvc")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
                     filterMode === "pvc"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-gray-500 hover:bg-gray-50"
@@ -704,14 +873,14 @@ ${labelPairs.join("")}
                 </button>
                 <button
                   onClick={() => setFilterMode("all")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
                     filterMode === "all"
                       ? "bg-slate-700 text-white shadow-sm"
                       : "text-gray-500 hover:bg-gray-50"
                   }`}
                 >
                   <Package className="w-3 h-3" />
-                  All Products
+                  📦 Original Catalog (Base Items)
                 </button>
               </div>
 
