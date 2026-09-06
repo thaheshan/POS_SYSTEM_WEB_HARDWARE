@@ -8,6 +8,7 @@ import {
   Smartphone, ShoppingCart, Users, Zap, Scan, Tag,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PaymentConfirmation from '@/components/pos/PaymentConfirmation';
 import SuccessModal from '@/components/pos/SuccessModal';
 import AddLabourModal from '@/components/sales/AddLabourModal';
@@ -403,6 +404,7 @@ function QtyPopup({
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function POSPage() {
+  const router = useRouter();
   const [viewState, setViewState] = useState<'pos' | 'confirm'>('pos');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
@@ -414,6 +416,7 @@ export default function POSPage() {
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const posProductGridRef = useRef<HTMLDivElement>(null);
 
   const [categoriesData, setCategoriesData] = useState<{ id: string; name: string; subcategories?: { id: string; name: string; brands?: { id: string; name: string }[] }[]; brands?: { id: string; name: string }[] }[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -820,10 +823,89 @@ export default function POSPage() {
       if (e.key === 'F2') { e.preventDefault(); setActiveTab(prev => prev === 'items' ? 'checkout' : 'items'); }
       if (e.key === 'F9' && activeTab === 'checkout') { e.preventDefault(); setViewState('confirm'); }
       if (e.key === 'Escape') setPendingProduct(null);
+
+      const activeEl = document.activeElement;
+      const isInputActive =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      // Backspace Sub-view Navigation (Returns from Confirm Payment screen to POS items view, or closes popups/modals)
+      if (e.key === "Backspace" && !isInputActive) {
+        if (pendingProduct) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingProduct(null);
+          return;
+        }
+        if (isCustomerModalOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsCustomerModalOpen(false);
+          return;
+        }
+        if (isCategoryModalOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsCategoryModalOpen(false);
+          return;
+        }
+        if (isLabourModalOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsLabourModalOpen(false);
+          return;
+        }
+        if (viewState === "confirm") {
+          e.preventDefault();
+          e.stopPropagation();
+          setViewState("pos");
+          return;
+        }
+        if (viewState === "pos") {
+          e.preventDefault();
+          e.stopPropagation();
+          router.back();
+          return;
+        }
+      }
+
+      // Up & Down Arrow Key Scrolling for POS Product Grid
+      const isTextareaOrSelect =
+        activeEl &&
+        (activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          activeEl.getAttribute("role") === "listbox" ||
+          activeEl.getAttribute("role") === "combobox");
+
+      if (!isTextareaOrSelect && posProductGridRef.current) {
+        const key = e.key;
+        if (key === "ArrowDown" || key === "Down") {
+          e.preventDefault();
+          posProductGridRef.current.scrollBy(0, 180);
+        } else if (key === "ArrowUp" || key === "Up") {
+          e.preventDefault();
+          posProductGridRef.current.scrollBy(0, -180);
+        } else if (key === "PageDown") {
+          e.preventDefault();
+          posProductGridRef.current.scrollBy(0, 500);
+        } else if (key === "PageUp") {
+          e.preventDefault();
+          posProductGridRef.current.scrollBy(0, -500);
+        } else if (key === "Home") {
+          e.preventDefault();
+          posProductGridRef.current.scrollTo(0, 0);
+        } else if (key === "End") {
+          e.preventDefault();
+          posProductGridRef.current.scrollTo(0, posProductGridRef.current.scrollHeight);
+        }
+      }
     };
     window.addEventListener('keydown', handleGlobalKey);
     return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [activeTab]);
+  }, [activeTab, viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen]);
 
   // Hardware Barcode Scanner Listener
   useBarcodeScanner({
@@ -1127,7 +1209,7 @@ export default function POSPage() {
               </div>
 
               {/* Product Grid */}
-              <div className="flex-1 overflow-y-auto p-6 pt-4">
+              <div ref={posProductGridRef} className="flex-1 overflow-y-auto p-6 pt-4 scroll-smooth focus:outline-none" tabIndex={-1}>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />

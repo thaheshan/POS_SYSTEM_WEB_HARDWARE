@@ -44,6 +44,35 @@ export default function InventoryTable({
   const effectivePage = Math.min(currentPage, totalPages);
   const paginatedData = data.slice((effectivePage - 1) * itemsPerPage, effectivePage * itemsPerPage);
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setSelectedIds([]); // Clear selection on page change
+  };
+
+  // Keyboard Navigation for Table Pagination (ArrowLeft = Previous, ArrowRight = Next)
+  useEffect(() => {
+    const handleTableKey = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputActive =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (!isInputActive) {
+        if ((e.key === "ArrowLeft" || e.key === "Left") && effectivePage > 1) {
+          handlePageChange(effectivePage - 1);
+        } else if ((e.key === "ArrowRight" || e.key === "Right") && effectivePage < totalPages) {
+          handlePageChange(effectivePage + 1);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleTableKey);
+    return () => window.removeEventListener("keydown", handleTableKey);
+  }, [effectivePage, totalPages]);
+
   const toggleSelectAll = () => {
     if (selectedIds.length === paginatedData.length) {
       setSelectedIds([]);
@@ -58,10 +87,7 @@ export default function InventoryTable({
     );
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    setSelectedIds([]); // Clear selection on page change
-  };
+
 
   // ... (getStatusBadge, getReorderIcon, getQtyBarColor remain same)
   const getStatusBadge = (status: string) => {
