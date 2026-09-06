@@ -12,7 +12,7 @@ export default function SuccessModal({ isOpen, total }: SuccessModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <div className="bg-white rounded-[32px] w-full max-w-[400px] p-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-300">
         
         {/* Animated Icon Container */}

@@ -21,6 +21,7 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import { useSalesData } from '@/hooks/useSales';
+import { shopApi } from '@/api/shop';
 
 // Modals from previous implementation
 import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
@@ -47,8 +48,21 @@ export default function ReportsPage() {
   const [reportModal, setReportModal]     = useState<null | 'A' | 'B' | 'C'>(null);
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');
+  const [shopProfile, setShopProfile]     = useState<any>(null);
 
   const { data, loading } = useSalesData(dateRange);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await shopApi.getProfile();
+        setShopProfile(profile);
+      } catch (err) {
+        console.error('Failed to load shop profile for reports export:', err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   // ── Export All dropdown ────────────────────────────────────────
   const [exportOpen, setExportOpen] = useState(false);
@@ -103,7 +117,30 @@ export default function ReportsPage() {
     setExportOpen(false);
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
+    let currentProfile = shopProfile;
+    if (!currentProfile) {
+      try {
+        currentProfile = await shopApi.getProfile();
+        setShopProfile(currentProfile);
+      } catch (e) {
+        console.error('Could not fetch shop profile', e);
+      }
+    }
+
+    const shopName = currentProfile?.name || 'Futura Hardware POS';
+    const addressParts = [
+      currentProfile?.address,
+      currentProfile?.city,
+      currentProfile?.district,
+      currentProfile?.province
+    ].filter(Boolean);
+    const shopAddress = addressParts.length > 0 ? addressParts.join(', ') : 'Sri Lanka';
+    const phone = currentProfile?.phone ? `Tel: ${currentProfile.phone}` : '';
+    const email = currentProfile?.email ? `Email: ${currentProfile.email}` : '';
+    const regNum = currentProfile?.businessRegistration ? `Reg/TRN: ${currentProfile.businessRegistration}` : '';
+    const contactLine = [phone, email, regNum].filter(Boolean).join(' | ');
+
     const rows = getAllRows();
     const catATotal    = data.catA?.core     || 0;
     const catBTotal    = data.catB?.core     || 0;
@@ -118,61 +155,83 @@ export default function ReportsPage() {
       ? Math.round(((data.summary?.netProfit || 0) / data.summary.totalSales) * 100)
       : 0;
 
-    const rowsHtml = rows.map((r, i) => `
+    const rowsHtml = rows.length === 0 ? `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:20px;color:#94a3b8;">No transaction records found for the selected period.</td>
+      </tr>
+    ` : rows.map((r, i) => `
       <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
-        <td>${r.id}</td>
+        <td><strong>${r.id}</strong></td>
         <td>${r.time ?? ''}</td>
         <td>${r.mode ?? ''}</td>
         <td>${r.category}</td>
         <td style="text-align:right;font-weight:700;">Rs. ${(r.rawAmount ?? 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
       </tr>`).join('');
 
+    const generatedTimeStr = format(new Date(), 'MMM d, yyyy — h:mm a');
+
     const html = `
 <!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Business Analytics Report — ${dateLabel}</title>
+<title>${shopName} — Business Analytics & Financial Report</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1e293b;background:#fff;padding:32px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:18px;margin-bottom:24px;}
-  .brand{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:-1px;}  
-  .brand-sub{font-size:11px;color:#64748b;font-weight:500;margin-top:2px;}
-  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.7;}
-  .meta strong{color:#1e293b;}
-  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin:22px 0 10px;}
-  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:10px;}
-  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
-  .kpi-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
-  .kpi-value{font-size:18px;font-weight:900;color:#1e40af;}
-  .kpi-sub{font-size:10px;color:#94a3b8;margin-top:3px;}
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+  body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff;padding:24px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:16px;margin-bottom:20px;}
+  .brand-logo{max-height:50px;width:auto;margin-bottom:8px;}
+  .brand{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:-0.5px;line-height:1.1;}  
+  .brand-address{font-size:11px;color:#475569;font-weight:500;margin-top:3px;}
+  .brand-contact{font-size:10px;color:#64748b;margin-top:2px;}
+  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.6;}
+  .meta strong{color:#0f172a;}
+  .report-title{font-size:14px;font-weight:900;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:20px 0 8px;border-left:3px solid #1e40af;padding-left:8px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;}
+  .kpi-label{font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+  .kpi-value{font-size:16px;font-weight:900;color:#1e40af;}
+  .kpi-sub{font-size:9.5px;color:#64748b;margin-top:3px;font-weight:500;}
   .kpi.green .kpi-value{color:#059669;}
   .kpi.amber .kpi-value{color:#b45309;}
   .kpi.purple .kpi-value{color:#7c3aed;}
-  table{width:100%;border-collapse:collapse;margin-top:4px;}
+  table{width:100%;border-collapse:collapse;margin-top:6px;page-break-inside:auto;}
+  thead{display:table-header-group;}
+  tr{page-break-inside:avoid;page-break-after:auto;}
   thead tr{background:#1e40af;color:#fff;}
-  thead th{padding:9px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
+  thead th{padding:8px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
   thead th:last-child{text-align:right;}
   tbody tr.even{background:#f8fafc;}
   tbody tr.odd{background:#fff;}
-  tbody td{padding:8px 12px;font-size:11px;border-bottom:1px solid #f1f5f9;color:#374151;}
-  tbody tr:last-child td{border-bottom:none;}
-  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
-  .badge{display:inline-block;background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;}
-  @media print{body{padding:20px;}}
+  tbody td{padding:7.5px 12px;font-size:11px;border-bottom:1px solid #e2e8f0;color:#334155;}
+  tbody tr:last-child td{border-bottom:2px solid #cbd5e1;}
+  .footer{margin-top:32px;padding-top:12px;border-top:1.5px solid #cbd5e1;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#64748b;}
+  .footer-left strong{color:#0f172a;}
+  .badge{display:inline-block;background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:4px;padding:2px 8px;font-size:9.5px;font-weight:800;}
+  @media print{
+    body{padding:0;}
+    .no-print{display:none !important;}
+  }
 </style></head><body>
 <div class="header">
   <div>
-    <div class="brand">Futura Hardware POS</div>
-    <div class="brand-sub">Business Analytics &amp; Financial Report</div>
+    ${currentProfile?.logo_url ? `<img src="${currentProfile.logo_url}" alt="Logo" class="brand-logo" />` : ''}
+    <div class="brand">${shopName}</div>
+    <div class="brand-address">${shopAddress}</div>
+    ${contactLine ? `<div class="brand-contact">${contactLine}</div>` : ''}
   </div>
   <div class="meta">
+    <div class="report-title">Business Analytics &amp; Financial Report</div>
     <div><strong>Report Period:</strong> ${dateLabel}</div>
-    <div><strong>Generated:</strong> ${format(new Date(), 'MMM d, yyyy — h:mm a')}</div>
-    <div><strong>Status:</strong> <span class="badge">IRD Compliant</span></div>
+    <div><strong>Generated:</strong> ${generatedTimeStr}</div>
+    <div style="margin-top:4px;"><strong>Status:</strong> <span class="badge">IRD Compliant</span></div>
   </div>
 </div>
 
 <div class="section-title">Performance Summary</div>
-<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+<div class="kpi-grid">
   <div class="kpi">
     <div class="kpi-label">Total Revenue</div>
     <div class="kpi-value">Rs. ${totalRevenue}</div>
@@ -206,17 +265,17 @@ export default function ReportsPage() {
     <div class="kpi-label">Category A — Taxable (18% VAT)</div>
     <div class="kpi-value">Rs. ${catATotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
     <div class="kpi-sub">Net (ex-VAT): Rs. ${catANet.toLocaleString('en-LK', { minimumFractionDigits: 2 })} &nbsp;|&nbsp; VAT: Rs. ${vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub">${data.catA?.txns || 0} transactions</div>
+    <div class="kpi-sub" style="margin-top:2px;">${data.catA?.txns || 0} transactions</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Category B — Non-Taxable</div>
     <div class="kpi-value">Rs. ${catBTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub">${data.catB?.txns || 0} transactions</div>
+    <div class="kpi-sub" style="margin-top:2px;">${data.catB?.txns || 0} transactions</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Category C — Labour / Services</div>
     <div class="kpi-value">Rs. ${catCTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub">${data.catC?.entries || 0} entries</div>
+    <div class="kpi-sub" style="margin-top:2px;">${data.catC?.entries || 0} entries</div>
   </div>
 </div>
 
@@ -229,8 +288,12 @@ export default function ReportsPage() {
 </table>
 
 <div class="footer">
-  <span>Futura Hardware POS &mdash; Confidential Business Report</span>
-  <span>Page 1 &mdash; Generated by Futura POS Analytics Engine</span>
+  <div class="footer-left">
+    <strong>${shopName}</strong> &bull; ${shopAddress} ${phone ? ` &bull; ${phone}` : ''}
+  </div>
+  <div>
+    Generated: ${generatedTimeStr} &bull; IRD Compliant Official Financial Report
+  </div>
 </div>
 </body></html>`;
 

@@ -19,25 +19,25 @@ export default function ProductSearchBar({
   itemsCount,
 }: ProductSearchBarProps) {
   return (
-    <div className="stock-fade-up stock-delay-2 border-b border-slate-200 bg-[#f3f4f6] px-4 py-3 sm:px-8 sm:py-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <label className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100 lg:max-w-xl lg:flex-1">
-          <Search className="h-4 w-4 text-slate-400" />
+    <div className="border-b border-slate-200 bg-[#f8fafc] px-4 py-2.5 sm:px-6">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <label className="flex h-9 w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 shadow-xs transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 sm:max-w-md sm:flex-1">
+          <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           <input
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search products..."
-            className="w-full bg-transparent text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder="Search products, SKU, category..."
+            className="w-full bg-transparent text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400"
           />
         </label>
 
-        <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
+        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
           <BulkActionsDropdown
             value={bulkAction}
             onChange={onBulkActionChange}
           />
 
-          <div className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-blue-100 px-4 text-[13px] font-bold text-blue-700 shadow-sm sm:w-auto">
+          <div className="inline-flex h-8 items-center justify-center rounded-lg bg-blue-100 px-3 text-xs font-bold text-blue-800 shrink-0">
             {itemsCount} Items
           </div>
         </div>

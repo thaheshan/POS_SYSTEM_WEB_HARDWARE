@@ -34,7 +34,7 @@ const actions = [
     isEnabled: true
   },
   {
-    title: 'Process Return',
+    title: 'Return Sale',
     description: 'Handle customer returns and refunds for previous purchases',
     icon: RotateCcw,
     color: 'rose',
@@ -45,9 +45,26 @@ const actions = [
       'Refund calculation',
       'Return receipt'
     ],
-    buttonText: 'New Return',
+    buttonText: 'Return Sale',
     shortcut: 'F4',
     href: '/pos/return',
+    isEnabled: true
+  },
+  {
+    title: 'Return Product',
+    description: 'Direct item return by SKU or Name with live stock quantity restoration',
+    icon: Package,
+    color: 'amber',
+    badge: 'Direct Product Return',
+    features: [
+      'Search item by SKU or Name',
+      'View live stock quantity',
+      'Enter return quantity',
+      'Instant inventory update'
+    ],
+    buttonText: 'Return Product',
+    shortcut: 'F6',
+    href: '/pos/return-product',
     isEnabled: true
   },
   {
@@ -151,6 +168,7 @@ const actions = [
 
 const colorMap = {
   emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-500', iconBg: 'bg-emerald-50', button: 'bg-[#059669] hover:bg-emerald-700', check: 'text-emerald-500' },
+  amber: { bg: 'bg-amber-50', icon: 'text-amber-600', iconBg: 'bg-amber-50', button: 'bg-[#d97706] hover:bg-amber-700', check: 'text-amber-600' },
   rose: { bg: 'bg-rose-50', icon: 'text-rose-500', iconBg: 'bg-rose-50', button: 'bg-[#e11d48] hover:bg-rose-700', check: 'text-rose-500' },
   cyan: { bg: 'bg-cyan-50', icon: 'text-cyan-500', iconBg: 'bg-cyan-50', button: 'bg-[#0891b2] hover:bg-cyan-700', check: 'text-cyan-500' },
   teal: { bg: 'bg-emerald-50', icon: 'text-emerald-600', iconBg: 'bg-emerald-50', button: 'bg-[#047857] hover:bg-emerald-800', check: 'text-emerald-600' },
@@ -177,7 +195,7 @@ export default function POSSelectionPage() {
         {/* Action Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 pb-20">
           {visibleActions.map((action, idx) => {
-            const colors = colorMap[action.color as keyof typeof colorMap];
+            const colors = colorMap[action.color as keyof typeof colorMap] || colorMap.emerald;
             
             return (
               <div key={idx} className="bg-white rounded-[32px] p-10 shadow-sm border border-gray-100 flex flex-col relative group transition-all hover:shadow-xl hover:-translate-y-1">

@@ -21,6 +21,26 @@ export default function AddExpenseModal({ isOpen, onClose }: Props) {
   const [isForStaff, setIsForStaff] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState('');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSave = () => {
@@ -34,9 +54,9 @@ export default function AddExpenseModal({ isOpen, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center print:hidden">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[200] flex items-center justify-center print:hidden">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[500px] rounded-[28px] shadow-2xl p-8 flex flex-col mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white w-full max-w-[500px] rounded-[28px] shadow-2xl p-8 flex flex-col mx-4 overflow-y-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
         
         {/* HEADER */}
         <div className="flex justify-between items-center mb-8">

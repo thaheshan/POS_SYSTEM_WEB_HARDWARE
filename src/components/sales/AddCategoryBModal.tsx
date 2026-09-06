@@ -1,7 +1,7 @@
 'use client';
 
 import { X, Search, User, CreditCard, Smartphone, Banknote, MoreHorizontal, Trash2, FileText, CheckCircle2, ChevronDown, Check, Phone, ArrowUpRight, Plus, Minus } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type ModalProps = {
   isOpen: boolean;
@@ -12,11 +12,31 @@ export default function AddCategoryBModal({ isOpen, onClose }: ModalProps) {
   const [saleType, setSaleType] = useState<'non-tax' | 'overflow'>('non-tax');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile' | 'other'>('cash');
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[24px] w-full max-w-[680px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-[24px] w-full max-w-[680px] max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300">
         
         {/* MODAL HEADER (GREEN) */}
         <div className="bg-[#15803d] p-6 text-white relative">

@@ -91,6 +91,29 @@ export default function ManageCategoriesModal({
   }, [categories]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    const handleModalKey = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleModalKey);
+    return () => window.removeEventListener("keydown", handleModalKey);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen) {
       fetchCategories();
     }
@@ -285,8 +308,10 @@ export default function ManageCategoriesModal({
     </div>
   );
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
         {/* Header */}

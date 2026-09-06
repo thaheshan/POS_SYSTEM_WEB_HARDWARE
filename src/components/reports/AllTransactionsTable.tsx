@@ -117,6 +117,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
 
   return (
     <div
+      id="transactions-ledger"
       className="bg-white rounded-[24px] border border-gray-100 shadow-sm flex flex-col overflow-hidden"
       onClick={() => setActiveDropdownId(null)}
     >
@@ -185,7 +186,11 @@ export default function AllTransactionsTable({ dateRange }: Props) {
                 </tr>
               ) : (
                 currentData.map(inv => (
-                  <tr key={inv.id} className="hover:bg-gray-50/60 transition-colors">
+                  <tr
+                    key={inv.id}
+                    onClick={() => { setModalInvoiceId(inv.id); setModalMode('view'); setModalOpen(true); }}
+                    className="hover:bg-blue-50/40 transition-colors cursor-pointer"
+                  >
                     {/* Transaction ID */}
                     <td className="px-6 py-4">
                       <span className="text-[13px] font-black text-blue-600 font-mono">{inv.id}</span>

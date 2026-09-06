@@ -55,7 +55,12 @@ export default function MainLayout({
 
       // 1. Backspace Key Navigation: Go back to previous page if user is not actively typing inside an input
       if (e.key === "Backspace" && !isInputActive) {
-        if (e.defaultPrevented || isPOS) {
+        const isAnyModalOpen = Boolean(
+          document.querySelector(
+            '.fixed.inset-0, [role="dialog"], [aria-modal="true"], .stock-modal-enter, .modal-open, [class*="modal"]'
+          )
+        );
+        if (e.defaultPrevented || isPOS || isAnyModalOpen) {
           return;
         }
         e.preventDefault();
@@ -63,42 +68,56 @@ export default function MainLayout({
         return;
       }
 
-      // 2. Up & Down Arrow Key Page Scrolling (works immediately after clicking any sidebar link)
+      // 2. Up & Down Arrow Key Page Scrolling (works for both page layout & active modal dialogs)
       if (!isTextareaOrSelect) {
-        // If focus is stuck on a sidebar link/button or header element, blur it so main page scrolls immediately
-        if (activeEl && activeEl !== scrollContainerRef.current && (activeEl.tagName === "A" || activeEl.tagName === "BUTTON" || activeEl.closest("nav") || activeEl.closest("header"))) {
+        // Target active visible modal scroll container if open, otherwise default main container
+        const modalCandidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.stock-modal-enter .overflow-y-auto, [role="dialog"] .overflow-y-auto, .modal-open .overflow-y-auto, [class*="modal"] .overflow-y-auto'
+          )
+        );
+        const visibleModalScroll = modalCandidates.find(
+          (el) => el.offsetParent !== null && el.clientHeight > 0
+        );
+
+        const container = visibleModalScroll || scrollContainerRef.current;
+
+        if (!visibleModalScroll && activeEl && activeEl !== scrollContainerRef.current && (activeEl.tagName === "A" || activeEl.tagName === "BUTTON" || activeEl.closest("nav") || activeEl.closest("header"))) {
           (activeEl as HTMLElement).blur();
           if (scrollContainerRef.current) {
             scrollContainerRef.current.focus({ preventScroll: true });
           }
         }
 
-        const container = scrollContainerRef.current;
         if (container) {
           const key = e.key;
+          const step = e.repeat ? 240 : 160;
+
           if (key === "ArrowDown" || key === "Down") {
             e.preventDefault();
-            container.scrollBy(0, 150);
+            container.scrollBy(0, step);
           } else if (key === "ArrowUp" || key === "Up") {
             e.preventDefault();
-            container.scrollBy(0, -150);
+            container.scrollBy(0, -step);
           } else if (key === "ArrowLeft" || key === "Left") {
             // Find horizontally scrollable elements on page (like data tables)
+            const hStep = e.repeat ? 220 : 150;
             const scrollables = Array.from(document.querySelectorAll<HTMLElement>('.overflow-x-auto, [class*="overflow-x"]'));
             let scrolled = false;
             for (const el of scrollables) {
               if (el.scrollWidth > el.clientWidth && el.offsetParent !== null) {
-                el.scrollBy(-150, 0);
+                el.scrollBy(-hStep, 0);
                 scrolled = true;
               }
             }
             if (scrolled) e.preventDefault();
           } else if (key === "ArrowRight" || key === "Right") {
+            const hStep = e.repeat ? 220 : 150;
             const scrollables = Array.from(document.querySelectorAll<HTMLElement>('.overflow-x-auto, [class*="overflow-x"]'));
             let scrolled = false;
             for (const el of scrollables) {
               if (el.scrollWidth > el.clientWidth && el.offsetParent !== null) {
-                el.scrollBy(150, 0);
+                el.scrollBy(hStep, 0);
                 scrolled = true;
               }
             }

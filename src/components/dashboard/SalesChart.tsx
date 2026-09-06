@@ -18,7 +18,7 @@ interface SalesChartProps {
   title?: string;
 }
 
-export default function SalesChart({ title = "Sales Overview" }: SalesChartProps) {
+export default function SalesChart({ title = "Revenue Analytics" }: SalesChartProps) {
   const [timeframe, setTimeframe] = useState('Last 7 Days');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -26,8 +26,9 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
 
   const timeframeDaysMap: Record<string, number> = {
     'Last 7 Days': 7,
-    'Last 28 Days': 28,
+    'Last 30 Days': 30,
     'Last 90 Days': 90,
+    'Last 365 Days': 365,
   };
   const days = timeframeDaysMap[timeframe] || 7;
   const { chartData, loading } = useWeeklyChart(days);
@@ -48,7 +49,7 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  const options = ['Last 7 Days', 'Last 28 Days', 'Last 90 Days'];
+  const options = ['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 365 Days'];
 
   const hasData = chartData.some(d => (d.sales ?? 0) > 0 || (d.revenue ?? 0) > 0 || (d.cost ?? 0) > 0 || (d.profit ?? 0) > 0);
 
@@ -102,7 +103,7 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
       <div className="w-full h-[320px] -ml-3">
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
+            <LineChart key={timeframe} data={chartData} margin={{ top: 10, right: 30, bottom: 0, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis 
                 dataKey="name" 
@@ -115,6 +116,7 @@ export default function SalesChart({ title = "Sales Overview" }: SalesChartProps
                 axisLine={false} 
                 tickLine={false} 
                 tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
+                tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(0)}k` : `${val}`}
                 dx={-5}
               />
               <Tooltip 
