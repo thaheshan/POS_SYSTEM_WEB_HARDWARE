@@ -208,6 +208,10 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={(e) => {
+                  (e.currentTarget as HTMLElement).blur();
+                  if (onClose) onClose();
+                }}
                 className={cn(
                   "flex items-center justify-between px-3 py-2.5 rounded-[8px] transition-all duration-200 group relative",
                   isActive
