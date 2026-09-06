@@ -47,10 +47,29 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
     }
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[520px] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-[20px] font-black text-gray-900">Add New Customer</h2>
             <p className="text-[12px] font-bold text-gray-400 mt-0.5">Fill in the customer details below</p>
@@ -59,7 +78,7 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-[12px] font-bold px-4 py-3 rounded-xl">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">

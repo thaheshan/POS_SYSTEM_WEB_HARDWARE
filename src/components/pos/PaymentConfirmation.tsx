@@ -17,7 +17,7 @@ import {
   MessageSquare,
   Zap,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import CustomerSearch from "@/components/pos/CustomerSearch";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -347,11 +347,17 @@ export default function PaymentConfirmation({
   total,
   notes,
 }: PaymentConfirmationProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<string>(paymentMethod || "cash");
   const [creditPaidInput, setCreditPaidInput] = useState<string>("0");
   const [customerAccount, setCustomerAccount] = useState<any>(null);
   const [shopProfile, setShopProfile] = useState<any>(null);
+
+  // Focus scroll container on mount for immediate ArrowUp/ArrowDown keyboard navigation
+  useEffect(() => {
+    scrollContainerRef.current?.focus();
+  }, []);
 
   // Live cashier & shop info from Redux auth state profile & Shop API
   const authUser = useSelector((state: RootState) => state.auth?.user as any);
@@ -411,13 +417,13 @@ export default function PaymentConfirmation({
       return isNaN(parsed) ? 0 : Math.min(total, Math.max(0, parsed));
     }
     if (selectedMethod.toLowerCase() === "cash") {
-      return amountTendered;
+      return amountTendered > 0 ? amountTendered : total;
     }
     return total;
   }, [selectedMethod, creditPaidInput, amountTendered, total]);
 
-  const isCreditSale = selectedMethod.toLowerCase() === "credit" || effectivePaidAmount < total;
-  const creditLeftover = Math.max(0, total - effectivePaidAmount);
+  const isCreditSale = selectedMethod.toLowerCase() === "credit";
+  const creditLeftover = isCreditSale ? Math.max(0, total - effectivePaidAmount) : 0;
   const existingCreditBalance = Number(
     customerAccount?.outstandingBalance || customerAccount?.outstanding_balance || 0
   );
@@ -523,10 +529,11 @@ export default function PaymentConfirmation({
       console.log("[POS Checkout] Submitting transaction payload:", payload);
       await api.post("/sales/checkout", payload);
 
-      // Trigger Cash Drawer Kick on Cash payment
-      if (selectedMethod.toLowerCase() === "cash") {
-        openCashDrawer();
-      }
+      // 1. Automatically trigger Hardware Cash Drawer Kick
+      openCashDrawer();
+
+      // 2. Automatically trigger ESC/POS Thermal Receipt Print
+      handleESCPrint();
 
       // Trigger TEXT.LK Credit SMS Notification if Credit sale
       if (isCreditSale && customerPhone && customerPhone !== "N/A") {
@@ -562,7 +569,24 @@ export default function PaymentConfirmation({
   return (
     <div className="flex-1 bg-white flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
       {/* LEFT COLUMN: Details & Options */}
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-10 bg-gray-50/30">
+      <div
+        ref={scrollContainerRef}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          const activeEl = document.activeElement;
+          const isInputField = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT';
+          if (!isInputField) {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              scrollContainerRef.current?.scrollBy({ top: 120, behavior: 'smooth' });
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              scrollContainerRef.current?.scrollBy({ top: -120, behavior: 'smooth' });
+            }
+          }
+        }}
+        className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-10 bg-gray-50/30 focus:outline-none scroll-smooth"
+      >
         {/* Header */}
         <div className="flex items-start gap-4 sm:gap-6 mb-8 lg:mb-10">
           <button
@@ -753,14 +777,14 @@ export default function PaymentConfirmation({
           )}
 
           {/* Items Summary */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="text-[14px] font-black tracking-tight text-gray-900 mb-5 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+            <h3 className="text-[14px] font-black tracking-tight text-gray-900 mb-4 flex items-center gap-2">
               <span className="w-6 h-6 rounded-md bg-emerald-50 text-[#059669] flex items-center justify-center border border-emerald-100">
                 <Package className="w-3.5 h-3.5" />
               </span>
-              Items Summary
+              Items Summary ({items.length})
             </h3>
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
               {items.map((item) => {
                 const itemDiscount = item.discountAmount ?? 0;
                 const finalUnitPrice = item.price - itemDiscount;
@@ -769,29 +793,29 @@ export default function PaymentConfirmation({
                 return (
                   <div
                     key={`${item.id}-${item.warehouseId || "no-wh"}`}
-                    className="bg-gray-50/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100"
+                    className="bg-gray-50/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-3 border border-gray-100 hover:bg-white hover:shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 bg-gray-200 rounded-lg overflow-hidden shrink-0 border border-gray-200">
                         <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
                       </div>
-                      <div>
-                        <h4 className="text-[13px] font-bold text-gray-900 line-clamp-1">{item.name}</h4>
+                      <div className="min-w-0">
+                        <h4 className="text-[12.5px] font-bold text-gray-900 truncate">{item.name}</h4>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase">
+                          <p className="text-[10.5px] font-semibold text-gray-500 uppercase">
                             Unit Price: Rs. {finalUnitPrice.toLocaleString()}
                           </p>
                           {item.warehouseName && (
-                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                            <span className="text-[8.5px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded">
                               {item.warehouseName}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end w-full sm:w-auto">
-                      <p className="text-[12px] font-bold text-gray-500">Qty: {item.qty}</p>
-                      <p className="text-[14px] font-black text-gray-900">
+                    <div className="text-right shrink-0">
+                      <p className="text-[11px] font-bold text-gray-500">Qty: {item.qty}</p>
+                      <p className="text-[13.5px] font-black text-gray-900">
                         Rs. {finalLineTotal.toLocaleString()}
                       </p>
                     </div>
@@ -799,7 +823,7 @@ export default function PaymentConfirmation({
                 );
               })}
             </div>
-            <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4 text-[13px] font-semibold text-gray-500">
+            <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 text-[12px] font-semibold text-gray-500">
               Total Items: <span className="font-bold text-gray-900">{items.length}</span>
             </div>
           </div>

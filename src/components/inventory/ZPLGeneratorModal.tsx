@@ -794,8 +794,30 @@ ${labelPairs.join("")}
   const totalLabels = filtered.length * 6;
   const totalRows = filtered.length * 3;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white shrink-0">

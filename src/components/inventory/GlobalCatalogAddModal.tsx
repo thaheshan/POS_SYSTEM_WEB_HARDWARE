@@ -165,12 +165,32 @@ export default function GlobalCatalogAddModal({ isOpen, onClose, product, onSucc
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const displayImage = formData.imagePreview || masterImage;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-[32px] w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
 

@@ -138,7 +138,7 @@ export default function ProcessReturnPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <RotateCcw className="w-7 h-7 text-rose-600" />
-              Process Return
+              Return Sale
             </h1>
             <p className="text-slate-500 text-sm mt-1">Look up an invoice to process refunds and restock inventory</p>
           </div>

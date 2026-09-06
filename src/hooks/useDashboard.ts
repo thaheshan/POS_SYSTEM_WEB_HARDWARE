@@ -119,6 +119,175 @@ export function useRecentTransactions() {
   return { transactions, loading, refresh: fetchTransactions };
 }
 
+import { subDays, subMonths, format, isSameDay, isSameMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+
+function generateChartBuckets(days: number, backendItems: any[], salesList: any[]): ChartPoint[] {
+  const now = new Date();
+  
+  if (days <= 7) {
+    // 7 Daily Buckets
+    const buckets: ChartPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = subDays(now, i);
+      const dayName = format(d, 'MMM d');
+      
+      let salesCount = 0;
+      let costTotal = 0;
+      let revenueTotal = 0;
+
+      const backendMatch = backendItems.find(b => {
+        if (!b.name) return false;
+        return b.name.toLowerCase() === dayName.toLowerCase() ||
+               b.name.toLowerCase() === format(d, 'EEE').toLowerCase() ||
+               b.name.toLowerCase() === format(d, 'yyyy-MM-dd').toLowerCase();
+      });
+
+      if (backendMatch) {
+        salesCount = backendMatch.sales ?? 0;
+        const rawCost = backendMatch.cost ?? 0;
+        const rawBackendRev = backendMatch.revenue ?? 0;
+        const totalInvoice = rawBackendRev + rawCost;
+        revenueTotal = Math.round(totalInvoice / 1.18);
+        costTotal = rawCost;
+      }
+
+      salesList.forEach(tx => {
+        const txDate = tx.createdAt || tx.date ? new Date(tx.createdAt || tx.date) : null;
+        if (txDate && isSameDay(txDate, d)) {
+          const amt = Number(tx.amount ?? tx.totalAmount ?? 0);
+          salesCount += 1;
+          revenueTotal += Math.round(amt / 1.18);
+          costTotal += Math.round(amt * 0.4);
+        }
+      });
+
+      const profitTotal = revenueTotal - costTotal;
+
+      buckets.push({
+        name: dayName,
+        sales: salesCount,
+        cost: costTotal,
+        revenue: revenueTotal,
+        profit: profitTotal,
+      });
+    }
+    return buckets;
+  }
+
+  if (days <= 30) {
+    // 30 Days: 10 Interval Buckets
+    const buckets: ChartPoint[] = [];
+    const step = 3;
+    for (let i = 27; i >= 0; i -= step) {
+      const d = subDays(now, i);
+      const dayName = format(d, 'MMM d');
+      
+      const intervalStart = startOfDay(subDays(d, step - 1));
+      const intervalEnd = endOfDay(d);
+
+      let salesCount = 0;
+      let revenueTotal = 0;
+
+      salesList.forEach(tx => {
+        const txDate = tx.createdAt || tx.date ? new Date(tx.createdAt || tx.date) : null;
+        if (txDate && isWithinInterval(txDate, { start: intervalStart, end: intervalEnd })) {
+          const amt = Number(tx.amount ?? tx.totalAmount ?? 0);
+          salesCount += 1;
+          revenueTotal += Math.round(amt / 1.18);
+        }
+      });
+
+      if (salesCount === 0) {
+        const backendMatch = backendItems.find(b => b.name && b.name.toLowerCase() === dayName.toLowerCase());
+        if (backendMatch) {
+          salesCount = backendMatch.sales ?? 0;
+          revenueTotal = Math.round(((backendMatch.revenue ?? 0) + (backendMatch.cost ?? 0)) / 1.18);
+        }
+      }
+
+      const costTotal = Math.round(revenueTotal * 0.45);
+      const profitTotal = revenueTotal - costTotal;
+
+      buckets.push({
+        name: dayName,
+        sales: salesCount,
+        cost: costTotal,
+        revenue: revenueTotal,
+        profit: profitTotal,
+      });
+    }
+    return buckets;
+  }
+
+  if (days <= 90) {
+    // 90 Days: 9 Interval Buckets
+    const buckets: ChartPoint[] = [];
+    const step = 10;
+    for (let i = 80; i >= 0; i -= step) {
+      const d = subDays(now, i);
+      const dayName = format(d, 'MMM d');
+      
+      const intervalStart = startOfDay(subDays(d, step - 1));
+      const intervalEnd = endOfDay(d);
+
+      let salesCount = 0;
+      let revenueTotal = 0;
+
+      salesList.forEach(tx => {
+        const txDate = tx.createdAt || tx.date ? new Date(tx.createdAt || tx.date) : null;
+        if (txDate && isWithinInterval(txDate, { start: intervalStart, end: intervalEnd })) {
+          const amt = Number(tx.amount ?? tx.totalAmount ?? 0);
+          salesCount += 1;
+          revenueTotal += Math.round(amt / 1.18);
+        }
+      });
+
+      const costTotal = Math.round(revenueTotal * 0.45);
+      const profitTotal = revenueTotal - costTotal;
+
+      buckets.push({
+        name: dayName,
+        sales: salesCount,
+        cost: costTotal,
+        revenue: revenueTotal,
+        profit: profitTotal,
+      });
+    }
+    return buckets;
+  }
+
+  // 365 Days: 12 Monthly Buckets
+  const buckets: ChartPoint[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const m = subMonths(now, i);
+    const monthName = format(m, 'MMM');
+
+    let salesCount = 0;
+    let revenueTotal = 0;
+
+    salesList.forEach(tx => {
+      const txDate = tx.createdAt || tx.date ? new Date(tx.createdAt || tx.date) : null;
+      if (txDate && isSameMonth(txDate, m)) {
+        const amt = Number(tx.amount ?? tx.totalAmount ?? 0);
+        salesCount += 1;
+        revenueTotal += Math.round(amt / 1.18);
+      }
+    });
+
+    const costTotal = Math.round(revenueTotal * 0.45);
+    const profitTotal = revenueTotal - costTotal;
+
+    buckets.push({
+      name: monthName,
+      sales: salesCount,
+      cost: costTotal,
+      revenue: revenueTotal,
+      profit: profitTotal,
+    });
+  }
+  return buckets;
+}
+
 // ─── Weekly Revenue Chart ─────────────────────────────────────────────────────
 export function useWeeklyChart(days = 7) {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
@@ -126,42 +295,38 @@ export function useWeeklyChart(days = 7) {
 
   useEffect(() => {
     setLoading(true);
-    api
-      .get('/dashboard/weekly-chart', { params: { days } })
-      .then((res) => {
-        const raw = res.data;
-        const items: any[] = Array.isArray(raw)
-          ? raw
-          : Array.isArray(raw?.data)
-          ? raw.data
-          : Array.isArray(raw?.items)
-          ? raw.items
-          : [];
 
-        setChartData(
-          items.map((day: any) => {
-            const rawCost = day.cost ?? 0;
-            const rawBackendRevenue = day.revenue ?? 0;
-            
-            // The backend currently returns (Invoice Total - Cost) as 'revenue'
-            // Total Invoice Amount = rawBackendRevenue + rawCost
-            const totalInvoiceAmount = rawBackendRevenue + rawCost;
-            
-            // Remove 18% tax to get pure Net Sales (Revenue)
-            const pureRevenue = Math.round(totalInvoiceAmount / 1.18);
-            
-            // Calculate pure Gross Profit
-            const pureProfit = pureRevenue - rawCost;
+    Promise.allSettled([
+      api.get('/dashboard/weekly-chart', { params: { days } }),
+      api.get('/dashboard/recent-transactions', { params: { limit: 500 } }),
+    ])
+      .then(([chartRes, salesRes]) => {
+        let rawItems: any[] = [];
+        if (chartRes.status === 'fulfilled') {
+          const raw = chartRes.value.data;
+          rawItems = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.items)
+            ? raw.items
+            : [];
+        }
 
-            return {
-              name: day.name,
-              sales: day.sales ?? 0,
-              cost: rawCost,
-              revenue: pureRevenue,
-              profit: pureProfit,
-            };
-          })
-        );
+        let salesList: any[] = [];
+        if (salesRes.status === 'fulfilled') {
+          const rawSales = salesRes.value.data;
+          salesList = Array.isArray(rawSales)
+            ? rawSales
+            : Array.isArray(rawSales?.data)
+            ? rawSales.data
+            : Array.isArray(rawSales?.items)
+            ? rawSales.items
+            : [];
+        }
+
+        const points = generateChartBuckets(days, rawItems, salesList);
+        setChartData(points);
       })
       .catch(() => setChartData([]))
       .finally(() => setLoading(false));

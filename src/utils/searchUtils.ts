@@ -8,7 +8,72 @@ export interface SearchableProduct {
   subCategory?: string | null;
   brand?: string | null;
   brandName?: string | null;
+  size?: string | null;
+  color?: string | null;
+  colour?: string | null;
+  aliases?: string[] | null;
   [key: string]: any;
+}
+
+// Common Sri Lankan / Hardware Shop Typos and Synonym Map
+const HARDWARE_SYNONYM_MAP: Record<string, string> = {
+  elbo: 'elbow',
+  elboo: 'elbow',
+  elboww: 'elbow',
+  elb: 'elbow',
+  couplng: 'coupling',
+  cplg: 'coupling',
+  copling: 'coupling',
+  reducor: 'reducer',
+  reducr: 'reducer',
+  reduc: 'reducer',
+  nipl: 'nipple',
+  nipll: 'nipple',
+  pvc: 'pvc',
+  upvc: 'pvc',
+  cpvc: 'pvc',
+  valv: 'valve',
+  valeb: 'valve',
+  valve: 'valve',
+  tapp: 'tap',
+  scre: 'screw',
+  skrew: 'screw',
+  skrews: 'screw',
+  screws: 'screw',
+  nail: 'nail',
+  nails: 'nail',
+  blt: 'bolt',
+  bolts: 'bolt',
+  washr: 'washer',
+  washers: 'washer',
+  socket: 'socket',
+  sockt: 'socket',
+};
+
+/**
+ * Normalizes search text by converting units, handling quotes/hyphens, and replacing common typos.
+ */
+export function normalizeHardwareSearchTerm(rawInput: string): string[] {
+  let cleaned = (rawInput || '')
+    .toLowerCase()
+    .trim()
+    .replace(/["”]/g, 'inch') // Replace quotes with inch
+    .replace(/([0-9]+)\s*mm/g, '$1mm $1') // 200mm -> 200mm 200
+    .replace(/([0-9]+)\s*cm/g, '$1cm $1') // 20cm -> 20cm 20
+    .replace(/([0-9]+)\s*(inch|in)/g, '$1inch $1in $1'); // 2inch -> 2inch 2in 2
+
+  const rawTokens = cleaned.split(/[\s,/-]+/).filter(Boolean);
+  const normalizedTokens: string[] = [];
+
+  for (const token of rawTokens) {
+    normalizedTokens.push(token);
+    // Replace mapped synonym if exists
+    if (HARDWARE_SYNONYM_MAP[token]) {
+      normalizedTokens.push(HARDWARE_SYNONYM_MAP[token]);
+    }
+  }
+
+  return Array.from(new Set(normalizedTokens));
 }
 
 /**
@@ -51,16 +116,13 @@ function levenshteinDistance(a: string, b: string): number {
 function isFuzzyTokenMatch(token: string, candidate: string): boolean {
   if (candidate.includes(token)) return true;
 
-  // Short tokens (<= 3 chars) require exact match or substring
   if (token.length <= 3) return false;
 
-  // For longer words, check against candidate words
   const candidateWords = candidate.split(/\s+/).filter(Boolean);
   const maxDistance = token.length > 7 ? 2 : 1;
 
   for (const word of candidateWords) {
     if (word.length <= 2) continue;
-    // Length difference check
     if (Math.abs(word.length - token.length) > maxDistance) continue;
 
     const dist = levenshteinDistance(token, word);
@@ -73,19 +135,19 @@ function isFuzzyTokenMatch(token: string, candidate: string): boolean {
 }
 
 /**
- * Checks if query tokens exist (exact or fuzzy/typo match) in the product text fields and returns a relevance score.
+ * Checks if query tokens exist (exact, alias, dimension, or fuzzy match) and calculates relevance score.
  */
 export function matchAndScoreProduct<T extends SearchableProduct>(
   product: T,
   searchQuery: string
 ): { matches: boolean; score: number } {
-  const query = (searchQuery || '').trim().toLowerCase();
-  if (!query) {
+  const rawQuery = (searchQuery || '').trim();
+  if (!rawQuery) {
     return { matches: true, score: 0 };
   }
 
-  const tokens = query.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) {
+  const normalizedTokens = normalizeHardwareSearchTerm(rawQuery);
+  if (normalizedTokens.length === 0) {
     return { matches: true, score: 0 };
   }
 
@@ -95,53 +157,73 @@ export function matchAndScoreProduct<T extends SearchableProduct>(
   const category = (product.category || '').toLowerCase();
   const subcategory = (product.subcategory || product.subCategory || '').toLowerCase();
   const brand = (product.brand || product.brandName || '').toLowerCase();
+  const size = (product.size || '').toLowerCase();
+  const color = (product.color || product.colour || '').toLowerCase();
+  const customAliases = (product.aliases || []).map((a: string) => a.toLowerCase()).join(' ');
 
-  const combinedText = `${name} ${sku} ${barcode} ${brand} ${category} ${subcategory}`;
+  const combinedText = `${name} ${sku} ${barcode} ${brand} ${category} ${subcategory} ${size} ${color} ${customAliases}`.toLowerCase();
 
-  // Check if EVERY token is present either exactly or fuzzy/typo matched
   let totalScore = 0;
-  let exactMatchCount = 0;
-  let fuzzyMatchCount = 0;
+  let matchedTokens = 0;
 
-  for (const token of tokens) {
+  // Extract any numbers from search query for size weighting (e.g. 200 in "elbo 200")
+  const numbersInQuery = rawQuery.match(/\b\d+(\.\d+)?\b/g) || [];
+
+  for (const token of normalizedTokens) {
     if (combinedText.includes(token)) {
-      exactMatchCount++;
-      totalScore += 50;
+      matchedTokens++;
+      totalScore += 80;
     } else if (isFuzzyTokenMatch(token, combinedText)) {
-      fuzzyMatchCount++;
-      totalScore += 20; // Lower bonus for fuzzy/typo match
-    } else {
-      // Token failed both exact and fuzzy match
-      return { matches: false, score: 0 };
+      matchedTokens++;
+      totalScore += 35;
     }
   }
 
-  // 2. Compute Relevance Score
-  if (name === query) {
+  // If no tokens matched, return no match
+  if (matchedTokens === 0) {
+    return { matches: false, score: 0 };
+  }
+
+  // 1. Exact Full Match Bonuses
+  const cleanRaw = rawQuery.toLowerCase();
+  if (name === cleanRaw) {
+    totalScore += 1200;
+  } else if (name.startsWith(cleanRaw)) {
+    totalScore += 600;
+  } else if (name.includes(cleanRaw)) {
+    totalScore += 350;
+  }
+
+  if (sku === cleanRaw || barcode === cleanRaw) {
     totalScore += 1000;
-  } else if (name.startsWith(query)) {
+  } else if (sku.includes(cleanRaw) || barcode.includes(cleanRaw)) {
     totalScore += 500;
-  } else if (name.includes(query)) {
-    totalScore += 300;
   }
 
-  if (sku === query || barcode === query) {
-    totalScore += 800;
-  } else if (sku.includes(query) || barcode.includes(query)) {
-    totalScore += 400;
+  // 2. Hardware Dimension / Size Weighting (+600 bonus)
+  // Ensures searching "elbo 200" ranks "PVC Elbow 200mm" #1 over 160mm or 250mm
+  for (const numStr of numbersInQuery) {
+    const numRegex = new RegExp(`\\b${numStr}(mm|cm|m|inch|in|")?\\b`, 'i');
+    if (numRegex.test(name) || numRegex.test(size)) {
+      totalScore += 600;
+    } else if (combinedText.includes(numStr)) {
+      totalScore += 300;
+    }
   }
 
-  tokens.forEach(token => {
-    if (name.startsWith(token)) {
+  // 3. Brand & Field Attribute Weighting
+  normalizedTokens.forEach((token) => {
+    if (name.includes(token)) {
       totalScore += 100;
-    } else if (name.includes(token)) {
-      totalScore += 50;
     }
-    if (brand.includes(token)) {
-      totalScore += 30;
+    if (brand && brand.includes(token)) {
+      totalScore += 400; // Strong brand match
     }
-    if (subcategory.includes(token)) {
-      totalScore += 20;
+    if (subcategory && subcategory.includes(token)) {
+      totalScore += 150;
+    }
+    if (color && color.includes(token)) {
+      totalScore += 200;
     }
   });
 

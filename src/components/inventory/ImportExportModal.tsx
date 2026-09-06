@@ -99,12 +99,32 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
     }
   };
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
         
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -135,7 +155,7 @@ export default function ImportExportModal({ isOpen, onClose, onSuccess, inventor
           </button>
         </div>
 
-        <div className="p-6 pt-0 space-y-4">
+        <div className="p-6 pt-0 space-y-4 overflow-y-auto">
           {activeTab === 'export' ? (
             <div className="space-y-4">
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-sm text-emerald-900">

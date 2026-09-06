@@ -413,6 +413,27 @@ export default function EditInventoryModal({
     setPreviewUrl(URL.createObjectURL(file));
   };
 
+  // Keyboard shortcuts — must be declared BEFORE any early return to satisfy Rules of Hooks
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !item) return null;
 
   const handleSave = async () => {
@@ -491,8 +512,9 @@ export default function EditInventoryModal({
   const costP = Number(costPrice) || 0;
   const profitMargin = sellP > 0 && costP > 0 ? Math.round(((sellP - costP) / costP) * 100) : 0;
 
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
 

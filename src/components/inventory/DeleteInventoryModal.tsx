@@ -1,5 +1,5 @@
 import { X, Trash2, Loader2 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface DeleteInventoryModalProps {
   isOpen: boolean;
@@ -10,10 +10,30 @@ interface DeleteInventoryModalProps {
 }
 
 export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item, isDeleting = false }: DeleteInventoryModalProps) {
+  useEffect(() => {
+    if (!isOpen || isDeleting) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isDeleting, onClose]);
+
   if (!isOpen || !item) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -21,7 +41,7 @@ export default function DeleteInventoryModal({ isOpen, onClose, onConfirm, item,
       ></div>
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col items-center text-center">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col items-center text-center overflow-y-auto max-h-[90vh]">
         <button 
           onClick={onClose}
           disabled={isDeleting}

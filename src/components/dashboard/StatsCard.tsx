@@ -2,7 +2,8 @@
 
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { MouseEvent, KeyboardEvent } from 'react';
 
 interface StatsCardProps {
   title: string;
@@ -32,11 +33,38 @@ export default function StatsCard({
   viewAllHref = '#',
   onClick
 }: StatsCardProps) {
+  const router = useRouter();
+
+  const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (onClick) {
+      onClick();
+    } else if (viewAllHref && viewAllHref !== '#') {
+      router.push(viewAllHref);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (onClick) {
+        onClick();
+      } else if (viewAllHref && viewAllHref !== '#') {
+        router.push(viewAllHref);
+      }
+    }
+  };
+
   return (
-    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-between min-h-[220px] transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+    <div 
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-between min-h-[220px] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-blue-300 cursor-pointer active:scale-[0.99] group focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+    >
       <div className="flex justify-between items-start">
         {/* Top Left Icon Block */}
-        <div className={cn("w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shadow-sm", iconBg)}>
+        <div className={cn("w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105", iconBg)}>
           <Icon className={cn("w-6 h-6", iconColor)} strokeWidth={2.5} />
         </div>
         
@@ -59,7 +87,7 @@ export default function StatsCard({
       </div>
       
       <div className="mt-8">
-        <h3 className="text-[#64748b] text-[15px] font-semibold tracking-tight mb-2">{title}</h3>
+        <h3 className="text-[#64748b] text-[15px] font-semibold tracking-tight mb-2 group-hover:text-blue-600 transition-colors">{title}</h3>
         <p className="text-[32px] font-black text-gray-900 tracking-tighter leading-none">{value}</p>
         
         {subtext && (
@@ -70,22 +98,9 @@ export default function StatsCard({
       </div>
 
       <div className="pt-4 mt-4 border-t border-gray-50 flex justify-center">
-        {onClick ? (
-          <button
-            type="button"
-            onClick={onClick}
-            className="inline-flex items-center justify-center text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
-          >
-            View All →
-          </button>
-        ) : (
-          <Link
-            href={viewAllHref}
-            className="inline-flex items-center justify-center text-[12px] font-black text-blue-600 hover:text-blue-800 transition-colors tracking-wide uppercase"
-          >
-            View All →
-          </Link>
-        )}
+        <span className="inline-flex items-center justify-center text-[12px] font-black text-blue-600 group-hover:text-blue-800 transition-colors tracking-wide uppercase transition-transform group-hover:translate-x-0.5">
+          View All →
+        </span>
       </div>
     </div>
   );

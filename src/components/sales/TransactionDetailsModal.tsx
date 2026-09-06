@@ -18,10 +18,12 @@ import {
   Download,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
+import { shopApi } from "@/api/shop";
+import { printThermalReceipt } from "@/utils/hardwareIntegration";
 import { format } from "date-fns";
 
 // ── PDF Invoice Generator ──────────────────────────────────────────────────────
-function downloadInvoicePDF({
+async function downloadInvoicePDF({
   invoiceNo,
   dateStr,
   timeStr,
@@ -34,6 +36,7 @@ function downloadInvoicePDF({
   discount,
   tax,
   totalAmount,
+  shopProfile: initialProfile,
 }: {
   invoiceNo: string;
   dateStr: string;
@@ -55,114 +58,181 @@ function downloadInvoicePDF({
   discount: number;
   tax: number;
   totalAmount: number;
+  shopProfile?: any;
 }) {
-  const itemRows = items
-    .map(
-      (item, i) => {
-        const itemDiscount = item.discountAmount ?? 0;
-        const originalPrice = item.unitPrice + itemDiscount;
-        return `
-    <tr style="border-bottom:1px solid #f0f0f0;">
-      <td style="padding:10px 8px;color:#6b7280;font-size:12px;">${i + 1}</td>
-      <td style="padding:10px 8px;">
-        <div style="font-weight:700;color:#111827;font-size:13px;">${item.productName}</div>
-        ${item.sku ? `<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:2px;">SKU: ${item.sku}</div>` : ""}
-        ${itemDiscount > 0 ? `<div style="font-size:11px;color:#ef4444;font-weight:500;margin-top:2px;">Discount applied: -Rs. ${itemDiscount.toLocaleString()} ${item.discountPercentage ? `(${item.discountPercentage}%)` : ""}</div>` : ""}
-      </td>
-      <td style="padding:10px 8px;text-align:center;font-weight:700;color:#111827;font-size:13px;">${item.qty}</td>
-      <td style="padding:10px 8px;text-align:right;color:#374151;font-size:13px;font-family:monospace;">
-        ${itemDiscount > 0 ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:4px;">Rs. ${originalPrice.toLocaleString()}</span>` : ""}
-        Rs. ${item.unitPrice.toLocaleString()}
-      </td>
-      <td style="padding:10px 8px;text-align:right;font-weight:800;color:#111827;font-size:13px;font-family:monospace;">Rs. ${item.total.toLocaleString()}</td>
+  let currentProfile = initialProfile;
+  if (!currentProfile) {
+    try {
+      currentProfile = await shopApi.getProfile();
+    } catch (e) {
+      console.error("Could not fetch shop profile for invoice PDF", e);
+    }
+  }
+
+  const shopName = currentProfile?.name || "Futura Hardware POS";
+  const addressParts = [
+    currentProfile?.address,
+    currentProfile?.city,
+    currentProfile?.district,
+    currentProfile?.province,
+  ].filter(Boolean);
+  const shopAddress = addressParts.length > 0 ? addressParts.join(", ") : "Sri Lanka";
+  const phoneStr = currentProfile?.phone ? `Tel: ${currentProfile.phone}` : "";
+  const emailStr = currentProfile?.email ? `Email: ${currentProfile.email}` : "";
+  const regNumStr = currentProfile?.businessRegistration ? `Reg/TRN: ${currentProfile.businessRegistration}` : "";
+  const contactLine = [phoneStr, emailStr, regNumStr].filter(Boolean).join(" | ");
+
+  const itemRows = items.length === 0 ? `
+    <tr>
+      <td colspan="5" style="text-align:center;padding:20px;color:#94a3b8;">No line items recorded for this invoice.</td>
     </tr>
-  `})
+  ` : items
+    .map((item, i) => {
+      const itemDiscount = item.discountAmount ?? 0;
+      const originalPrice = item.unitPrice + itemDiscount;
+      return `
+    <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+      <td style="text-align:center;color:#64748b;font-weight:700;">${i + 1}</td>
+      <td>
+        <div style="font-weight:700;color:#0f172a;font-size:12px;">${item.productName}</div>
+        ${item.sku ? `<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px;">SKU: ${item.sku}</div>` : ""}
+        ${itemDiscount > 0 ? `<div style="font-size:10.5px;color:#ef4444;font-weight:600;margin-top:2px;">Discount applied: -LKR ${itemDiscount.toLocaleString()} ${item.discountPercentage ? `(${item.discountPercentage}%)` : ""}</div>` : ""}
+      </td>
+      <td style="text-align:center;font-weight:800;color:#0f172a;">${item.qty}</td>
+      <td style="text-align:right;color:#334155;font-family:monospace;">
+        ${itemDiscount > 0 ? `<span style="text-decoration:line-through;color:#94a3b8;font-size:10px;margin-right:4px;">LKR ${originalPrice.toLocaleString()}</span>` : ""}
+        LKR ${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </td>
+      <td style="text-align:right;font-weight:800;color:#1e40af;font-family:monospace;">LKR ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+    </tr>
+  `;
+    })
     .join("");
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Invoice ${invoiceNo}</title>
+  <title>${shopName} — Invoice ${invoiceNo}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Inter',sans-serif; background:#f9fafb; color:#111827; }
-    .page { max-width:780px; margin:0 auto; background:#fff; padding:48px; }
-    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px; }
-    .brand-name { font-size:26px; font-weight:900; color:#2563eb; letter-spacing:-0.5px; }
-    .brand-sub  { font-size:11px; color:#6b7280; font-weight:500; margin-top:2px; }
-    .invoice-label { text-align:right; }
-    .invoice-label h2 { font-size:22px; font-weight:900; color:#111827; letter-spacing:-0.5px; }
-    .invoice-label p  { font-size:12px; color:#6b7280; font-weight:500; margin-top:4px; }
-    .divider { border:none; border-top:2px solid #2563eb; margin:0 0 30px; opacity:0.2; }
-    .meta { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; margin-bottom:32px; }
-    .meta-box { background:#f9fafb; border:1px solid #f0f0f0; border-radius:10px; padding:12px 14px; }
-    .meta-label { font-size:9px; font-weight:800; color:#9ca3af; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
-    .meta-value { font-size:13px; font-weight:700; color:#111827; }
-    .section-title { font-size:11px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:12px; }
-    table { width:100%; border-collapse:collapse; margin-bottom:28px; }
-    thead tr { background:#f9fafb; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; }
-    thead th { padding:10px 8px; text-align:left; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em; }
-    thead th:last-child, thead th:nth-child(4) { text-align:right; }
-    thead th:nth-child(3) { text-align:center; }
-    .totals { display:flex; justify-content:flex-end; margin-bottom:28px; }
-    .totals-box { width:300px; }
-    .total-row { display:flex; justify-content:space-between; padding:7px 0; font-size:13px; font-weight:600; color:#374151; border-bottom:1px solid #f3f4f6; }
-    .total-row:last-child { border-bottom:none; }
-    .total-row.discount { color:#ef4444; }
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif; font-size:11px; color:#1e293b; background:#fff; padding:24px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:16px; margin-bottom:20px; }
+    .brand-logo { max-height:50px; width:auto; margin-bottom:8px; display:block; }
+    .brand { font-size:22px; font-weight:900; color:#1e40af; letter-spacing:-0.5px; line-height:1.1; }
+    .brand-address { font-size:11px; color:#475569; font-weight:500; margin-top:3px; }
+    .brand-contact { font-size:10px; color:#64748b; margin-top:2px; }
+    .invoice-label { text-align:right; font-size:11px; color:#64748b; line-height:1.6; }
+    .report-title { font-size:18px; font-weight:900; color:#1e40af; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px; }
+    .badge { display:inline-block; background:#ecfdf5; color:#059669; border:1px solid #6ee7b7; border-radius:4px; padding:2px 8px; font-size:9.5px; font-weight:800; text-transform:uppercase; }
+    .section-title { font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#475569; margin:20px 0 8px; border-left:3px solid #1e40af; padding-left:8px; }
+    .meta-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    .meta-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; }
+    .meta-label { font-size:9px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+    .meta-value { font-size:13px; font-weight:800; color:#0f172a; }
+    .meta-sub { font-size:9.5px; color:#64748b; margin-top:2px; font-weight:500; }
+    table { width:100%; border-collapse:collapse; margin-top:6px; page-break-inside:auto; }
+    thead { display:table-header-group; }
+    tr { page-break-inside:avoid; page-break-after:auto; }
+    thead tr { background:#1e40af; color:#fff; }
+    thead th { padding:8px 12px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; text-align:left; }
+    thead th.center { text-align:center; }
+    thead th.right { text-align:right; }
+    tbody tr.even { background:#f8fafc; }
+    tbody tr.odd { background:#fff; }
+    tbody td { padding:8.5px 12px; font-size:11px; border-bottom:1px solid #e2e8f0; color:#334155; }
+    tbody tr:last-child td { border-bottom:2px solid #cbd5e1; }
+    .totals { display:flex; justify-content:flex-end; margin-top:20px; }
+    .totals-box { width:320px; }
+    .total-row { display:flex; justify-content:space-between; padding:6px 0; font-size:12px; font-weight:600; color:#334155; border-bottom:1px solid #f1f5f9; }
+    .total-row.discount { color:#dc2626; }
     .total-row.tax { color:#059669; }
-    .grand-total { display:flex; justify-content:space-between; align-items:center; background:#2563eb; color:#fff; padding:14px 16px; border-radius:12px; margin-top:10px; }
-    .grand-total span:first-child { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
-    .grand-total span:last-child  { font-size:20px; font-weight:900; font-family:monospace; }
-    .footer { text-align:center; padding-top:24px; border-top:1px solid #f0f0f0; margin-top:8px; }
-    .footer p { font-size:12px; color:#9ca3af; font-weight:500; }
-    .footer .thank-you { font-size:15px; font-weight:800; color:#2563eb; margin-bottom:4px; }
-    @media print { body { background:#fff; } .page { padding:32px; max-width:100%; } }
+    .grand-total { display:flex; justify-content:space-between; align-items:center; background:#1e40af; color:#fff; padding:12px 16px; border-radius:8px; margin-top:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .grand-total span:first-child { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.08em; }
+    .grand-total span:last-child { font-size:18px; font-weight:900; font-family:monospace; }
+    .footer { margin-top:32px; padding-top:12px; border-top:1.5px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center; font-size:9.5px; color:#64748b; }
+    .footer-left strong { color:#0f172a; }
+    @media print { body { padding:0; } .no-print { display:none !important; } }
   </style>
 </head>
 <body>
 <div class="page">
   <div class="header">
     <div>
-      <div class="brand-name">Hardware POS</div>
-      <div class="brand-sub">Hardware &amp; Building Materials</div>
+      ${currentProfile?.logo ? `<img src="${currentProfile.logo}" class="brand-logo" alt="Shop Logo" />` : ""}
+      <div class="brand">${shopName}</div>
+      <div class="brand-address">${shopAddress}</div>
+      ${contactLine ? `<div class="brand-contact">${contactLine}</div>` : ""}
     </div>
     <div class="invoice-label">
-      <h2>INVOICE</h2>
-      <p>${invoiceNo}</p>
+      <div class="report-title">INVOICE</div>
+      <div style="font-size:13px;font-weight:900;color:#0f172a;font-family:monospace;margin-top:2px;">${invoiceNo}</div>
+      <div style="margin-top:6px;"><span class="badge">IRD Compliant</span></div>
     </div>
   </div>
-  <hr class="divider" />
-  <div class="meta">
-    <div class="meta-box"><div class="meta-label">Date</div><div class="meta-value">${dateStr}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;">${timeStr}</div></div>
-    <div class="meta-box"><div class="meta-label">Customer</div><div class="meta-value">${customer}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;">${phone}</div></div>
-    <div class="meta-box"><div class="meta-label">Cashier</div><div class="meta-value">${cashier}</div></div>
-    <div class="meta-box"><div class="meta-label">Payment</div><div class="meta-value" style="text-transform:capitalize;">${txnType}</div><div style="font-size:11px;color:#059669;margin-top:2px;font-weight:700;">Paid</div></div>
+
+  <div class="meta-grid">
+    <div class="meta-box">
+      <div class="meta-label">Date &amp; Time</div>
+      <div class="meta-value">${dateStr}</div>
+      <div class="meta-sub">${timeStr || "00:00"}</div>
+    </div>
+    <div class="meta-box">
+      <div class="meta-label">Customer</div>
+      <div class="meta-value">${customer}</div>
+      <div class="meta-sub">${phone}</div>
+    </div>
+    <div class="meta-box">
+      <div class="meta-label">Payment Mode</div>
+      <div class="meta-value" style="text-transform:uppercase;">${txnType}</div>
+      <div class="meta-sub" style="color:#059669;font-weight:700;">Paid</div>
+    </div>
+    <div class="meta-box">
+      <div class="meta-label">Cashier</div>
+      <div class="meta-value">${cashier}</div>
+      <div class="meta-sub">Authorized</div>
+    </div>
   </div>
-  <div class="section-title">Items Purchased</div>
+
+  <div class="section-title">Items Purchased (${items.length})</div>
   <table>
-    <thead><tr>
-      <th style="width:36px;">#</th>
-      <th>Product</th>
-      <th style="width:60px;text-align:center;">Qty</th>
-      <th style="width:130px;text-align:right;">Unit Price</th>
-      <th style="width:130px;text-align:right;">Total</th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th style="width:36px;" class="center">#</th>
+        <th>Product &amp; Details</th>
+        <th style="width:60px;" class="center">Qty</th>
+        <th style="width:130px;" class="right">Unit Price</th>
+        <th style="width:140px;" class="right">Total</th>
+      </tr>
+    </thead>
     <tbody>${itemRows}</tbody>
   </table>
+
   <div class="totals">
     <div class="totals-box">
-      <div class="total-row"><span>Subtotal</span><span style="font-family:monospace;">Rs. ${subtotal.toLocaleString()}</span></div>
-      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-Rs. ${discount.toLocaleString()}</span></div>` : ""}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax</span><span style="font-family:monospace;">Rs. ${tax.toLocaleString()}</span></div>` : ""}
-      <div class="grand-total"><span>Total Amount</span><span>Rs. ${totalAmount.toLocaleString()}</span></div>
+      <div class="total-row"><span>Subtotal</span><span style="font-family:monospace;">LKR ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-LKR ${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
+      ${tax > 0 ? `<div class="total-row tax"><span>Tax / VAT</span><span style="font-family:monospace;">LKR ${tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
+      <div class="grand-total">
+        <span>Total Amount</span>
+        <span>LKR ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      </div>
     </div>
   </div>
+
   <div class="footer">
-    <p class="thank-you">Thank you for your purchase!</p>
-    <p>Please retain this invoice for your records &bull; Returns accepted within 7 days with receipt</p>
-    <p style="margin-top:8px;font-size:10px;color:#d1d5db;">Generated on ${dateStr} at ${timeStr} &bull; ${invoiceNo}</p>
+    <div class="footer-left">
+      <strong>${shopName}</strong> &bull; Official Tax Invoice &amp; Payment Receipt<br />
+      Thank you for your business! Please retain this receipt for your records.
+    </div>
+    <div style="text-align:right;">
+      Generated: ${dateStr} ${timeStr}<br />
+      Official IRD Compliant Record
+    </div>
   </div>
 </div>
 <script>window.onload = () => { window.print(); }<\/script>
@@ -388,10 +458,16 @@ export default function TransactionDetailsModal({
   const [mounted, setMounted] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [shopProfile, setShopProfile] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    shopApi.getProfile().then((p) => setShopProfile(p)).catch(() => {});
+  }, [isOpen]);
 
   // ── Load invoice ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -550,6 +626,26 @@ export default function TransactionDetailsModal({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !mounted) return null;
 
   // ── Derived display values ──────────────────────────────────────────────────
@@ -576,9 +672,42 @@ export default function TransactionDetailsModal({
   const txnType = data?.paymentMethod || data?.saleType || "CASH";
   const cashier = data?.user?.name || data?.cashierName || "System";
 
+  const handleThermalPrint = async () => {
+    const payload = {
+      storeName: shopProfile?.name || "Futura Hardware POS",
+      storeAddress:
+        [shopProfile?.address, shopProfile?.city, shopProfile?.district]
+          .filter(Boolean)
+          .join(", ") || "Sri Lanka",
+      storePhone: shopProfile?.phone || "",
+      invoiceNo: invNum,
+      date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
+      cashier: cashier,
+      customerName: customer,
+      customerPhone: phone,
+      paymentMethod: txnType.toUpperCase(),
+      items: viewItems.map((it) => ({
+        name: it.productName,
+        qty: it.qty,
+        price: it.unitPrice,
+        lineTotal: it.total,
+      })),
+      subtotal: subtotal,
+      discount: discount,
+      total: totalAmount,
+      amountTendered: totalAmount,
+      change: 0,
+      notes: data?.notes || "",
+    };
+
+    await printThermalReceipt(payload);
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
   const modalContent = (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -640,6 +769,13 @@ export default function TransactionDetailsModal({
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={handleThermalPrint}
+                    title="ESC/POS Thermal Print"
+                    className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-all"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() =>
                       downloadInvoicePDF({
                         invoiceNo: invNum,
@@ -654,6 +790,7 @@ export default function TransactionDetailsModal({
                         discount,
                         tax,
                         totalAmount,
+                        shopProfile,
                       })
                     }
                     title="Download PDF"
@@ -1151,6 +1288,12 @@ export default function TransactionDetailsModal({
         {activeTab !== "edit" && !loading && (
           <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-100 px-8 py-4 flex items-center justify-end gap-3 shrink-0">
             <button
+              onClick={handleThermalPrint}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[13px] font-bold transition shadow-sm"
+            >
+              <Printer className="w-4 h-4" /> ESC/POS Print
+            </button>
+            <button
               onClick={() =>
                 downloadInvoicePDF({
                   invoiceNo: invNum,
@@ -1165,6 +1308,7 @@ export default function TransactionDetailsModal({
                   discount,
                   tax,
                   totalAmount,
+                  shopProfile,
                 })
               }
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[13px] font-bold text-blue-600 hover:bg-blue-50 transition"
@@ -1186,11 +1330,12 @@ export default function TransactionDetailsModal({
                   discount,
                   tax,
                   totalAmount,
+                  shopProfile,
                 })
               }
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[13px] font-bold text-blue-600 hover:bg-blue-50 transition"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition"
             >
-              <Printer className="w-4 h-4" /> Print
+              <FileText className="w-4 h-4 text-gray-500" /> Print (A4)
             </button>
             <button
               onClick={onClose}

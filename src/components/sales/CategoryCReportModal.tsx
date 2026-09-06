@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Download, Trash2, Wrench, Search, FileText, FileSpreadsheet, ChevronDown, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import AddLabourModal from './AddLabourModal';
@@ -61,12 +61,30 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
     onPrintPDF(timeFilter);
   };
 
-  const navigateToDetailedView = () => {
-    router.push('/sales/category-c');
-  };
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center print:hidden">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center print:hidden">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onClose()} />
       <div className="relative bg-white w-full max-w-[560px] rounded-[28px] shadow-2xl overflow-hidden mx-4 max-h-[90vh] flex flex-col">
 

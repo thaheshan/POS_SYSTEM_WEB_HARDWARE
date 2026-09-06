@@ -23,6 +23,29 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownRef]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKey = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isOpen]);
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'WARNING': return <AlertTriangle className="w-4 h-4 text-amber-500" />;
@@ -59,7 +82,7 @@ export default function NotificationDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+        <div role="dialog" className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
             <h3 className="font-bold text-gray-900">Notifications</h3>
             {unreadCount > 0 && (

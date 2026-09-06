@@ -143,8 +143,30 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => onClose()}

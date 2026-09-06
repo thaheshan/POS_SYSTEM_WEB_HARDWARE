@@ -14,7 +14,19 @@ interface NotificationModalProps {
 
 export default function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   const router = useRouter();
-  const { notifications, unreadCount, markAllAsRead, clearAll, markAsRead } = useNotifications();
+  const {
+    notifications,
+    allNotifications,
+    unreadCount,
+    page,
+    pageSize,
+    totalPages,
+    totalCount,
+    setPage,
+    markAllAsRead,
+    clearAll,
+    markAsRead,
+  } = useNotifications();
 
   const getNotificationHref = (notif: Notification) => {
     if (notif.link) return notif.link;
@@ -25,7 +37,6 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
   };
 
   const handleNotificationClick = async (notif: Notification, href: string | null) => {
-    // 1. Mark as read if unread
     if (!notif.isRead) {
       await markAsRead(notif.id);
     }
@@ -45,7 +56,6 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
     notif: Notification,
     href: string
   ) => {
-    // Preserve native new-tab/window behavior for modified clicks.
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
     event.preventDefault();
@@ -66,6 +76,37 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleModalKey = (e: globalThis.KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      } else if ((e.key === "ArrowLeft" || e.key === "Left") && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.max(1, p - 1));
+      } else if ((e.key === "ArrowRight" || e.key === "Right") && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.min(totalPages, p + 1));
+      }
+    };
+
+    window.addEventListener("keydown", handleModalKey);
+    return () => window.removeEventListener("keydown", handleModalKey);
+  }, [isOpen, onClose, totalPages, setPage]);
 
   if (!isOpen) return null;
 
@@ -88,12 +129,15 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
     }
   };
 
+  const startItem = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endItem = Math.min(page * pageSize, totalCount);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
               All Notifications
@@ -103,7 +147,9 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
                 </span>
               )}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Manage your system alerts and updates</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Showing {totalCount} total alert{totalCount === 1 ? '' : 's'}
+            </p>
           </div>
           
           <div className="flex items-center gap-2">
@@ -117,7 +163,7 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
             </button>
             <button 
               onClick={clearAll}
-              disabled={notifications.length === 0}
+              disabled={allNotifications.length === 0}
               className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
@@ -134,7 +180,7 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
         </div>
 
         {/* Content list */}
-        <div className="flex-1 overflow-y-auto p-2 bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -202,6 +248,71 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
             </div>
           )}
         </div>
+
+        {/* Pagination Footer */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-white shrink-0">
+            <span className="text-xs font-medium text-gray-500">
+              Showing <strong className="text-gray-900">{startItem}-{endItem}</strong> of <strong className="text-gray-900">{totalCount}</strong> notifications
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1 px-1">
+                {(() => {
+                  const range: (number | string)[] = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) range.push(i);
+                  } else {
+                    if (page <= 3) {
+                      range.push(1, 2, 3, 4, '...', totalPages);
+                    } else if (page >= totalPages - 2) {
+                      range.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      range.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+                    }
+                  }
+
+                  return range.map((item, idx) =>
+                    typeof item === 'number' ? (
+                      <button
+                        key={item}
+                        onClick={() => setPage(item)}
+                        className={cn(
+                          'w-7 h-7 rounded-lg text-xs font-bold transition-all',
+                          page === item
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        )}
+                      >
+                        {item}
+                      </button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-gray-400 font-bold">
+                        {item}
+                      </span>
+                    )
+                  );
+                })()}
+              </div>
+
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

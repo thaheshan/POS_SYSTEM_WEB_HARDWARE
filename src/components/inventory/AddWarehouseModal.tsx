@@ -39,11 +39,31 @@ export default function AddWarehouseModal({ isOpen, onClose, onSuccess }: AddWar
     }
   };
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Backspace" && !isInput) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 animate-in fade-in" />
-        <Dialog.Content className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-[24px] shadow-2xl z-50 w-[95vw] max-w-[500px] overflow-hidden animate-in fade-in zoom-in-95">
+        <Dialog.Content className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-[24px] shadow-2xl z-50 w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
           <div className="bg-[#1e40af] p-6 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">

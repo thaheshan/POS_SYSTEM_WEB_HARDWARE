@@ -17,12 +17,32 @@ export default function CheckoutModal({ isOpen, onClose, subtotal, onComplete }:
   const [isDiscountOpen, setIsDiscountOpen] = useState(true);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const change = Math.max(0, Number(amountPaid) - subtotal);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-[24px] w-full max-w-[500px] shadow-2xl relative my-8 flex flex-col max-h-[90vh]">
         
         {/* Close Button */}
