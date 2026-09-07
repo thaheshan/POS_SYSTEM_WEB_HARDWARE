@@ -30,6 +30,8 @@ export interface RecentTransaction {
 export interface TopProduct {
   id: string;
   name: string;
+  sku?: string;
+  category?: string;
   totalQty: number;
   totalRevenue: number;
 }
@@ -371,11 +373,13 @@ export function useTopProducts() {
           : [];
 
         setProducts(
-          items.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            totalQty: p.totalQty ?? 0,
-            totalRevenue: p.totalRevenue ?? 0,
+          items.map((p: any, idx: number) => ({
+            id: p.id || p.product_id || `tp-${idx}`,
+            name: p.name || p.product_name || 'Unknown',
+            sku: p.sku || p.product?.sku || 'N/A',
+            category: p.category || p.category_name || p.product?.category?.name || 'General',
+            totalQty: Number(p.totalQty ?? p.quantity ?? p.qty ?? p.unitsSold ?? 0),
+            totalRevenue: Number(p.totalRevenue ?? p.revenue ?? p.amount ?? 0),
           }))
         );
       })
