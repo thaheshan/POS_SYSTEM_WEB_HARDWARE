@@ -1,7 +1,7 @@
 'use client';
 
 import { X, SearchIcon, Banknote, CreditCard, Smartphone, ChevronDown, Info, Gift, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type CheckoutModalProps = {
   isOpen: boolean;
