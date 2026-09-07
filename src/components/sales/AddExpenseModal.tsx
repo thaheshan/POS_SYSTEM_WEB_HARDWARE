@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Receipt, Search, ChevronDown, Check } from 'lucide-react';
 
 interface Props {
