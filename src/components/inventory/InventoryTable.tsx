@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowUpDown, Edit, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Barcode } from 'lucide-react';
+import { ArrowUpDown, Edit, Edit2, Check, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Barcode } from 'lucide-react';
 import Image from 'next/image';
 
 interface InventoryTableProps {
@@ -8,6 +8,7 @@ interface InventoryTableProps {
   onDelete?: (item: any) => void;
   onTransfer?: (item: any) => void;
   onBarcode?: (item: any) => void;
+  onUpdatePrice?: (item: any, newPrice: number) => Promise<void> | void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onFilterToggle: () => void;
@@ -22,6 +23,7 @@ export default function InventoryTable({
   onDelete,
   onTransfer,
   onBarcode,
+  onUpdatePrice,
   searchTerm,
   onSearchChange,
   onFilterToggle,
@@ -30,6 +32,9 @@ export default function InventoryTable({
   activeFilterCount
 }: InventoryTableProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [editingPriceId, setEditingPriceId] = useState<string | number | null>(null);
+  const [editingPriceVal, setEditingPriceVal] = useState<string>('');
+  const [isSavingPrice, setIsSavingPrice] = useState<boolean>(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -120,6 +125,26 @@ export default function InventoryTable({
     if (status === 'Out of Stock') return 'bg-red-500';
     if (status === 'Low Stock') return 'bg-amber-500';
     return 'bg-emerald-500';
+  };
+
+  const handleStartEditPrice = (item: any) => {
+    const rawVal = item.unitCost ? String(item.unitCost).replace(/[^0-9.]/g, '') : String(item.sellingPrice || 0);
+    setEditingPriceId(item.id);
+    setEditingPriceVal(rawVal);
+  };
+
+  const handleSavePrice = async (item: any) => {
+    const num = parseFloat(editingPriceVal);
+    if (isNaN(num) || num < 0) return;
+    if (onUpdatePrice) {
+      setIsSavingPrice(true);
+      try {
+        await onUpdatePrice(item, num);
+      } finally {
+        setIsSavingPrice(false);
+        setEditingPriceId(null);
+      }
+    }
   };
 
   return (
@@ -255,7 +280,53 @@ export default function InventoryTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-right font-bold text-gray-900 whitespace-nowrap">{item.unitCost}</td>
+                  <td className="px-4 py-4 text-right font-bold text-gray-900 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {editingPriceId === item.id ? (
+                      <div className="flex items-center justify-end gap-1 font-mono">
+                        <span className="text-[11px] font-bold text-gray-400">Rs.</span>
+                        <input
+                          type="number"
+                          value={editingPriceVal}
+                          onChange={(e) => setEditingPriceVal(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSavePrice(item);
+                            if (e.key === 'Escape') setEditingPriceId(null);
+                          }}
+                          autoFocus
+                          className="w-24 px-2 py-1 border-2 border-emerald-500 rounded-lg text-[12px] font-bold text-right outline-none bg-white shadow-sm"
+                        />
+                        <button
+                          onClick={() => handleSavePrice(item)}
+                          disabled={isSavingPrice}
+                          title="Save Price permanently"
+                          className="p-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition active:scale-95 disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingPriceId(null)}
+                          title="Cancel"
+                          className="p-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="group/price flex items-center justify-end gap-1.5 cursor-pointer" title="Click to edit unit price">
+                        <span>{item.unitCost}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEditPrice(item);
+                          }}
+                          title="Edit Unit Price"
+                          className="opacity-0 group-hover/price:opacity-100 p-1 rounded-md hover:bg-emerald-100 text-gray-400 hover:text-emerald-700 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-4 text-right font-black text-emerald-600 whitespace-nowrap">{item.totalValue}</td>
                   <td className="px-4 py-4 text-center whitespace-nowrap">
                     {getStatusBadge(item.status)}

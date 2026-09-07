@@ -704,6 +704,19 @@ export default function InventoryPage() {
     }
   };
 
+  const handleUpdatePrice = async (item: any, newPrice: number) => {
+    try {
+      await api.patch(`/products/${item.id}`, { sellingPrice: newPrice });
+      toast.success(`Unit price for "${item.name}" permanently updated to Rs. ${newPrice.toLocaleString()}`);
+      fetchInventory();
+    } catch (error: any) {
+      console.error("Failed to update unit price:", error);
+      toast.error(
+        error?.response?.data?.message || "Failed to update unit price. Please try again."
+      );
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!selectedItem || isDeleting) return;
     try {
@@ -1017,6 +1030,7 @@ export default function InventoryPage() {
                     setBarcodeProduct(item);
                     setIsBarcodeModalOpen(true);
                   }}
+                  onUpdatePrice={handleUpdatePrice}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
                   onFilterToggle={() => setIsFilterModalOpen(true)}
