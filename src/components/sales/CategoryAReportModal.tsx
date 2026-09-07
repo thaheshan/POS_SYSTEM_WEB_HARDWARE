@@ -105,6 +105,11 @@ export default function CategoryAReportModal({
     onPrintPDF(timeFilter);
   };
 
+  const navigateToDetailedView = () => {
+    onClose();
+    router.push("/sales/category-a");
+  };
+
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
