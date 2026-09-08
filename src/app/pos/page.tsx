@@ -865,6 +865,7 @@ export default function POSPage() {
   const [pendingProductEditMode, setPendingProductEditMode] = useState<boolean>(false);
   const [selectedCartItemForDiscount, setSelectedCartItemForDiscount] = useState<CartItem | null>(null);
   const [isLabourModalOpen, setIsLabourModalOpen] = useState(false);
+  const [stockErrorMsg, setStockErrorMsg] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'items' | 'checkout'>('items');
 
@@ -1077,24 +1078,48 @@ export default function POSPage() {
 
   const updateQty = (id: string, delta: number) => {
     setCart((prev) => prev.map(item => {
-      if (item.id === id) return { ...item, qty: Math.max(1, item.qty + delta) };
+      if (item.id === id) {
+        const product = productsList.find(p => p.id === id);
+        const stock = product?.stock ?? Infinity;
+        const newQty = Math.max(1, item.qty + delta);
+        if (newQty > stock) {
+          setStockErrorMsg(`Cannot set quantity to ${newQty}. Only ${stock} ${parseShortUnit(item.measurementUnit, item.sellType === 'loose')} available in stock.`);
+          return item; // don't change
+        }
+        return { ...item, qty: newQty };
+      }
       return item;
     }));
   };
 
   const setQty = (id: string, value: string) => {
-    const parsed = parseInt(value, 10);
+    const parsed = parseFloat(value);
     setCart((prev) => prev.map(item => {
       if (item.id === id) {
         if (!value || isNaN(parsed)) return item;
-        return { ...item, qty: Math.max(1, parsed) };
+        const product = productsList.find(p => p.id === id);
+        const stock = product?.stock ?? Infinity;
+        const newQty = Math.max(1, parsed);
+        if (newQty > stock) {
+          setStockErrorMsg(`Cannot set quantity to ${newQty}. Only ${stock} ${parseShortUnit(item.measurementUnit, item.sellType === 'loose')} available in stock.`);
+          return { ...item, qty: stock }; // clamp to max stock
+        }
+        return { ...item, qty: newQty };
       }
       return item;
     }));
   };
 
   const ensureMinQty = (id: string) => {
-    setCart((prev) => prev.map(item => item.id === id ? { ...item, qty: Math.max(1, item.qty) } : item));
+    setCart((prev) => prev.map(item => {
+      if (item.id === id) {
+        const product = productsList.find(p => p.id === id);
+        const stock = product?.stock ?? Infinity;
+        const clamped = Math.min(Math.max(1, item.qty), stock);
+        return { ...item, qty: clamped };
+      }
+      return item;
+    }));
   };
 
   const removeFromCart = (id: string) => setCart((prev) => prev.filter(item => item.id !== id));
@@ -1334,6 +1359,11 @@ export default function POSPage() {
 
   return (
     <>
+      <StockErrorModal
+        isOpen={!!stockErrorMsg}
+        onClose={() => setStockErrorMsg(null)}
+        message={stockErrorMsg || ''}
+      />
       <AddLabourModal
         isOpen={isLabourModalOpen}
         onClose={() => setIsLabourModalOpen(false)}
