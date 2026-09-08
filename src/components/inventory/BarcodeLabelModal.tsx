@@ -269,9 +269,14 @@ export default function BarcodeLabelModal({
         ctx.textAlign = "center";
         ctx.fillText(`Rs. ${parseFloat(price).toLocaleString()}`, cfg.w / 2, y);
       }
+      const sanitizedProdName = product.name
+        ? product.name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_").trim()
+        : "";
+      const nameSuffix = sanitizedProdName ? `_${sanitizedProdName}` : "";
+
       const a = document.createElement("a");
       a.href = canvas.toDataURL(format === "png" ? "image/png" : "image/jpeg", 0.95);
-      a.download = `barcode-${skuCode}.${format === "png" ? "png" : "jpg"}`;
+      a.download = `barcode-${skuCode}${nameSuffix}.${format === "png" ? "png" : "jpg"}`;
       a.click();
     };
     img.src = svgBlob;
@@ -279,15 +284,21 @@ export default function BarcodeLabelModal({
 
   // ─── Download HTML ────────────────────────────────────────────────────────
   const handleDownloadHTML = () => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !product) return;
     const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     svgEl.style.width  = `${cfg.w - 24}px`;
     svgEl.style.height = `${cfg.barcodeH}px`;
     const blob = new Blob([getStandardLabelHTML(svgEl.outerHTML, qty)], { type: "text/html" });
+
+    const sanitizedProdName = product.name
+      ? product.name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_").trim()
+      : "";
+    const nameSuffix = sanitizedProdName ? `_${sanitizedProdName}` : "";
+
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `barcode-label-${skuCode}.html`;
+    a.download = `barcode-label-${skuCode}${nameSuffix}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -425,18 +436,11 @@ export default function BarcodeLabelModal({
 
           {/* Action Buttons */}
           <div className="space-y-2 pt-1">
-            {/* PRIMARY: Thermal print for ZD230 */}
-            <button onClick={handleThermalPrint}
+            {/* Primary Print Button */}
+            <button onClick={handlePrint}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-black transition-colors shadow-md active:scale-95">
               <Printer className="w-4 h-4" />
-              Print Thermal 50×25mm 2-up {qty > 1 ? `(${qty} labels)` : "(1 label)"}
-            </button>
-
-            {/* ZPL download for ZD230 */}
-            <button onClick={handleDownloadZPL}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-[12px] font-black transition-colors border border-amber-200">
-              <Zap className="w-3.5 h-3.5" />
-              Download ZPL &nbsp;·&nbsp; ZD230 203dpi · 50×25mm · -3mm offset
+              Print Barcode Labels {qty > 1 ? `(${qty} labels)` : "(1 label)"}
             </button>
 
             <div className="grid grid-cols-3 gap-2">
@@ -453,18 +457,7 @@ export default function BarcodeLabelModal({
                 <FileText className="w-3.5 h-3.5" /> HTML File
               </button>
             </div>
-
-            {/* Standard print fallback */}
-            <button onClick={handlePrint}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-black transition-colors">
-              <Printer className="w-3.5 h-3.5" />
-              Print Standard (desktop/browser print)
-            </button>
           </div>
-
-          <p className="text-[10px] text-gray-400 text-center font-medium leading-tight">
-            🖨️ ZDesigner ZD230 · 203dpi · 50mm×25mm stock · 2 labels side-by-side · -3mm X offset applied
-          </p>
         </div>
       </div>
     </div>

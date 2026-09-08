@@ -21,6 +21,7 @@ import api from "@/api/axiosInstance";
 import { useAuth } from "@/hooks/useAuth";
 import ImageOptionsModal from "./ImageOptionsModal";
 import CameraCaptureModal from "./CameraCaptureModal";
+import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { printBarcodeLabels } from "@/utils/barcodePrintUtility";
 
@@ -436,13 +437,35 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     fetchDropdowns();
   }, [isOpen]);
 
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+
+  const fetchSuppliers = async (autoSelectId?: string) => {
+    try {
+      const res = await api.get("/suppliers");
+      const supData = res.data?.data || res.data?.suppliers || res.data || [];
+      const mappedSup = Array.isArray(supData)
+        ? supData.map((s: any) => ({ id: String(s.id), name: s.name || s.companyName || 'Unknown' }))
+        : [];
+      setSuppliers(mappedSup);
+      if (autoSelectId) {
+        const found = mappedSup.find(s => String(s.id) === String(autoSelectId));
+        if (found) {
+          setForm(prev => ({ ...prev, supplierId: found.id }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch suppliers", err);
+    }
+  };
+
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [catRes, prodRes, whRes] = await Promise.allSettled([
+      const [catRes, prodRes, whRes, supRes] = await Promise.allSettled([
         api.get("/products/categories"),
         api.get("/products"),
         api.get("/warehouses"),
+        api.get("/suppliers"),
       ]);
 
       if (catRes.status === "fulfilled") {
@@ -483,8 +506,13 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         }
       }
 
-      // suppliers not fetched from a dedicated endpoint yet
-      setSuppliers([]);
+      if (supRes.status === "fulfilled") {
+        const supData = supRes.value.data?.data || supRes.value.data?.suppliers || supRes.value.data || [];
+        const mappedSup = Array.isArray(supData)
+          ? supData.map((s: any) => ({ id: String(s.id), name: s.name || s.companyName || 'Unknown' }))
+          : [];
+        setSuppliers(mappedSup);
+      }
 
       // Auto-generate SKU & Barcode based on existing products
       const nextSku = generateNextSku(productsList);
@@ -1742,9 +1770,19 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
                 {/* Supplier Information */}
                 <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                  <p className="text-[12px] font-black text-gray-500 uppercase tracking-widest mb-4">
-                    Supplier Information
-                  </p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[12px] font-black text-gray-500 uppercase tracking-widest">
+                      Supplier Information
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddSupplierOpen(true)}
+                      className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[11px] font-black uppercase tracking-wider flex items-center gap-1 transition-all shadow-xs"
+                    >
+                      <Plus className="w-3 h-3" strokeWidth={3} />
+                      Supplier
+                    </button>
+                  </div>
                   <div className="relative">
                     <select
                       name="supplierId"
@@ -1850,6 +1888,19 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         onClose={() => setShowCamera(false)}
         onCapture={handleCameraCapture}
       />
+
+      {/* Inline Add Supplier Modal */}
+      {isAddSupplierOpen && (
+        <AddSupplierModal
+          isOpen={isAddSupplierOpen}
+          onClose={async (refresh, createdSupplier) => {
+            setIsAddSupplierOpen(false);
+            if (refresh) {
+              await fetchSuppliers(createdSupplier?.id);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

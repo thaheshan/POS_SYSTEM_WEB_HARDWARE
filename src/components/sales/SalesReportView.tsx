@@ -94,7 +94,7 @@ export default function SalesReportView({
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10pt', marginBottom: '22pt' }}>
 
         {/* Card 1 – Total Gross Revenue (dark) */}
-        <div style={{ background: '#1e3a8a', borderRadius: '12px', padding: '14pt 16pt', color: 'white', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: '#1e3a8a', borderRadius: '12px', padding: '14pt 16pt', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.6 }}>
             {isAdmin ? 'Total Gross Revenue' : 'Category C Total'}
           </div>
@@ -109,7 +109,7 @@ export default function SalesReportView({
         </div>
 
         {/* Card 2 – VAT Liability or Labour Charges */}
-        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#1e3a8a', opacity: 0.55 }}>
             {isAdmin ? 'VAT Liability (18%)' : 'Labour Charges'}
           </div>
@@ -124,7 +124,7 @@ export default function SalesReportView({
         </div>
 
         {/* Card 3 – Active Volume / Entries */}
-        <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#1d4ed8', opacity: 0.65 }}>
             {isAdmin ? 'Total Active Volume' : 'Entry Volume'}
           </div>

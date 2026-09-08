@@ -99,7 +99,7 @@ export default function CategoryPrintView({
       {/* ══════════ SUMMARY CARDS ══════════ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr', gap: '10pt', marginBottom: '22pt' }}>
         {/* Period Card */}
-        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: meta.accent }}>
             Filter Selection
           </div>
@@ -114,7 +114,7 @@ export default function CategoryPrintView({
         </div>
 
         {/* Category specific card 1 */}
-        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14pt 16pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: meta.accent }}>
             {category === 'A' ? 'Transactions' : category === 'B' ? 'Invoices' : 'Entries'}
           </div>
@@ -129,7 +129,7 @@ export default function CategoryPrintView({
         </div>
 
         {/* Category total card */}
-        <div style={{ background: meta.accent, borderRadius: '12px', padding: '14pt 16pt', color: 'white', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '90pt' }}>
+        <div style={{ background: meta.accent, borderRadius: '12px', padding: '14pt 16pt', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90pt' }}>
           <div style={{ fontSize: '7.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.65 }}>
             {meta.label} Audited Total
           </div>

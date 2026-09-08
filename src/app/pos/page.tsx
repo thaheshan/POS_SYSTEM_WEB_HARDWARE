@@ -245,6 +245,7 @@ function extractProductSellTypeAndUnit(item: any, originalProduct: any) {
 }
 
 // ── Quantity Popup ──────────────────────────────────────────────────────────────
+// ── Quantity Popup ──────────────────────────────────────────────────────────────
 function QtyPopup({
   product,
   currentQty,
@@ -253,13 +254,18 @@ function QtyPopup({
 }: {
   product: Product;
   currentQty: number;
-  onConfirm: (qty: number, customPrice?: number) => void;
+  onConfirm: (qty: number, customPrice?: number, customName?: string, customUnit?: string) => void;
   onClose: () => void;
 }) {
   const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
-  const isLoose = product.sellType === 'loose' || shortUnit === 'm' || shortUnit === 'kg' || shortUnit === 'L' || shortUnit === 'ft' || shortUnit === 'in' || shortUnit === 'yd' || shortUnit === 'g';
-  const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
+  const [productName, setProductName] = useState<string>(product.name);
+  const [measurementUnit, setMeasurementUnit] = useState<string>(shortUnit);
   const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
+
+  const activeUnit = measurementUnit.trim() || shortUnit;
+  const isLoose = product.sellType === 'loose' || activeUnit === 'm' || activeUnit === 'kg' || activeUnit === 'L' || activeUnit === 'ft' || activeUnit === 'in' || activeUnit === 'yd' || activeUnit === 'g' || activeUnit === 'mm' || activeUnit === 'litre';
+
+  const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -282,41 +288,48 @@ function QtyPopup({
       setShowError(true);
       return;
     }
-    onConfirm(finalQty, parsedUnitPrice);
+    onConfirm(finalQty, parsedUnitPrice, productName, activeUnit);
   };
 
   const quickChips = useMemo(() => {
-    if (shortUnit === 'kg' || shortUnit === 'g') return [0.25, 0.5, 1, 2.5, 5, 10];
-    if (shortUnit === 'm' || shortUnit === 'ft' || shortUnit === 'yd' || shortUnit === 'in') return [0.5, 1, 2, 5, 10, 25];
-    if (shortUnit === 'L') return [0.5, 1, 2, 5, 10, 20];
+    const u = activeUnit.toLowerCase();
+    if (u === 'kg' || u === 'g') return [0.25, 0.5, 1, 2.5, 5, 10];
+    if (u === 'm' || u === 'ft' || u === 'yd' || u === 'in' || u === 'mm' || u === 'inch') return [0.5, 1, 2, 5, 10, 25];
+    if (u === 'l' || u === 'litre' || u === 'liters') return [0.5, 1, 2, 5, 10, 20];
     if (isLoose) return [0.25, 0.5, 1, 2.5, 5, 10];
     return [1, 2, 5, 10, 25, 50];
-  }, [shortUnit, isLoose]);
+  }, [activeUnit, isLoose]);
 
   return (
     <>
       <StockErrorModal 
         isOpen={showError} 
         onClose={() => setShowError(false)} 
-        message={`Cannot add ${parsedQty}. Only ${product.stock} ${shortUnit} available in stock.`} 
+        message={`Cannot add ${parsedQty}. Only ${product.stock} ${activeUnit} available in stock.`} 
       />
       <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={onClose}>
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         <div
-          className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden"
+          className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-4 p-5 bg-gray-50 border-b border-gray-100">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-gray-200 shadow-sm">
-              <img src={product.img} alt={product.name} className="w-full h-full object-cover" />
+          <div className="flex items-center gap-4 p-4 bg-gray-50 border-b border-gray-100 shrink-0">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border border-gray-200 shadow-sm bg-white">
+              {product.img ? (
+                <img src={product.img} alt={productName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <Package className="w-8 h-8 text-gray-300" />
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-1">{product.category}</p>
-              <h3 className="text-[15px] font-black text-gray-900 leading-snug mb-1 line-clamp-2">{product.name}</h3>
-              <p className="text-[12px] font-bold text-gray-500">
+            <div className="flex-1 min-w-0 pr-6">
+              <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-0.5">{product.category}</p>
+              <h3 className="text-[14px] font-black text-gray-900 leading-snug line-clamp-1">{productName}</h3>
+              <p className="text-[11px] font-bold text-gray-500 mt-0.5">
                 Default: Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{shortUnit}</span>
               </p>
-              <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {shortUnit}</p>
+              <p className="text-[10px] font-bold text-amber-600">Stock: {product.stock} {shortUnit}</p>
             </div>
             <button
               onClick={onClose}
@@ -326,15 +339,94 @@ function QtyPopup({
             </button>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
+
+            {/* Editable Product Name */}
+            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                  Product Name (Editable)
+                </p>
+                {productName.trim() !== product.name && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
+                      Inventory Updated
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setProductName(product.name)}
+                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
+              </div>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                onKeyDown={handleKey}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                placeholder="Product name..."
+              />
+            </div>
+
+            {/* Editable Unit / Count Type */}
+            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                  Unit / Count Type (Editable)
+                </p>
+                {activeUnit.toLowerCase() !== shortUnit.toLowerCase() && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
+                      Custom Unit
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMeasurementUnit(shortUnit)}
+                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
+              </div>
+              <input
+                type="text"
+                value={measurementUnit}
+                onChange={(e) => setMeasurementUnit(e.target.value)}
+                onKeyDown={handleKey}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                placeholder="e.g. pcs, litre, mm, inch, m, kg, box..."
+              />
+              <div className="flex gap-1 overflow-x-auto no-scrollbar pt-0.5">
+                {['pcs', 'litre', 'mm', 'inch', 'm', 'kg', 'ft', 'yd', 'box', 'pk', 'g', 'set'].map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setMeasurementUnit(u)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors shrink-0 ${
+                      activeUnit.toLowerCase() === u.toLowerCase()
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200'
+                    }`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Quantity Input Section */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                  {isLoose ? `Enter Measurement (${shortUnit})` : `Enter Quantity (${shortUnit})`}
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  {isLoose ? `Enter Measurement (${activeUnit})` : `Enter Quantity (${activeUnit})`}
                 </p>
                 <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                  {shortUnit}
+                  {activeUnit}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -345,7 +437,7 @@ function QtyPopup({
                     const nextVal = parseFloat((cur - step).toFixed(2));
                     setQtyLocal(Math.max(isLoose ? 0.1 : 1, nextVal));
                   }}
-                  className="w-14 h-14 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-all active:scale-90 shrink-0 border border-gray-200"
+                  className="w-12 h-12 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-all active:scale-90 shrink-0 border border-gray-200"
                 >
                   <Minus className="w-5 h-5" />
                 </button>
@@ -358,7 +450,7 @@ function QtyPopup({
                   onChange={(e) => setQtyLocal(e.target.value)}
                   onKeyDown={handleKey}
                   onFocus={(e) => e.target.select()}
-                  className="flex-1 w-full h-16 text-center text-[32px] font-black text-gray-900 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 w-full h-14 text-center text-[28px] font-black text-gray-900 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#059669] focus:ring-4 focus:ring-emerald-500/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
                   onClick={() => {
@@ -367,46 +459,46 @@ function QtyPopup({
                     const nextVal = parseFloat((cur + step).toFixed(2));
                     setQtyLocal(nextVal);
                   }}
-                  className="w-14 h-14 rounded-2xl bg-[#059669] hover:bg-emerald-700 flex items-center justify-center text-white transition-all active:scale-90 shrink-0 shadow-lg shadow-emerald-500/20"
+                  className="w-12 h-12 rounded-2xl bg-[#059669] hover:bg-emerald-700 flex items-center justify-center text-white transition-all active:scale-90 shrink-0 shadow-lg shadow-emerald-500/20"
                 >
-                  <Plus className="w-6 h-6" strokeWidth={3} />
+                  <Plus className="w-5 h-5" strokeWidth={3} />
                 </button>
               </div>
 
               {/* Quick increment chips */}
-              <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar">
+              <div className="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar">
                 {quickChips.map((val) => (
                   <button
                     key={val}
                     type="button"
                     onClick={() => setQtyLocal(val.toString())}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-all shrink-0 ${
+                    className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border transition-all shrink-0 ${
                       parsedQty === val
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'
                     }`}
                   >
-                    +{val} {shortUnit}
+                    +{val} {activeUnit}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Editable Unit Price Section */}
-            <div className="bg-gray-50/80 border border-gray-200/70 p-3.5 rounded-2xl space-y-1.5">
+            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
                   Unit Selling Price (Rs.)
                 </p>
                 {Number(parsedUnitPrice) !== product.price && (
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-black text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200">
+                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
                       Custom Price
                     </span>
                     <button
                       type="button"
                       onClick={() => setUnitPrice(product.price)}
-                      className="text-[10px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
                     >
                       Reset
                     </button>
@@ -414,7 +506,7 @@ function QtyPopup({
                 )}
               </div>
               <div className="relative flex items-center">
-                <span className="absolute left-3 text.sm font-black text-gray-400">Rs.</span>
+                <span className="absolute left-3 text-sm font-black text-gray-400">Rs.</span>
                 <input
                   type="number"
                   min="0"
@@ -422,21 +514,21 @@ function QtyPopup({
                   value={unitPrice}
                   onChange={(e) => setUnitPrice(e.target.value)}
                   onKeyDown={handleKey}
-                  className="w-full pl-10 pr-3 py-2.5 bg-white border border-gray-300 rounded-xl text-right font-black text-[18px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
+                  className="w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-right font-black text-[16px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
                   placeholder="0.00"
                 />
               </div>
             </div>
 
             {/* Line Total Summary */}
-            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-2.5 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-gray-500">
-                  {parsedQty} {shortUnit} × Rs. {(parsedUnitPrice || 0).toLocaleString()}
+                <p className="text-[10px] font-bold text-gray-500">
+                  {parsedQty} {activeUnit} × Rs. {(parsedUnitPrice || 0).toLocaleString()}
                 </p>
-                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
+                <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
               </div>
-              <span className="text-[20px] font-black text-[#059669] font-mono">
+              <span className="text-[18px] font-black text-[#059669] font-mono">
                 Rs. {total.toLocaleString()}
               </span>
             </div>
@@ -444,15 +536,15 @@ function QtyPopup({
             <div className="flex gap-3 pt-1">
               <button
                 onClick={onClose}
-                className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-gray-500 font-bold text-[13px] hover:bg-gray-50 transition-all active:scale-95"
+                className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-500 font-bold text-[13px] hover:bg-gray-50 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirm}
-                className="flex-[1.5] py-3.5 rounded-2xl bg-[#059669] text-white font-black text-[13px] hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] uppercase tracking-wider"
+                className="flex-[1.5] py-3 rounded-2xl bg-[#059669] text-white font-black text-[13px] hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] uppercase tracking-wider"
               >
-                Add to Cart
+                Confirm & Add
               </button>
             </div>
           </div>
@@ -835,7 +927,13 @@ export default function POSPage() {
     }));
   };
 
-  const addToCartWithQty = (product: Product, qty: number, customPrice?: number) => {
+  const addToCartWithQty = (
+    product: Product,
+    qty: number,
+    customPrice?: number,
+    customName?: string,
+    customUnit?: string
+  ) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
       setPendingProduct(null);
@@ -843,24 +941,35 @@ export default function POSPage() {
     }
 
     const finalPrice = customPrice !== undefined && !isNaN(customPrice) && customPrice >= 0 ? customPrice : product.price;
+    const finalName = customName && customName.trim() ? customName.trim() : product.name;
+    const finalUnit = customUnit && customUnit.trim() ? customUnit.trim() : (product.measurementUnit || 'pcs');
 
-    // Permanently update product price in database and POS inventory list if changed
-    if (finalPrice !== product.price) {
-      api.patch(`/products/${product.id}`, { sellingPrice: finalPrice }).then(() => {
-        toast.success(`Product price permanently updated to Rs. ${finalPrice.toLocaleString()} in Inventory!`);
+    const isNameChanged = finalName !== product.name;
+    const isPriceChanged = finalPrice !== product.price;
+    const isUnitChanged = finalUnit !== (product.measurementUnit || 'pcs');
+
+    // Permanently update product details in database and POS inventory list if changed
+    if (isNameChanged || isPriceChanged || isUnitChanged) {
+      const updatePayload: Record<string, any> = {};
+      if (isNameChanged) updatePayload.name = finalName;
+      if (isPriceChanged) updatePayload.sellingPrice = finalPrice;
+      if (isUnitChanged) updatePayload.measurementUnit = finalUnit;
+
+      api.patch(`/products/${product.id}`, updatePayload).then(() => {
+        toast.success(`Product updated in Inventory! (${finalName}, ${finalUnit}, Rs. ${finalPrice.toLocaleString()})`);
       }).catch((err) => {
-        console.error("Failed to permanently update price in database:", err);
+        console.error("Failed to permanently update product details in database:", err);
       });
 
       setProductsList((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, price: finalPrice } : p))
+        prev.map((p) => (p.id === product.id ? { ...p, name: finalName, price: finalPrice, measurementUnit: finalUnit } : p))
       );
     }
 
     setCart((prev) => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, qty, price: finalPrice } : item);
+        return prev.map(item => item.id === product.id ? { ...item, name: finalName, qty, price: finalPrice, measurementUnit: finalUnit } : item);
       }
 
       let discountAmount = 0;
@@ -878,7 +987,7 @@ export default function POSPage() {
 
       return [...prev, {
         id: product.id,
-        name: product.name,
+        name: finalName,
         price: finalPrice,
         qty,
         img: product.img,
@@ -886,7 +995,7 @@ export default function POSPage() {
         branchId: product.branchId,
         warehouseName: product.warehouseName,
         sellType: product.sellType,
-        measurementUnit: product.measurementUnit,
+        measurementUnit: finalUnit,
         isDiscountEnabled: product.isDiscountEnabled,
         isDiscountApproved: product.isDiscountApproved,
         discountType: product.discountType,
@@ -899,7 +1008,7 @@ export default function POSPage() {
     setActiveTab('items');
     setPendingProduct(null);
     setIsMobileCartOpen(true);
-    toast.success(`${qty}x ${product.name} (Rs. ${finalPrice.toLocaleString()}) added to cart!`);
+    toast.success(`${qty} ${finalUnit} x ${finalName} (Rs. ${finalPrice.toLocaleString()}) added to cart!`);
   };
 
   const updateQty = (id: string, delta: number) => {
@@ -1199,7 +1308,9 @@ export default function POSPage() {
         <QtyPopup
           product={pendingProduct}
           currentQty={cart.find(c => c.id === pendingProduct.id)?.qty ?? 0}
-          onConfirm={(qty) => addToCartWithQty(pendingProduct, qty)}
+          onConfirm={(qty, customPrice, customName, customUnit) =>
+            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit)
+          }
           onClose={() => setPendingProduct(null)}
         />
       )}
@@ -1620,62 +1731,92 @@ export default function POSPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100 relative group hover:bg-white hover:shadow-sm transition-all">
-                        <div className="w-9 h-9 rounded-md overflow-hidden shrink-0 border border-gray-200">
-                          <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="flex items-center justify-between gap-1">
-                            <h4 className="text-[12px] font-bold text-gray-900 truncate leading-tight">{item.name}</h4>
-                            <span className="text-[12px] font-black text-[#059669] shrink-0">
-                              Rs. {((item.price - (item.discountAmount ?? 0)) * item.qty).toLocaleString()}
-                            </span>
+                    {cart.map((item) => {
+                      const handleEditCartItem = () => {
+                        const matchingProduct = productsList.find(p => p.id === item.id) || {
+                          id: item.id,
+                          name: item.name,
+                          sku: 'N/A',
+                          price: item.price,
+                          stock: 9999,
+                          status: 'In Stock',
+                          category: 'General',
+                          img: item.img,
+                          sellType: item.sellType || 'fixed',
+                          measurementUnit: item.measurementUnit,
+                        };
+                        setPendingProduct(matchingProduct as Product);
+                      };
+
+                      return (
+                        <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100 relative group hover:bg-white hover:shadow-sm hover:border-emerald-200 transition-all">
+                          <div
+                            onClick={handleEditCartItem}
+                            className="w-9 h-9 rounded-md overflow-hidden shrink-0 border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
                           </div>
-                          <div className="flex items-center justify-between mt-1 gap-1">
-                            <div className="flex items-center gap-1">
-                              {item.discountAmount && item.discountAmount > 0 ? (
-                                <span className="text-[10px] font-black text-emerald-600">
-                                  Rs. {(item.price - item.discountAmount).toLocaleString()}
+                          <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4
+                                onClick={handleEditCartItem}
+                                className="text-[12px] font-bold text-gray-900 truncate leading-tight cursor-pointer hover:text-[#059669] hover:underline"
+                                title="Click to edit name, unit, price or quantity"
+                              >
+                                {item.name}
+                              </h4>
+                              <span className="text-[12px] font-black text-[#059669] shrink-0">
+                                Rs. {((item.price - (item.discountAmount ?? 0)) * item.qty).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1 gap-1">
+                              <div className="flex items-center gap-1">
+                                {item.discountAmount && item.discountAmount > 0 ? (
+                                  <span className="text-[10px] font-black text-emerald-600">
+                                    Rs. {(item.price - item.discountAmount).toLocaleString()}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-gray-500">
+                                    Rs. {item.price.toLocaleString()}
+                                  </span>
+                                )}
+                                <span className="text-[9px] font-bold text-gray-400">
+                                  / {parseShortUnit(item.measurementUnit, item.sellType === 'loose')}
                                 </span>
-                              ) : (
-                                <span className="text-[10px] font-semibold text-gray-500">
-                                  Rs. {item.price.toLocaleString()}
-                                </span>
-                              )}
-                              {item.isDiscountEnabled && item.isDiscountApproved && (
-                                <button
-                                  onClick={() => setSelectedCartItemForDiscount(item)}
-                                  className="text-[8px] font-black uppercase text-[#059669] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1 py-0.2 rounded"
-                                >
-                                  {item.discountAmount ? `-Rs.${item.discountAmount}` : 'Disc'}
+                                {item.isDiscountEnabled && item.isDiscountApproved && (
+                                  <button
+                                    onClick={() => setSelectedCartItemForDiscount(item)}
+                                    className="text-[8px] font-black uppercase text-[#059669] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1 py-0.2 rounded"
+                                  >
+                                    {item.discountAmount ? `-Rs.${item.discountAmount}` : 'Disc'}
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-90 transition-all border border-gray-200">
+                                  <Minus className="w-3 h-3" />
                                 </button>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-90 transition-all border border-gray-200">
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <input
-                                type="number"
-                                min={1}
-                                value={item.qty}
-                                onChange={(e) => setQty(item.id, e.target.value)}
-                                onBlur={() => ensureMinQty(item.id)}
-                                onFocus={(e) => e.target.select()}
-                                className="w-10 h-6 text-center font-black text-[12px] text-gray-900 bg-white border border-gray-200 rounded-md outline-none focus:border-[#059669] transition-all"
-                              />
-                              <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-[#059669] flex items-center justify-center text-white hover:bg-emerald-700 active:scale-90 transition-all shadow-sm">
-                                <Plus className="w-3 h-3" />
-                              </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.qty}
+                                  onChange={(e) => setQty(item.id, e.target.value)}
+                                  onBlur={() => ensureMinQty(item.id)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-10 h-6 text-center font-black text-[12px] text-gray-900 bg-white border border-gray-200 rounded-md outline-none focus:border-[#059669] transition-all"
+                                />
+                                <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-[#059669] flex items-center justify-center text-white hover:bg-emerald-700 active:scale-90 transition-all shadow-sm">
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           </div>
+                          <button onClick={() => removeFromCart(item.id)} className="absolute top-1 right-1 p-0.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} className="absolute top-1 right-1 p-0.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Order Discount Option in Cart */}
@@ -1795,14 +1936,6 @@ export default function POSPage() {
               )
             }
             onClose={() => setSelectedCartItemForDiscount(null)}
-          />
-        )}
-        {pendingProduct && (
-          <QtyPopup
-            product={pendingProduct}
-            currentQty={cart.find((i) => i.id === pendingProduct.id)?.qty || 0}
-            onConfirm={(qty, customPrice) => addToCartWithQty(pendingProduct, qty, customPrice)}
-            onClose={() => setPendingProduct(null)}
           />
         )}
       </MainLayout>
