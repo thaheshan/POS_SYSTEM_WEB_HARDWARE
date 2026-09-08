@@ -56,13 +56,14 @@ interface Customer {
 
 
 // ─── Edit Customer Modal ──────────────────────────────────────────────────────
-function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Customer; onClose: () => void; onSuccess: () => void }) {
+function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Customer; onClose: () => void; onSuccess: (updatedId?: string, newBalance?: number) => void }) {
   const [form, setForm] = useState({
     name: customer.name,
     phone: customer.phone,
     email: customer.email === 'N/A' ? '' : customer.email,
     address: customer.address === 'N/A' ? '' : customer.address,
     customerType: customer.customerType,
+    outstandingBalance: String(customer.outstanding || 0),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -70,12 +71,30 @@ function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Custome
   const handleSubmit = async () => {
     if (!form.name || !form.phone) { setError('Name and phone are required.'); return; }
     setLoading(true);
+    const newCredit = parseFloat(form.outstandingBalance) || 0;
+    const payload = {
+      name: form.name,
+      phone: form.phone,
+      email: form.email || undefined,
+      address: form.address || undefined,
+      customerType: form.customerType,
+      outstandingBalance: newCredit,
+      creditBalance: newCredit,
+      outstanding_balance: newCredit,
+      outstanding: newCredit,
+    };
     try {
-      await api.patch(`/customers/${customer.id}`, { name: form.name, phone: form.phone, email: form.email || undefined, address: form.address || undefined, customerType: form.customerType });
-      onSuccess();
+      try {
+        await api.put(`/customers/${customer.id}`, payload);
+      } catch {
+        await api.patch(`/customers/${customer.id}`, payload);
+      }
+      toastSuccess(`Updated ${form.name}'s details & outstanding balance.`);
+      onSuccess(customer.id, newCredit);
       onClose();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to update customer.');
+      toastError(err, 'Failed to update customer.');
     } finally {
       setLoading(false);
     }
@@ -123,6 +142,24 @@ function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Custome
                 <option value="Individual">Individual</option>
                 <option value="Business">Business</option>
               </select>
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <label className="text-[12px] font-black text-gray-700 flex items-center justify-between">
+                <span>Outstanding Credit Balance (LKR)</span>
+                <span className="text-[10px] font-black uppercase text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">Edit Live Credit</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-3 text-[13px] font-black text-gray-400">Rs.</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.outstandingBalance}
+                  onChange={e => setForm(f => ({ ...f, outstandingBalance: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-[12px] text-[13px] font-black text-gray-900 outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -347,22 +384,38 @@ export default function CustomersPage() {
       if (Array.isArray(res.data)) data = res.data;
       else if (Array.isArray(res.data?.data)) data = res.data.data;
       else if (Array.isArray(res.data?.data?.data)) data = res.data.data.data;
-      const mapped: Customer[] = data.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || 'N/A',
-        email: c.email || 'N/A',
-        address: c.address || 'N/A',
-        customerType: c.customerType || 'Individual',
-        totalPurchases: Number(c.totalPurchases) || 0,
-        outstanding: Number(c.outstandingBalance) || 0,
-        transactions: Number(c.transactionsCount) || 0,
-        isOverdue: Number(c.outstandingBalance) > 0,
-        lastActive: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
-        initials: (c.name || 'NA').substring(0, 2).toUpperCase(),
-      }));
+      const mapped: Customer[] = data.map((c: any) => {
+        const outVal =
+          c.outstandingBalance !== undefined && c.outstandingBalance !== null
+            ? Number(c.outstandingBalance)
+            : c.creditBalance !== undefined && c.creditBalance !== null
+            ? Number(c.creditBalance)
+            : c.outstanding_balance !== undefined && c.outstanding_balance !== null
+            ? Number(c.outstanding_balance)
+            : c.outstanding !== undefined && c.outstanding !== null
+            ? Number(c.outstanding)
+            : 0;
+
+        const totalPur = Number(c.totalPurchases ?? c.total_purchases ?? 0);
+        const txCount = Number(c.transactionsCount ?? c.transactions_count ?? 0);
+        const val = isNaN(outVal) ? 0 : outVal;
+
+        return {
+          id: c.id,
+          name: c.name || 'Unknown',
+          phone: c.phone || 'N/A',
+          email: c.email || 'N/A',
+          address: c.address || 'N/A',
+          customerType: c.customerType || 'Individual',
+          totalPurchases: isNaN(totalPur) ? 0 : totalPur,
+          outstanding: val,
+          transactions: isNaN(txCount) ? 0 : txCount,
+          isOverdue: val > 0,
+          lastActive: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
+          initials: (c.name || 'NA').substring(0, 2).toUpperCase(),
+        };
+      });
       setCustomers(mapped);
-      setPage(1);
     } catch (err) {
       console.error('[Customers] Fetch error:', err);
       setCustomers([]);
@@ -440,7 +493,18 @@ export default function CustomersPage() {
         <EditCustomerModal
           customer={editingCustomer}
           onClose={() => setEditingCustomer(null)}
-          onSuccess={fetchCustomers}
+          onSuccess={(updatedId, newBalance) => {
+            if (updatedId && newBalance !== undefined) {
+              setCustomers((prev) =>
+                prev.map((c) =>
+                  c.id === updatedId
+                    ? { ...c, outstanding: newBalance, isOverdue: newBalance > 0 }
+                    : c
+                )
+              );
+            }
+            fetchCustomers();
+          }}
         />
       )}
       {customerToDelete && (
@@ -794,7 +858,18 @@ export default function CustomersPage() {
       <SettleCreditModal
         isOpen={showSettleCreditModal}
         onClose={() => setShowSettleCreditModal(false)}
-        onSuccess={() => fetchCustomers()}
+        onSuccess={(updatedId, newBalance) => {
+          if (updatedId && newBalance !== undefined) {
+            setCustomers((prev) =>
+              prev.map((c) =>
+                c.id === updatedId
+                  ? { ...c, outstanding: newBalance, isOverdue: newBalance > 0 }
+                  : c
+              )
+            );
+          }
+          fetchCustomers();
+        }}
         initialCustomer={settleCreditCustomer}
         allCustomers={customers}
       />

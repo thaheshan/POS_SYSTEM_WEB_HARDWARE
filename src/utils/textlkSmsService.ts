@@ -154,6 +154,25 @@ export async function sendSingleCreditReminderSMS(
 }
 
 /**
+ * Send Credit Settlement Payment Receipt SMS
+ */
+export async function sendCreditSettlementSMS(
+  customerName: string,
+  phone: string,
+  amountPaid: number,
+  remainingBalance: number,
+  paymentMethod: string
+): Promise<{ success: boolean; message: string }> {
+  const message =
+    `Futura Hardware: Dear ${customerName}, thank you for your payment of Rs. ${amountPaid.toLocaleString()} ` +
+    `towards credit settlement (${paymentMethod}). ` +
+    `Remaining Outstanding Balance: Rs. ${remainingBalance.toLocaleString()}. ` +
+    `Info: futurahardware.com`;
+  console.log("[TEXT.LK SMS] Sending Credit Settlement Receipt:", { recipient: phone, message });
+  return sendViaTEXTLK(phone, message);
+}
+
+/**
  * Batch Credit Reminder — iterates through provided credit customers with outstanding balances
  * and dispatches TEXT.LK SMS reminders to each.
  */
