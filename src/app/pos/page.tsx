@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import {
-  Minus, Plus, X, ChevronDown, CheckCircle2, Pause, Printer, AlertTriangle,
+  Minus, Plus, X, ChevronDown, ChevronUp, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
   Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil,
 } from 'lucide-react';
@@ -256,7 +256,7 @@ function QtyPopup({
   product: Product;
   currentQty: number;
   initialEditMode?: boolean;
-  onConfirm: (qty: number, customPrice?: number, customName?: string, customUnit?: string) => void;
+  onConfirm: (qty: number, customPrice?: number, customName?: string, customUnit?: string, customStock?: number) => void;
   onClose: () => void;
 }) {
   const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
@@ -264,6 +264,7 @@ function QtyPopup({
   const [productName, setProductName] = useState<string>(product.name);
   const [measurementUnit, setMeasurementUnit] = useState<string>(shortUnit);
   const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
+  const [stockCount, setStockCount] = useState<number | string>(product.stock);
 
   const activeUnit = measurementUnit.trim() || shortUnit;
   const isLoose = product.sellType === 'loose' || activeUnit === 'm' || activeUnit === 'kg' || activeUnit === 'L' || activeUnit === 'ft' || activeUnit === 'in' || activeUnit === 'yd' || activeUnit === 'g' || activeUnit === 'mm' || activeUnit === 'litre';
@@ -285,30 +286,38 @@ function QtyPopup({
         activeEl.tagName === "TEXTAREA"
       );
 
-      // If user is editing a text input, only intercept PageUp/PageDown (allow left/right/up/down inside input)
+      // If user is editing a text input, only intercept PageUp/PageDown (allow normal cursor movement inside text input)
       if (isTextInput && e.key !== "PageUp" && e.key !== "PageDown") return;
 
       if (popupBodyRef.current) {
         if (e.key === "ArrowDown" || e.key === "Down") {
           e.preventDefault();
-          popupBodyRef.current.scrollBy({ top: 120, behavior: "smooth" });
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          popupBodyRef.current.scrollBy({ top: 140, behavior: "smooth" });
         } else if (e.key === "ArrowUp" || e.key === "Up") {
           e.preventDefault();
-          popupBodyRef.current.scrollBy({ top: -120, behavior: "smooth" });
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          popupBodyRef.current.scrollBy({ top: -140, behavior: "smooth" });
         } else if (e.key === "PageDown") {
           e.preventDefault();
-          popupBodyRef.current.scrollBy({ top: 300, behavior: "smooth" });
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          popupBodyRef.current.scrollBy({ top: 320, behavior: "smooth" });
         } else if (e.key === "PageUp") {
           e.preventDefault();
-          popupBodyRef.current.scrollBy({ top: -300, behavior: "smooth" });
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          popupBodyRef.current.scrollBy({ top: -320, behavior: "smooth" });
         }
       }
     };
 
-    window.addEventListener("keydown", handlePopupScrollKeys);
+    window.addEventListener("keydown", handlePopupScrollKeys, { capture: true });
     return () => {
       document.body.style.overflow = originalOverflow;
-      window.removeEventListener("keydown", handlePopupScrollKeys);
+      window.removeEventListener("keydown", handlePopupScrollKeys, { capture: true });
     };
   }, []);
 
@@ -323,11 +332,24 @@ function QtyPopup({
 
   const handleConfirm = () => {
     const finalQty = Math.max(isLoose ? 0.01 : 1, parsedQty);
-    if (finalQty > product.stock) {
+    const parsedStock = typeof stockCount === 'number' ? stockCount : (parseFloat(String(stockCount)) >= 0 ? parseFloat(String(stockCount)) : product.stock);
+    if (finalQty > parsedStock) {
       setShowError(true);
       return;
     }
-    onConfirm(finalQty, parsedUnitPrice, productName, activeUnit);
+    onConfirm(finalQty, parsedUnitPrice, productName, activeUnit, parsedStock);
+  };
+
+  const scrollPopupUp = () => {
+    if (popupBodyRef.current) {
+      popupBodyRef.current.scrollBy({ top: -160, behavior: 'smooth' });
+    }
+  };
+
+  const scrollPopupDown = () => {
+    if (popupBodyRef.current) {
+      popupBodyRef.current.scrollBy({ top: 160, behavior: 'smooth' });
+    }
   };
 
   const quickChips = useMemo(() => {
@@ -367,7 +389,7 @@ function QtyPopup({
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0 pr-16">
+            <div className="flex-1 min-w-0 pr-24">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-0.5">{product.category}</p>
               <h3 className="text-[14px] font-black text-gray-900 leading-snug line-clamp-1">{productName}</h3>
               <p className="text-[11px] font-bold text-gray-500 mt-0.5">
@@ -377,6 +399,24 @@ function QtyPopup({
             </div>
             
             <div className="absolute top-4 right-4 flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-0.5 bg-gray-200/80 p-0.5 rounded-full border border-gray-300/60">
+                <button
+                  type="button"
+                  onClick={scrollPopupUp}
+                  title="Scroll Up Modal"
+                  className="p-1 rounded-full bg-white hover:bg-emerald-600 text-gray-700 hover:text-white transition-all active:scale-90 shadow-sm"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={scrollPopupDown}
+                  title="Scroll Down Modal"
+                  className="p-1 rounded-full bg-white hover:bg-emerald-600 text-gray-700 hover:text-white transition-all active:scale-90 shadow-sm"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
@@ -399,10 +439,33 @@ function QtyPopup({
             </div>
           </div>
 
+          {/* Floating Up/Down Scroll Buttons Widget for Edit Mode */}
+          {isEditing && (
+            <div className="absolute right-3 bottom-20 flex flex-col gap-2 z-30 pointer-events-auto">
+              <button
+                type="button"
+                onClick={scrollPopupUp}
+                title="Scroll Modal Up"
+                className="w-9 h-9 rounded-full bg-[#059669] hover:bg-emerald-700 text-white shadow-xl flex items-center justify-center transition-all active:scale-90 border-2 border-white"
+              >
+                <ChevronUp className="w-5 h-5" strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                onClick={scrollPopupDown}
+                title="Scroll Modal Down"
+                className="w-9 h-9 rounded-full bg-[#059669] hover:bg-emerald-700 text-white shadow-xl flex items-center justify-center transition-all active:scale-90 border-2 border-white"
+              >
+                <ChevronDown className="w-5 h-5" strokeWidth={3} />
+              </button>
+            </div>
+          )}
+
           <div 
             ref={popupBodyRef}
-            className="p-5 space-y-3.5 overflow-y-auto flex-1 overscroll-contain"
+            className="p-5 space-y-3.5 overflow-y-auto flex-1 overscroll-contain show-scrollbar max-h-[65vh]"
             onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           >
 
             {/* Editable sections only visible if isEditing is true */}
@@ -514,6 +577,34 @@ function QtyPopup({
                       placeholder="0.00"
                     />
                   </div>
+                </div>
+
+                {/* Editable Inventory Stock Quantity */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Inventory Stock Quantity ({activeUnit})
+                    </p>
+                    {Number(stockCount) !== product.stock && (
+                      <button
+                        type="button"
+                        onClick={() => setStockCount(product.stock)}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={stockCount}
+                    onChange={(e) => setStockCount(e.target.value)}
+                    onKeyDown={handleKey}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-black text-[15px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
+                    placeholder="0"
+                  />
                 </div>
               </div>
             )}
@@ -997,7 +1088,8 @@ export default function POSPage() {
     qty: number,
     customPrice?: number,
     customName?: string,
-    customUnit?: string
+    customUnit?: string,
+    customStock?: number
   ) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
@@ -1008,26 +1100,32 @@ export default function POSPage() {
     const finalPrice = customPrice !== undefined && !isNaN(customPrice) && customPrice >= 0 ? customPrice : product.price;
     const finalName = customName && customName.trim() ? customName.trim() : product.name;
     const finalUnit = customUnit && customUnit.trim() ? customUnit.trim() : (product.measurementUnit || 'pcs');
+    const finalStock = customStock !== undefined && !isNaN(customStock) && customStock >= 0 ? customStock : product.stock;
 
     const isNameChanged = finalName !== product.name;
     const isPriceChanged = finalPrice !== product.price;
     const isUnitChanged = finalUnit !== (product.measurementUnit || 'pcs');
+    const isStockChanged = finalStock !== product.stock;
 
     // Permanently update product details in database and POS inventory list if changed
-    if (isNameChanged || isPriceChanged || isUnitChanged) {
+    if (isNameChanged || isPriceChanged || isUnitChanged || isStockChanged) {
       const updatePayload: Record<string, any> = {};
       if (isNameChanged) updatePayload.name = finalName;
       if (isPriceChanged) updatePayload.sellingPrice = finalPrice;
       if (isUnitChanged) updatePayload.measurementUnit = finalUnit;
+      if (isStockChanged) {
+        updatePayload.stock = finalStock;
+        updatePayload.quantity = finalStock;
+      }
 
       api.patch(`/products/${product.id}`, updatePayload).then(() => {
-        toast.success(`Product updated in Inventory! (${finalName}, ${finalUnit}, Rs. ${finalPrice.toLocaleString()})`);
+        toast.success(`Product permanently updated in Inventory! (${finalName}, Stock: ${finalStock} ${finalUnit}, Rs. ${finalPrice.toLocaleString()})`);
       }).catch((err) => {
         console.error("Failed to permanently update product details in database:", err);
       });
 
       setProductsList((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, name: finalName, price: finalPrice, measurementUnit: finalUnit } : p))
+        prev.map((p) => (p.id === product.id ? { ...p, name: finalName, price: finalPrice, measurementUnit: finalUnit, stock: finalStock } : p))
       );
     }
 
@@ -1243,7 +1341,17 @@ export default function POSPage() {
           activeEl.getAttribute("role") === "listbox" ||
           activeEl.getAttribute("role") === "combobox");
 
-      if (!isTextareaOrSelect && !isAnyModalOpen && posProductGridRef.current) {
+      if (isAnyModalOpen) {
+        if (["ArrowDown", "Down", "ArrowUp", "Up", "PageDown", "PageUp", "Home", "End"].includes(e.key)) {
+          if (!isTextareaOrSelect) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }
+        return;
+      }
+
+      if (!isTextareaOrSelect && posProductGridRef.current) {
         const key = e.key;
         const step = e.repeat ? 280 : 180;
         if (key === "ArrowDown" || key === "Down") {
@@ -1344,9 +1452,31 @@ export default function POSPage() {
     return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
   }, [viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen]);
 
+  // Lock background product grid and body scrolling whenever any modal is open
+  useEffect(() => {
+    const isModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isLabourModalOpen || stockErrorMsg);
+    if (isModalOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const gridContainer = posProductGridRef.current;
+      const originalGridOverflow = gridContainer ? gridContainer.style.overflow : '';
+      if (gridContainer) {
+        gridContainer.style.overflow = 'hidden';
+      }
+
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        if (gridContainer) {
+          gridContainer.style.overflow = originalGridOverflow;
+        }
+      };
+    }
+  }, [pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen, stockErrorMsg]);
+
   // Smooth scroll highlighted card into view when navigating grid with arrow keys
   useEffect(() => {
-    if (viewState === 'pos' && posProductGridRef.current) {
+    if (viewState === 'pos' && !pendingProduct && posProductGridRef.current) {
       const gridContainer = posProductGridRef.current;
       const cards = gridContainer.querySelectorAll('.product-card');
       const activeCard = cards[highlightedIndex] as HTMLElement;
@@ -1354,7 +1484,7 @@ export default function POSPage() {
         activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
-  }, [highlightedIndex, viewState]);
+  }, [highlightedIndex, viewState, pendingProduct]);
 
 
   return (
@@ -1404,8 +1534,8 @@ export default function POSPage() {
           product={pendingProduct}
           currentQty={cart.find(c => c.id === pendingProduct.id)?.qty ?? 0}
           initialEditMode={pendingProductEditMode}
-          onConfirm={(qty, customPrice, customName, customUnit) =>
-            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit)
+          onConfirm={(qty, customPrice, customName, customUnit, customStock) =>
+            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit, customStock)
           }
           onClose={() => {
             setPendingProduct(null);
