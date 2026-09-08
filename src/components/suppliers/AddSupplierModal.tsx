@@ -127,13 +127,16 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
       };
 
       if (supplier && supplier.id) {
-        await api.put(`/suppliers/${supplier.id}`, payload);
+        const res = await api.put(`/suppliers/${supplier.id}`, payload);
+        const updated = res.data?.data || res.data?.supplier || res.data;
         toast.success("Supplier updated successfully");
+        onClose(true, updated);
       } else {
-        await api.post("/suppliers", payload);
+        const res = await api.post("/suppliers", payload);
+        const created = res.data?.data || res.data?.supplier || res.data;
         toast.success("Supplier created successfully");
+        onClose(true, created);
       }
-      onClose(true);
     } catch (error: any) {
       console.error("Failed to save supplier", error);
       const msg = error.response?.data?.message || "Failed to save supplier";

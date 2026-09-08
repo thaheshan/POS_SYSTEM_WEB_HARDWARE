@@ -160,7 +160,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '8pt', marginBottom: '18pt' }}>
 
           {/* Card 1 – Total Value (dark) */}
-          <div style={{ background: '#1e3a8a', borderRadius: '10px', padding: '12pt 14pt', color: 'white', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '80pt' }}>
+          <div style={{ background: '#1e3a8a', borderRadius: '10px', padding: '12pt 14pt', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '80pt' }}>
             <div style={{ fontSize: '7pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.65 }}>
               Total Inventory Asset Value
             </div>
@@ -175,7 +175,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
           </div>
 
           {/* Card 2 – SKUs */}
-          <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '80pt' }}>
+          <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '80pt' }}>
             <div style={{ fontSize: '7pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#1e3a8a', opacity: 0.65 }}>
               Total Active SKUs
             </div>
@@ -190,7 +190,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
           </div>
 
           {/* Card 3 – Low / OOS */}
-          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '80pt' }}>
+          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '80pt' }}>
             <div style={{ fontSize: '7pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#78350f', opacity: 0.65 }}>
               Supply Chain Risk
             </div>
@@ -205,7 +205,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
           </div>
 
           {/* Card 4 – Expired */}
-          <div style={{ background: '#fdf4ff', border: '1.5px solid #e9d5ff', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justify: 'space-between', minHeight: '80pt' }}>
+          <div style={{ background: '#fdf4ff', border: '1.5px solid #e9d5ff', borderRadius: '10px', padding: '12pt 14pt', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '80pt' }}>
             <div style={{ fontSize: '7pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#581c87', opacity: 0.65 }}>
               Expired Products
             </div>
@@ -365,7 +365,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
           </div>
 
           {/* Right – signatures + copyright */}
-          <div style={{ display: 'flex', flexDirection: 'column', justify: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: '28pt' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ width: '110px', borderBottom: '1px solid #cbd5e1', marginBottom: '4pt' }} />

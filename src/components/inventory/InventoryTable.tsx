@@ -54,29 +54,7 @@ export default function InventoryTable({
     setSelectedIds([]); // Clear selection on page change
   };
 
-  // Keyboard Navigation for Table Pagination (ArrowLeft = Previous, ArrowRight = Next)
-  useEffect(() => {
-    const handleTableKey = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInputActive =
-        activeEl &&
-        (activeEl.tagName === "INPUT" ||
-          activeEl.tagName === "TEXTAREA" ||
-          activeEl.tagName === "SELECT" ||
-          (activeEl as HTMLElement).isContentEditable);
 
-      if (!isInputActive) {
-        if ((e.key === "ArrowLeft" || e.key === "Left") && effectivePage > 1) {
-          handlePageChange(effectivePage - 1);
-        } else if ((e.key === "ArrowRight" || e.key === "Right") && effectivePage < totalPages) {
-          handlePageChange(effectivePage + 1);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleTableKey);
-    return () => window.removeEventListener("keydown", handleTableKey);
-  }, [effectivePage, totalPages]);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === paginatedData.length) {
