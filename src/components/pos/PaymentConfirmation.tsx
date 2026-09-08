@@ -537,12 +537,11 @@ export default function PaymentConfirmation({
 
       // Trigger TEXT.LK Credit SMS Notification if Credit sale
       if (isCreditSale && customerPhone && customerPhone !== "N/A") {
-        const itemsSummary = items.map((i) => `${i.qty}x ${i.name}`).join(", ");
         sendCreditPurchaseSMS({
           customerName: customerName || "Valued Customer",
           customerPhone,
           date: new Date().toLocaleDateString("en-GB"),
-          itemsSummary, // NO individual product prices!
+          items: items.map((i) => ({ name: i.name, qty: i.qty })), // Purchased item count per date split (NO per-item unit prices!)
           totalOrderAmount: total,
           amountPaid: effectivePaidAmount,
           leftoverCreditAmount: creditLeftover,
