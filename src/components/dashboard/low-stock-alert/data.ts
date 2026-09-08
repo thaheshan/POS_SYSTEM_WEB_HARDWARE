@@ -13,6 +13,8 @@ export interface LowStockProduct {
   unitCost: number;
   warehouseId?: string;
   warehouseName?: string;
+  supplierName?: string;
+  supplierPhone?: string;
 }
 
 export const lowStockProducts: LowStockProduct[] = [
@@ -27,6 +29,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "2 hours ago",
     unitsSold: 5,
     unitCost: 8250,
+    supplierName: "Futura Hardware Shop",
+    supplierPhone: "0756645486",
   },
   {
     id: "ls-002",
@@ -39,6 +43,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "Yesterday",
     unitsSold: 12,
     unitCost: 1350,
+    supplierName: "NSM Loka Electricals",
+    supplierPhone: "0745485963",
   },
   {
     id: "ls-003",
@@ -51,6 +57,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "3 days ago",
     unitsSold: 17,
     unitCost: 2250,
+    supplierName: "Futura Hardware Shop",
+    supplierPhone: "0756645486",
   },
   {
     id: "ls-004",
@@ -63,6 +71,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "5 hours ago",
     unitsSold: 30,
     unitCost: 4500,
+    supplierName: "NSM Loka Electricals",
+    supplierPhone: "0745485963",
   },
   {
     id: "ls-005",
@@ -75,6 +85,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "1 day ago",
     unitsSold: 8,
     unitCost: 18750,
+    supplierName: "Futura Hardware Shop",
+    supplierPhone: "0756645486",
   },
   {
     id: "ls-006",
@@ -87,6 +99,8 @@ export const lowStockProducts: LowStockProduct[] = [
     lastSale: "Today",
     unitsSold: 4,
     unitCost: 3200,
+    supplierName: "Lanka Paints & Hardware",
+    supplierPhone: "0712345678",
   },
 ];
 

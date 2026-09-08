@@ -83,6 +83,8 @@ export default function LowStockAlertModal({
           unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
           warehouseId: item.warehouse_id,
           warehouseName: item.warehouse_name,
+          supplierName: item.supplier_name || item.supplier?.name || item.product?.supplier?.name || item.product?.supplierName || "Futura Hardware Shop",
+          supplierPhone: item.supplier_phone || item.supplier?.phone || item.supplier?.mobile || item.product?.supplier?.phone || item.product?.supplierPhone || "0756645486",
         }));
 
         setLiveProducts(mapped);

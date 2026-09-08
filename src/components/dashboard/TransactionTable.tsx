@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useRecentTransactions } from "@/hooks/useDashboard";
 import { format } from "date-fns";
 import Link from "next/link";
-import { RefreshCw, Eye, Edit2 } from "lucide-react";
+import { RefreshCw, Eye, Edit2, Copy, Check } from "lucide-react";
 import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal";
 
 export default function TransactionTable() {
@@ -14,6 +14,14 @@ export default function TransactionTable() {
 
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<"view" | "edit">("view");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyInvoiceId = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const getStatusStyle = (status: string) => {
     const s = status?.toUpperCase();
@@ -137,7 +145,21 @@ export default function TransactionTable() {
                     className="group hover:bg-blue-50/40 transition-colors duration-200 cursor-pointer"
                   >
                     <td className="py-5 text-[14px] font-bold text-blue-600 tracking-tight pl-2">
-                      {tx.invoiceNumber || tx.id}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{tx.invoiceNumber || tx.id}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyInvoiceId(e, tx.invoiceNumber || tx.id)}
+                          className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-75 hover:opacity-100 shrink-0"
+                          title="Copy Invoice Number"
+                        >
+                          {copiedId === (tx.invoiceNumber || tx.id) ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-5">
                       <div className="flex items-center gap-3 justify-center">

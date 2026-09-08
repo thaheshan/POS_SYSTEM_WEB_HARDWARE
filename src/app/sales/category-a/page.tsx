@@ -24,10 +24,9 @@ function CategoryAReportPageContent() {
   // Restore date range from query params if present
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: fromParam ? new Date(fromParam) : today,
-    to: toParam ? new Date(toParam) : today,
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    fromParam ? { from: new Date(fromParam), to: toParam ? new Date(toParam) : new Date(fromParam) } : undefined
+  );
 
   const { data, loading, refresh } = useSalesData(dateRange);
   const [showExportMenu, setShowExportMenu] = useState(false);

@@ -34,8 +34,8 @@ import { DateRange } from 'react-day-picker';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import SettleCreditModal from '@/components/customers/SettleCreditModal';
-import { triggerBatchCreditReminders } from '@/utils/textlkSmsService';
-import { toastInfo, toastSuccess } from '@/lib/toast';
+import { triggerBatchCreditReminders, sendSingleCreditReminderSMS } from '@/utils/textlkSmsService';
+import { toastInfo, toastSuccess, toastError } from '@/lib/toast';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ function ViewCustomerModal({ customer, onClose, onEdit }: { customer: Customer; 
 }
 
 // ─── Dots Menu ────────────────────────────────────────────────────────────────
-function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit }: { cust: Customer; onView: () => void; onEdit: () => void; onDelete: () => void; onSettleCredit?: () => void }) {
+function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit, onSendSMS }: { cust: Customer; onView: () => void; onEdit: () => void; onDelete: () => void; onSettleCredit?: () => void; onSendSMS?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -268,13 +268,21 @@ function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit }: { cust
         <MoreVertical className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-20 w-44">
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-20 w-52">
           {onSettleCredit && cust.outstanding > 0 && (
             <button
               onClick={() => { onSettleCredit(); setOpen(false); }}
               className="w-full text-left px-3 py-2 text-[12px] font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-2.5 transition-colors"
             >
               <CreditCard className="w-3.5 h-3.5 text-emerald-600" /> Settle Credit
+            </button>
+          )}
+          {onSendSMS && cust.outstanding > 0 && (
+            <button
+              onClick={() => { onSendSMS(); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-[12px] font-bold text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2.5 transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-600" /> Send Credit Reminder (SMS)
             </button>
           )}
           <button
@@ -374,6 +382,20 @@ export default function CustomersPage() {
       alert(err?.response?.data?.message || 'Failed to delete customer');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleSendSingleSMS = async (cust: Customer) => {
+    if (!cust.phone || cust.phone === 'N/A') {
+      toastError(new Error(`Customer ${cust.name} does not have a valid phone number.`));
+      return;
+    }
+    toastInfo(`Sending credit reminder SMS to ${cust.name}...`);
+    const res = await sendSingleCreditReminderSMS(cust.name, cust.phone, cust.outstanding);
+    if (res.success) {
+      toastSuccess(`Credit reminder SMS sent to ${cust.name} (${cust.phone}) via TEXT.LK!`);
+    } else {
+      toastError(new Error(res.message));
     }
   };
 
@@ -570,7 +592,7 @@ export default function CustomersPage() {
           <button
             onClick={async () => {
               toastInfo("Dispatching TEXT.LK credit reminders...");
-              const res = await triggerBatchCreditReminders();
+              const res = await triggerBatchCreditReminders(customers);
               toastSuccess(res.message);
             }}
             className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-[12px] text-[13px] font-black transition-all shadow-md shadow-amber-600/20 active:scale-95"
@@ -627,6 +649,7 @@ export default function CustomersPage() {
                       onEdit={() => setEditingCustomer(cust)}
                       onDelete={() => setCustomerToDelete(cust)}
                       onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
+                      onSendSMS={() => handleSendSingleSMS(cust)}
                     />
                   </div>
 
@@ -725,6 +748,7 @@ export default function CustomersPage() {
                           onEdit={() => setEditingCustomer(cust)}
                           onDelete={() => setCustomerToDelete(cust)}
                           onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
+                          onSendSMS={() => handleSendSingleSMS(cust)}
                         />
                       </div>
                     </td>

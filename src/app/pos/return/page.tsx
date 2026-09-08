@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import { ArrowLeft, RotateCcw, Search, AlertCircle, CheckCircle2, ChevronRight, Package, Receipt, IndianRupee } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Search, AlertCircle, CheckCircle2, ChevronRight, Package, Receipt, IndianRupee, Printer } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/api/axiosInstance';
+import { printReturnThermalHTMLReceipt } from '@/utils/thermalReceiptTemplate';
 
 interface InvoiceItem {
   id: string;           // invoiceItemId
@@ -26,6 +27,7 @@ export default function ProcessReturnPage() {
   const [returnReason, setReturnReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [lastReturnPrintData, setLastReturnPrintData] = useState<Parameters<typeof printReturnThermalHTMLReceipt>[0] | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +146,40 @@ export default function ProcessReturnPage() {
       }
 
       setSuccess(true);
+
+      // ── Auto-print thermal return receipt ──────────────────────────────────
+      const now = new Date();
+      const seq = String(Math.floor(Math.random() * 9000) + 1000);
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      const returnNo = `RET-${yy}${mm}${dd}-${seq}`;
+      const dateStr = `${dd}/${mm}/20${yy} ${hh}:${mi}`;
+
+      const printPayload = {
+        storeName: 'Futura Hardware',
+        returnNo,
+        originalInvoiceNo: invoiceNumber,
+        date: dateStr,
+        cashier: 'Cashier',
+        reason: returnReason,
+        isRestocked: !isDamaged,
+        refundAmount: totalRefund,
+        items: selectedReturnItems.map(item => ({
+          name: item.name,
+          sku: item.sku,
+          qty: item.returnQuantity,
+          price: item.price,
+          lineTotal: item.price * item.returnQuantity,
+        })),
+      };
+
+      setLastReturnPrintData(printPayload);
+      printReturnThermalHTMLReceipt(printPayload);
+      // ──────────────────────────────────────────────────────────────────────
+
     } catch (err: any) {
       console.error('Failed to process return', err);
       const msg = err?.response?.data?.message || 'Failed to process return. Check backend logs.';
@@ -194,11 +230,11 @@ export default function ProcessReturnPage() {
               
               <div className="flex flex-col gap-3">
                 <button 
-                  onClick={() => window.print()}
+                  onClick={() => lastReturnPrintData && printReturnThermalHTMLReceipt(lastReturnPrintData)}
                   className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex justify-center items-center gap-2"
                 >
-                  <Receipt className="w-5 h-5" />
-                  Print Return Receipt
+                  <Printer className="w-5 h-5" />
+                  Re-print Return Receipt
                 </button>
                 <button 
                   onClick={() => {
@@ -207,6 +243,7 @@ export default function ProcessReturnPage() {
                     setInvoiceNumber('');
                     setItems([]);
                     setReturnReason('');
+                    setLastReturnPrintData(null);
                   }}
                   className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
                 >
