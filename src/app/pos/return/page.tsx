@@ -95,26 +95,54 @@ export default function ProcessReturnPage() {
 
   const handleProcessReturn = async () => {
     setIsProcessing(true);
-    
-    const returnItems = items
-      .filter(item => item.returnQuantity > 0)
-      .map(item => ({
-        productId: item.productId,
-        invoiceItemId: item.id,
-        warehouseId: item.warehouseId,
-        quantity: item.returnQuantity,
-        price: item.price,
-        condition: 'GOOD',
-      }));
+
+    const isDamaged = returnReason === 'defective' || returnReason === 'damaged';
+
+    const selectedReturnItems = items.filter(item => item.returnQuantity > 0);
+
+    const returnItemsPayload = selectedReturnItems.map(item => ({
+      productId: item.productId,
+      invoiceItemId: item.id,
+      warehouseId: item.warehouseId,
+      quantity: item.returnQuantity,
+      price: item.price,
+      condition: isDamaged ? 'DEFECTIVE' : 'GOOD',
+      restock: !isDamaged,
+    }));
 
     try {
+      // 1. Post sales return transaction
       await api.post('/sales/return', {
         invoiceId: invoiceNumber,
         reason: returnReason,
         refundMethod: 'CASH',
         refundAmount: totalRefund,
-        items: returnItems,
+        items: returnItemsPayload,
+        restockInventory: !isDamaged,
       });
+
+      // 2. Restock inventory count only if reason is NOT defective/damaged
+      if (!isDamaged) {
+        await Promise.allSettled(
+          selectedReturnItems.map(async (item) => {
+            try {
+              const prodRes = await api.get(`/products/${item.productId}`);
+              const prod = prodRes.data?.data || prodRes.data;
+              if (prod) {
+                const currentStock = Number(prod.stock ?? prod.quantity ?? 0);
+                const updatedStock = currentStock + item.returnQuantity;
+                await api.patch(`/products/${item.productId}`, {
+                  stock: updatedStock,
+                  quantity: updatedStock,
+                });
+              }
+            } catch (stockErr) {
+              console.warn(`[Return Sale Restock] Could not update stock for product ${item.productId}:`, stockErr);
+            }
+          })
+        );
+      }
+
       setSuccess(true);
     } catch (err: any) {
       console.error('Failed to process return', err);
@@ -151,7 +179,18 @@ export default function ProcessReturnPage() {
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-2">Return Processed Successfully</h2>
-              <p className="text-slate-500 mb-8">The refund of Rs. {totalRefund.toLocaleString()} has been recorded and the inventory has been restocked.</p>
+              <p className="text-slate-500 mb-8">
+                The refund of Rs. {totalRefund.toLocaleString()} has been recorded.
+                {returnReason === 'defective' || returnReason === 'damaged' ? (
+                  <span className="block mt-2 font-semibold text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs">
+                    ⚠ Reason: Defective/Damaged — Items were NOT added back to inventory stock.
+                  </span>
+                ) : (
+                  <span className="block mt-2 font-semibold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-xs">
+                    ✓ Reason: {returnReason.replace(/_/g, ' ')} — Returned items have been restocked back into inventory stock count.
+                  </span>
+                )}
+              </p>
               
               <div className="flex flex-col gap-3">
                 <button 

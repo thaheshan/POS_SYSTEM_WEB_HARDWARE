@@ -2029,12 +2029,43 @@ export default function POSPage() {
                                 <span className="text-[9px] font-bold text-gray-400">
                                   / {parseShortUnit(item.measurementUnit, item.sellType === 'loose')}
                                 </span>
-                                {item.isDiscountEnabled && item.isDiscountApproved && (
+                                 {item.discountAmount && item.discountAmount > 0 ? (
+                                  <div className="flex items-center gap-1 bg-[#059669] text-white px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedCartItemForDiscount(item)}
+                                      className="hover:underline flex items-center gap-1"
+                                      title="Click to edit item discount"
+                                    >
+                                      <Tag className="w-3 h-3" />
+                                      <span>
+                                        -{item.primaryDiscountType === 'PERCENTAGE' && item.primaryDiscountValue
+                                          ? `${item.primaryDiscountValue}%`
+                                          : `Rs.${item.discountAmount}`}
+                                      </span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleApplyItemDiscount(item.id, 0, 'FIXED_AMOUNT', false, 0, 'FIXED_AMOUNT');
+                                        toast.success(`Discount removed for ${item.name}`);
+                                      }}
+                                      className="ml-1 hover:bg-emerald-700 p-0.5 rounded transition-colors text-white/90 hover:text-white"
+                                      title="Cancel / Remove Discount"
+                                    >
+                                      <X className="w-3 h-3" strokeWidth={2.5} />
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
+                                    type="button"
                                     onClick={() => setSelectedCartItemForDiscount(item)}
-                                    className="text-[8px] font-black uppercase text-[#059669] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1 py-0.2 rounded"
+                                    className="text-[10px] font-extrabold text-[#059669] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all active:scale-95 shadow-sm shrink-0"
+                                    title="Click to apply item discount"
                                   >
-                                    {item.discountAmount ? `-Rs.${item.discountAmount}` : 'Disc'}
+                                    <Tag className="w-3 h-3 text-[#059669]" />
+                                    <span>Discount</span>
                                   </button>
                                 )}
                               </div>

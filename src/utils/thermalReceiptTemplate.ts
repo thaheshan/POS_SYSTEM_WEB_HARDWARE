@@ -10,7 +10,7 @@ import { HardwarePrintReceiptPayload } from "./hardwareIntegration";
 /**
  * 1. Format raw ESC/POS Text Stream for Direct Serial / TCP / USB Drivers (48 cols for 80mm, 32 cols for 58mm)
  */
-export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthChars = 48): string {
+export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthChars = 40): string {
   const line = "-".repeat(widthChars);
   const doubleLine = "=".repeat(widthChars);
   const storeNameText = data.storeName || "Futura Hardware";
@@ -35,13 +35,13 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(line);
 
   // Meta
-  lines.push(leftRight(`Invoice: ${data.invoiceNo}`, `Date: ${data.date}`));
+  lines.push(leftRight(`Inv: ${data.invoiceNo}`, `${data.date.slice(0, 10)}`));
   lines.push(leftRight(`Cashier: ${data.cashier}`, `Type: ${data.customerType || "Walk-In"}`));
   if (data.customerName && data.customerName !== "Walk-in Customer") {
-    lines.push(`Customer: ${data.customerName}`);
-    if (data.customerPhone) lines.push(`Phone: ${data.customerPhone}`);
+    lines.push(`Cust: ${data.customerName}`);
+    if (data.customerPhone) lines.push(`Tel: ${data.customerPhone}`);
   }
-  lines.push(leftRight(`Payment: ${data.paymentMethod}`, `Status: ${data.creditLeftover && data.creditLeftover > 0 ? "CREDIT SALE" : "PAID"}`));
+  lines.push(leftRight(`Pay: ${data.paymentMethod}`, `Status: ${data.creditLeftover && data.creditLeftover > 0 ? "CREDIT" : "PAID"}`));
   lines.push(line);
 
   // Item Table
@@ -49,10 +49,9 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(line);
 
   data.items.forEach((item) => {
-    // Truncate name if too long
-    const maxNameLength = widthChars - 22;
+    const maxNameLength = widthChars - 18;
     const nameStr = item.name.length > maxNameLength ? item.name.slice(0, maxNameLength - 2) + ".." : item.name;
-    const rightStr = `${item.qty} x ${item.price.toLocaleString()} = ${item.lineTotal.toLocaleString()}`;
+    const rightStr = `${item.qty}x${item.price} = ${item.lineTotal}`;
     lines.push(leftRight(nameStr, rightStr));
   });
 
@@ -68,20 +67,20 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(doubleLine);
 
   // Payment Breakdown
-  lines.push(leftRight("Amount Tendered:", `Rs. ${data.amountTendered.toLocaleString()}`));
+  lines.push(leftRight("Paid / Tendered:", `Rs. ${data.amountTendered.toLocaleString()}`));
   if (data.creditLeftover && data.creditLeftover > 0) {
-    lines.push(leftRight("Credit Added Today:", `Rs. ${data.creditLeftover.toLocaleString()}`));
+    lines.push(leftRight("Credit Added:", `Rs. ${data.creditLeftover.toLocaleString()}`));
     if (data.totalOutstandingCredit !== undefined) {
       lines.push(leftRight("Total Account Credit:", `Rs. ${data.totalOutstandingCredit.toLocaleString()}`));
     }
   } else {
-    lines.push(leftRight("Change Returned:", `Rs. ${data.change.toLocaleString()}`));
+    lines.push(leftRight("Change:", `Rs. ${data.change.toLocaleString()}`));
   }
 
   // Footer
   lines.push(line);
-  lines.push(center(`Thank you for shopping at ${storeNameText}!`));
-  lines.push(center("Returns accepted within 7 days with receipt."));
+  lines.push(center(`Thank you for shopping!`));
+  lines.push(center("Returns within 7 days with receipt."));
   lines.push(center("futurahardware.com"));
   lines.push("\n\n\n"); // Feed for paper cut
 
@@ -89,7 +88,7 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 }
 
 /**
- * 2. Dedicated HTML Thermal Receipt Window Generator (Exact 80mm / 58mm Paper Size)
+ * 2. Dedicated HTML Thermal Receipt Window Generator (Exact 58mm/80mm Safe Paper Boundary)
  * Triggered when printing to thermal receipt printer via OS print driver dialog.
  */
 export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
@@ -117,73 +116,82 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <style>
     @media print {
       @page {
-        size: 80mm auto;
-        margin: 0;
+        size: auto;
+        margin: 0mm !important;
       }
-      body {
-        width: 72mm;
-        margin: 0 auto;
-        padding: 2mm 0;
+      html, body {
+        width: 100% !important;
+        max-width: 58mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
       }
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
-      font-family: 'Courier New', Courier, monospace;
+      font-family: Arial, Helvetica, sans-serif;
       font-size: 11px;
-      line-height: 1.3;
+      line-height: 1.35;
       color: #000;
       background: #fff;
-      width: 72mm;
+      width: 100%;
+      max-width: 58mm;
       margin: 0 auto;
-      padding: 6px 0;
+      padding: 4px 2px;
+      word-break: break-word;
     }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .bold { font-weight: bold; }
-    .title { font-size: 16px; font-weight: 900; letter-spacing: -0.5px; }
-    .subtitle { font-size: 10px; margin-bottom: 4px; }
-    .divider { border-top: 1px dashed #000; margin: 6px 0; }
-    .double-divider { border-top: 2px double #000; margin: 6px 0; }
-    .row { display: flex; justify-content: space-between; }
-    .meta-row { font-size: 10px; }
-    table { width: 100%; border-collapse: collapse; margin: 4px 0; }
-    .item-name { font-weight: bold; padding-top: 4px; font-size: 11px; }
-    .item-calc { font-size: 10px; border-bottom: 1px dotted #ccc; }
-    .qty { width: 50%; }
-    .wh { width: 20%; font-size: 8px; color: #555; text-align: center; }
-    .line-total { width: 30%; text-align: right; font-weight: bold; }
+    .bold { font-weight: 800; }
+    .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; text-transform: uppercase; }
+    .subtitle { font-size: 10px; font-weight: 700; margin-bottom: 2px; color: #111; }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    .double-divider { border-top: 2px double #000; margin: 5px 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    td { vertical-align: top; padding: 1px 0; }
+    .item-name { font-weight: 800; font-size: 11px; padding-top: 3px; word-break: break-word; }
+    .item-calc { font-size: 10.5px; border-bottom: 1px dotted #bbb; padding-bottom: 3px; }
+    .qty { width: 55%; font-weight: 700; }
+    .wh { width: 15%; font-size: 8px; color: #444; text-align: center; }
+    .line-total { width: 30%; text-align: right; font-weight: 900; }
     .grand-total-box {
       font-size: 14px;
       font-weight: 900;
-      padding: 4px 0;
-      display: flex;
-      justify-content: space-between;
+      padding: 3px 0;
     }
-    .footer { font-size: 9px; margin-top: 10px; }
+    .footer { font-size: 9.5px; font-weight: 700; margin-top: 8px; line-height: 1.3; }
   </style>
 </head>
 <body>
   <!-- Thermal Header -->
   <div class="text-center">
-    <div class="title">${storeNameText.toUpperCase()}</div>
+    <div class="title">${storeNameText}</div>
     <div class="subtitle">Hardware &amp; Building Materials</div>
-    ${data.storeAddress ? `<div>${data.storeAddress}</div>` : ""}
-    ${data.storePhone ? `<div>Tel: ${data.storePhone}</div>` : ""}
+    ${data.storeAddress ? `<div style="font-size:9.5px; font-weight:600;">${data.storeAddress}</div>` : ""}
+    ${data.storePhone ? `<div style="font-size:9.5px; font-weight:700;">Tel: ${data.storePhone}</div>` : ""}
   </div>
 
   <div class="divider"></div>
 
   <!-- Meta Info -->
-  <div class="meta-row">
-    <div class="row"><span>Inv #: ${data.invoiceNo}</span><span>${data.date}</span></div>
-    <div class="row"><span>Cashier: ${data.cashier}</span><span>Type: ${data.customerType || "Walk-In"}</span></div>
+  <table style="width:100%; font-size:10px; font-weight:700;">
+    <tr>
+      <td style="width:52%;">Inv #: ${data.invoiceNo}</td>
+      <td style="width:48%; text-align:right;">${data.date}</td>
+    </tr>
+    <tr>
+      <td style="width:60%;">Cashier: ${data.cashier}</td>
+      <td style="width:40%; text-align:right;">Type: ${data.customerType || "Walk-In"}</td>
+    </tr>
     ${
       data.customerName && data.customerName !== "Walk-in Customer"
-        ? `<div class="row"><span>Cust: ${data.customerName}</span><span>${data.customerPhone || ""}</span></div>`
+        ? `<tr><td colspan="2">Cust: ${data.customerName} ${data.customerPhone ? `(${data.customerPhone})` : ""}</td></tr>`
         : ""
     }
-    <div class="row"><span>Pay Method: ${data.paymentMethod}</span><span>${data.creditLeftover && data.creditLeftover > 0 ? "[CREDIT SALE]" : "[PAID]"}</span></div>
-  </div>
+    <tr>
+      <td style="width:50%;">Pay: ${data.paymentMethod}</td>
+      <td style="width:50%; text-align:right;">${data.creditLeftover && data.creditLeftover > 0 ? "[CREDIT SALE]" : "[PAID]"}</td>
+    </tr>
+  </table>
 
   <div class="divider"></div>
 
@@ -197,51 +205,111 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <div class="divider"></div>
 
   <!-- Totals -->
-  <div class="row"><span>Subtotal:</span><span>Rs. ${data.subtotal.toLocaleString()}</span></div>
-  ${data.discount > 0 ? `<div class="row"><span>Discount:</span><span>-Rs. ${data.discount.toLocaleString()}</span></div>` : ""}
+  <table style="width:100%; font-size:11px; font-weight:700;">
+    <tr>
+      <td>Subtotal:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.subtotal.toLocaleString()}</td>
+    </tr>
+    ${data.discount > 0 ? `<tr><td>Discount:</td><td style="text-align:right; font-weight:900;">-Rs. ${data.discount.toLocaleString()}</td></tr>` : ""}
+  </table>
+
   <div class="double-divider"></div>
-  <div class="grand-total-box">
-    <span>TOTAL:</span>
-    <span>Rs. ${data.total.toLocaleString()}</span>
-  </div>
+
+  <table style="width:100%;" class="grand-total-box">
+    <tr>
+      <td style="font-size:13.5px; font-weight:900;">TOTAL:</td>
+      <td style="font-size:13.5px; font-weight:900; text-align:right;">Rs. ${data.total.toLocaleString()}</td>
+    </tr>
+  </table>
+
   <div class="double-divider"></div>
 
   <!-- Payment Breakdown -->
-  <div class="row"><span>Tendered / Paid:</span><span>Rs. ${data.amountTendered.toLocaleString()}</span></div>
-  ${
-    data.creditLeftover && data.creditLeftover > 0
-      ? `
-  <div class="row bold"><span>Credit Added Today:</span><span>Rs. ${data.creditLeftover.toLocaleString()}</span></div>
-  ${data.totalOutstandingCredit !== undefined ? `<div class="row bold"><span>Total Account Credit:</span><span>Rs. ${data.totalOutstandingCredit.toLocaleString()}</span></div>` : ""}
-  `
-      : `
-  <div class="row"><span>Change:</span><span>Rs. ${data.change.toLocaleString()}</span></div>
-  `
-  }
+  <table style="width:100%; font-size:10.5px; font-weight:700;">
+    <tr>
+      <td>Tendered / Paid:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.amountTendered.toLocaleString()}</td>
+    </tr>
+    ${
+      data.creditLeftover && data.creditLeftover > 0
+        ? `
+    <tr class="bold">
+      <td>Credit Added Today:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.creditLeftover.toLocaleString()}</td>
+    </tr>
+    ${data.totalOutstandingCredit !== undefined ? `<tr class="bold"><td>Total Account Credit:</td><td style="text-align:right; font-weight:900;">Rs. ${data.totalOutstandingCredit.toLocaleString()}</td></tr>` : ""}
+    `
+        : `
+    <tr>
+      <td>Change:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.change.toLocaleString()}</td>
+    </tr>
+    `
+    }
+  </table>
 
   <div class="divider"></div>
 
   <!-- Footer -->
   <div class="text-center footer">
     <div>Thank you for shopping at ${storeNameText}!</div>
-    <div>Returns accepted within 7 days with receipt</div>
+    <div>Returns accepted within 7 days with receipt.</div>
     <div>futurahardware.com</div>
   </div>
 
-  <script>
-    window.onload = function() {
-      window.print();
-      setTimeout(function() { window.close(); }, 500);
-    };
-  </script>
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank");
-  if (!win) {
-    alert("Pop-up blocked. Please allow pop-ups for Futura Hardware POS to print thermal receipts.");
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  // ── Silent Iframe Print (no popup window) ──────────────────────────────────
+  // Uses a hidden off-screen iframe. The browser OS print dialog appears
+  // directly — no browser popup window is opened.
+  // NOTE: Completely silent zero-dialog printing is ONLY possible via the
+  //       Local Print Agent at localhost:9100 (tried first in printThermalReceipt).
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const triggerPrint = () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText =
+      'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;opacity:0;pointer-events:none;';
+
+    const cleanup = () => {
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch {}
+      }, 4000);
+    };
+
+    // Set onload BEFORE appending so it never fires early
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.warn('[Thermal Print] iframe.print() failed:', e);
+      } finally {
+        cleanup();
+      }
+    };
+
+    // Use blob URL as src — this reliably fires onload
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    // Revoke blob URL after use
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    // Safety fallback: if onload doesn't fire within 2s, print anyway
+    setTimeout(() => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        }
+      } catch {}
+      cleanup();
+    }, 2000);
+  };
+
+  triggerPrint();
 }
