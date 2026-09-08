@@ -253,12 +253,13 @@ function QtyPopup({
 }: {
   product: Product;
   currentQty: number;
-  onConfirm: (qty: number) => void;
+  onConfirm: (qty: number, customPrice?: number) => void;
   onClose: () => void;
 }) {
   const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
   const isLoose = product.sellType === 'loose' || shortUnit === 'm' || shortUnit === 'kg' || shortUnit === 'L' || shortUnit === 'ft' || shortUnit === 'in' || shortUnit === 'yd' || shortUnit === 'g';
   const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
+  const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -272,7 +273,8 @@ function QtyPopup({
   };
 
   const parsedQty = typeof qty === 'string' ? parseFloat(qty) || 0 : qty;
-  const total = product.price * Math.max(0, parsedQty);
+  const parsedUnitPrice = typeof unitPrice === 'string' ? (parseFloat(unitPrice) >= 0 ? parseFloat(unitPrice) : product.price) : unitPrice;
+  const total = (parsedUnitPrice || 0) * Math.max(0, parsedQty);
 
   const handleConfirm = () => {
     const finalQty = Math.max(isLoose ? 0.01 : 1, parsedQty);
@@ -280,7 +282,7 @@ function QtyPopup({
       setShowError(true);
       return;
     }
-    onConfirm(finalQty);
+    onConfirm(finalQty, parsedUnitPrice);
   };
 
   const quickChips = useMemo(() => {
@@ -311,7 +313,9 @@ function QtyPopup({
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-1">{product.category}</p>
               <h3 className="text-[15px] font-black text-gray-900 leading-snug mb-1 line-clamp-2">{product.name}</h3>
-              <p className="text-[12px] font-bold text-gray-500">Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{shortUnit}</span></p>
+              <p className="text-[12px] font-bold text-gray-500">
+                Default: Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{shortUnit}</span>
+              </p>
               <p className="text-[11px] font-bold text-amber-600 mt-1">Available: {product.stock} {shortUnit}</p>
             </div>
             <button
@@ -322,7 +326,8 @@ function QtyPopup({
             </button>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="p-6 space-y-4">
+            {/* Quantity Input Section */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
@@ -387,24 +392,65 @@ function QtyPopup({
               </div>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-gray-400">{parsedQty} {shortUnit} × Rs. {product.price.toLocaleString()}</p>
-                <p className="text-[11px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
+            {/* Editable Unit Price Section */}
+            <div className="bg-gray-50/80 border border-gray-200/70 p-3.5 rounded-2xl space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest">
+                  Unit Selling Price (Rs.)
+                </p>
+                {Number(parsedUnitPrice) !== product.price && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-black text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200">
+                      Custom Price
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setUnitPrice(product.price)}
+                      className="text-[10px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
               </div>
-              <span className="text-[22px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text.sm font-black text-gray-400">Rs.</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value)}
+                  onKeyDown={handleKey}
+                  className="w-full pl-10 pr-3 py-2.5 bg-white border border-gray-300 rounded-xl text-right font-black text-[18px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Line Total Summary */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-gray-500">
+                  {parsedQty} {shortUnit} × Rs. {(parsedUnitPrice || 0).toLocaleString()}
+                </p>
+                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
+              </div>
+              <span className="text-[20px] font-black text-[#059669] font-mono">
+                Rs. {total.toLocaleString()}
+              </span>
+            </div>
+
+            <div className="flex gap-3 pt-1">
               <button
                 onClick={onClose}
-                className="flex-1 py-4 rounded-2xl border border-gray-200 text-gray-500 font-bold text-[14px] hover:bg-gray-50 transition-all active:scale-95"
+                className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-gray-500 font-bold text-[13px] hover:bg-gray-50 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirm}
-                className="flex-[1.5] py-4 rounded-2xl bg-[#059669] text-white font-black text-[14px] hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 transition-all active:scale-[0.98] uppercase tracking-wider"
+                className="flex-[1.5] py-3.5 rounded-2xl bg-[#059669] text-white font-black text-[13px] hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] uppercase tracking-wider"
               >
                 Add to Cart
               </button>
@@ -789,16 +835,32 @@ export default function POSPage() {
     }));
   };
 
-  const addToCartWithQty = (product: Product, qty: number) => {
+  const addToCartWithQty = (product: Product, qty: number, customPrice?: number) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
       setPendingProduct(null);
       return;
     }
+
+    const finalPrice = customPrice !== undefined && !isNaN(customPrice) && customPrice >= 0 ? customPrice : product.price;
+
+    // Permanently update product price in database and POS inventory list if changed
+    if (finalPrice !== product.price) {
+      api.patch(`/products/${product.id}`, { sellingPrice: finalPrice }).then(() => {
+        toast.success(`Product price permanently updated to Rs. ${finalPrice.toLocaleString()} in Inventory!`);
+      }).catch((err) => {
+        console.error("Failed to permanently update price in database:", err);
+      });
+
+      setProductsList((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, price: finalPrice } : p))
+      );
+    }
+
     setCart((prev) => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, qty } : item);
+        return prev.map(item => item.id === product.id ? { ...item, qty, price: finalPrice } : item);
       }
 
       let discountAmount = 0;
@@ -807,17 +869,17 @@ export default function POSPage() {
       if (product.isDiscountEnabled && product.isDiscountApproved && defaultVal > 0) {
         if (product.discountType === 'PERCENTAGE') {
           discountPercentage = defaultVal;
-          discountAmount = Number(((product.price * defaultVal) / 100).toFixed(2));
+          discountAmount = Number(((finalPrice * defaultVal) / 100).toFixed(2));
         } else {
           discountAmount = defaultVal;
-          discountPercentage = Number(((defaultVal / product.price) * 100).toFixed(2));
+          discountPercentage = Number(((defaultVal / finalPrice) * 100).toFixed(2));
         }
       }
 
       return [...prev, {
         id: product.id,
         name: product.name,
-        price: product.price,
+        price: finalPrice,
         qty,
         img: product.img,
         warehouseId: product.warehouseId,
@@ -837,7 +899,7 @@ export default function POSPage() {
     setActiveTab('items');
     setPendingProduct(null);
     setIsMobileCartOpen(true);
-    toast.success(`${qty}x ${product.name} added to cart!`);
+    toast.success(`${qty}x ${product.name} (Rs. ${finalPrice.toLocaleString()}) added to cart!`);
   };
 
   const updateQty = (id: string, delta: number) => {
@@ -1733,6 +1795,14 @@ export default function POSPage() {
               )
             }
             onClose={() => setSelectedCartItemForDiscount(null)}
+          />
+        )}
+        {pendingProduct && (
+          <QtyPopup
+            product={pendingProduct}
+            currentQty={cart.find((i) => i.id === pendingProduct.id)?.qty || 0}
+            onConfirm={(qty, customPrice) => addToCartWithQty(pendingProduct, qty, customPrice)}
+            onClose={() => setPendingProduct(null)}
           />
         )}
       </MainLayout>

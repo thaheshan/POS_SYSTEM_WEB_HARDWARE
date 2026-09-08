@@ -50,8 +50,6 @@ export default function CategoryAReportModal({
     }
   }, [data]);
 
-  if (!isOpen) return null;
-
   const orders = ordersList.length > 0 ? ordersList : (data.catA?.allTxns || []);
 
   const subtotal = orders.reduce(

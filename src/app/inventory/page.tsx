@@ -738,7 +738,7 @@ export default function InventoryPage() {
 
   return (
     <MainLayout>
-      <div className="max-w-[1400px] mx-auto py-8 px-6 space-y-10">
+      <div className="max-w-[1400px] mx-auto py-8 px-6 space-y-10 print:hidden">
         {/* TOP HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -794,20 +794,6 @@ export default function InventoryPage() {
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
-
-            <button
-              onClick={() => setIsQRBatchTestModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-[13px] font-black shadow-lg shadow-emerald-600/20 hover:from-emerald-700 hover:to-teal-700 transition-all active:scale-95 border border-emerald-500/30"
-            >
-              <QrCode className="w-4 h-4 text-emerald-100" /> 🖨️ Print Test (2 Labels)
-            </button>
-
-            <button
-              onClick={() => setIsZPLGeneratorOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-700 to-cyan-700 text-white rounded-xl text-[13px] font-black shadow-lg shadow-teal-700/20 hover:from-teal-800 hover:to-cyan-800 transition-all active:scale-95 border border-teal-600/30"
-            >
-              <FileDown className="w-4 h-4 text-teal-100" /> ⬇️ Download ZPL Labels
-            </button>
 
             <button
               onClick={() => exportInventoryToExcel(filteredData)}
@@ -1263,9 +1249,13 @@ export default function InventoryPage() {
       <AddProductModal
         isOpen={isAddProductModalOpen}
         onClose={() => setIsAddProductModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(createdProduct) => {
           setIsAddProductModalOpen(false);
           fetchInventory();
+          if (createdProduct) {
+            setBarcodeProduct(createdProduct);
+            setIsBarcodeModalOpen(true);
+          }
         }}
       />
 

@@ -24,9 +24,7 @@ export default function CategoryCReportModal({ isOpen, onClose, onPrintPDF, data
   const [showAddExpense, setShowAddExpense]     = useState(false);
   const [search, setSearch]                     = useState('');
 
-  if (!isOpen) return null;
-
-  const entries = data.catC?.allTxns || [];
+  const entries = data?.catC?.allTxns || [];
 
   const filtered = entries.filter((e: any) =>
     String(e.id).toLowerCase().includes(search.toLowerCase()) ||

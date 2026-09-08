@@ -67,7 +67,7 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
   }, [onClose]);
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
       <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <div>

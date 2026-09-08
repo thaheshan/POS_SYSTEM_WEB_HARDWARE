@@ -73,7 +73,7 @@ const generateNextBarcode = (products: Product[]): string => {
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newProduct?: any) => void;
 }
 
 const TAX_RATES = [
@@ -696,7 +696,7 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         });
       }
 
-      onSuccess();
+      onSuccess(newProduct);
       onClose();
     } catch (err: any) {
       console.error("Failed to create product", err);
