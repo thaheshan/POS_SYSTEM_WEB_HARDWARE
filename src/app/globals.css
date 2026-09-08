@@ -35,6 +35,26 @@
   width: 0px;
 }
 
+.show-scrollbar::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+.show-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 8px !important;
+}
+.show-scrollbar::-webkit-scrollbar-thumb {
+  background: #059669 !important;
+  border-radius: 8px !important;
+}
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #047857 !important;
+}
+.show-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: #059669 #f1f5f9 !important;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
