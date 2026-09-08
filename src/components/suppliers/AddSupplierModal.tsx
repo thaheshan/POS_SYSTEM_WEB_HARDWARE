@@ -17,7 +17,7 @@ import { toast } from "react-hot-toast";
 
 interface Props {
   isOpen: boolean;
-  onClose: (refresh?: boolean) => void;
+  onClose: (refresh?: boolean, createdSupplier?: any) => void;
   supplier?: any;
 }
 
