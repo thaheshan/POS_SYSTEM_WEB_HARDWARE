@@ -171,131 +171,332 @@ export default function ReportsPage() {
     const generatedTimeStr = format(new Date(), 'MMM d, yyyy — h:mm a');
 
     const html = `
-<!DOCTYPE html><html><head><meta charset="UTF-8">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
 <title>${shopName} — Business Analytics & Financial Report</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
   @page {
     size: A4 portrait;
-    margin: 12mm 15mm;
+    margin: 0 !important;
   }
-  body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff;padding:24px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:16px;margin-bottom:20px;}
-  .brand-logo{max-height:50px;width:auto;margin-bottom:8px;}
-  .brand{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:-0.5px;line-height:1.1;}  
-  .brand-address{font-size:11px;color:#475569;font-weight:500;margin-top:3px;}
-  .brand-contact{font-size:10px;color:#64748b;margin-top:2px;}
-  .meta{text-align:right;font-size:11px;color:#64748b;line-height:1.6;}
-  .meta strong{color:#0f172a;}
-  .report-title{font-size:14px;font-weight:900;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
-  .section-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:20px 0 8px;border-left:3px solid #1e40af;padding-left:8px;}
-  .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;}
-  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;}
-  .kpi-label{font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-  .kpi-value{font-size:16px;font-weight:900;color:#1e40af;}
-  .kpi-sub{font-size:9.5px;color:#64748b;margin-top:3px;font-weight:500;}
-  .kpi.green .kpi-value{color:#059669;}
-  .kpi.amber .kpi-value{color:#b45309;}
-  .kpi.purple .kpi-value{color:#7c3aed;}
-  table{width:100%;border-collapse:collapse;margin-top:6px;page-break-inside:auto;}
-  thead{display:table-header-group;}
-  tr{page-break-inside:avoid;page-break-after:auto;}
-  thead tr{background:#1e40af;color:#fff;}
-  thead th{padding:8px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;}
-  thead th:last-child{text-align:right;}
-  tbody tr.even{background:#f8fafc;}
-  tbody tr.odd{background:#fff;}
-  tbody td{padding:7.5px 12px;font-size:11px;border-bottom:1px solid #e2e8f0;color:#334155;}
-  tbody tr:last-child td{border-bottom:2px solid #cbd5e1;}
-  .footer{margin-top:32px;padding-top:12px;border-top:1.5px solid #cbd5e1;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#64748b;}
-  .footer-left strong{color:#0f172a;}
-  .badge{display:inline-block;background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:4px;padding:2px 8px;font-size:9.5px;font-weight:800;}
-  @media print{
-    body{padding:0;}
-    .no-print{display:none !important;}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 9.5pt;
+    color: #0f172a;
+    background: #ffffff;
+    padding: 36pt 40pt;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-</style></head><body>
+  .header {
+    border-bottom: 6px solid #1e3a8a;
+    padding-bottom: 18pt;
+    margin-bottom: 18pt;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .brand-logo { max-height: 45px; width: auto; margin-bottom: 6px; }
+  .brand-title { font-size: 34pt; font-weight: 900; color: #1e3a8a; letter-spacing: -1px; line-height: 0.9; text-transform: uppercase; }
+  .brand-sub { font-size: 13pt; font-weight: 900; color: #1d4ed8; letter-spacing: -0.5px; text-transform: uppercase; margin-bottom: 8pt; margin-top: 2pt; }
+  .brand-info { font-size: 8pt; color: #64748b; line-height: 1.5; font-weight: 600; }
+  .meta-container { text-align: right; }
+  .report-badge {
+    display: inline-block;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 3pt 10pt;
+    font-size: 7.5pt;
+    font-weight: 900;
+    color: #1d4ed8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6pt;
+  }
+  .period-heading { font-size: 7.5pt; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .period-value { font-size: 15pt; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; margin: 2pt 0; }
+  .gen-date { font-size: 7.5pt; color: #94a3b8; font-weight: 600; }
+  .ref-id { font-size: 7pt; color: #94a3b8; font-weight: 800; margin-top: 2pt; letter-spacing: 0.5px; }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 8pt;
+    border-bottom: 2px solid #1e3a8a;
+    padding-bottom: 4pt;
+    margin-bottom: 10pt;
+    margin-top: 16pt;
+  }
+  .section-dot { width: 9px; height: 9px; background: #1e3a8a; border-radius: 50%; display: inline-block; }
+  .section-title { font-size: 10.5pt; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: -0.3px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8pt; margin-bottom: 16pt; }
+  .kpi-card {
+    border-radius: 10px;
+    padding: 10pt 12pt;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 75pt;
+  }
+  .kpi-card.dark { background: #1e3a8a; color: #ffffff; }
+  .kpi-card.light { background: #f8fafc; border: 1.5px solid #e2e8f0; }
+  .kpi-card.amber { background: #fffbeb; border: 1.5px solid #fde68a; }
+  .kpi-card.purple { background: #fdf4ff; border: 1.5px solid #e9d5ff; }
+  .kpi-card.green { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+
+  .kpi-label { font-size: 7pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-card.dark .kpi-label { opacity: 0.65; }
+  .kpi-card.light .kpi-label { color: #1e3a8a; opacity: 0.65; }
+  .kpi-card.amber .kpi-label { color: #78350f; opacity: 0.65; }
+  .kpi-card.purple .kpi-label { color: #581c87; opacity: 0.65; }
+  .kpi-card.green .kpi-label { color: #14532d; opacity: 0.65; }
+
+  .kpi-value { font-size: 15pt; font-weight: 900; letter-spacing: -0.5px; line-height: 1; margin-top: 4pt; }
+  .kpi-card.dark .kpi-value { color: #ffffff; }
+  .kpi-card.light .kpi-value { color: #1e3a8a; }
+  .kpi-card.amber .kpi-value { color: #b45309; }
+  .kpi-card.purple .kpi-value { color: #7c3aed; }
+  .kpi-card.green .kpi-value { color: #059669; }
+
+  .kpi-sub { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2pt; }
+  .kpi-card.dark .kpi-sub { opacity: 0.55; }
+  .kpi-card.light .kpi-sub { color: #3b82f6; }
+  .kpi-card.amber .kpi-sub { color: #d97706; }
+  .kpi-card.purple .kpi-sub { color: #9333ea; }
+  .kpi-card.green .kpi-sub { color: #10b981; }
+
+  .tax-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; margin-bottom: 16pt; }
+  .tax-card { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12pt 14pt; }
+  .tax-title { font-size: 8pt; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4pt; }
+  .tax-amount { font-size: 18pt; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+  .tax-sub { font-size: 7.5pt; color: #64748b; font-weight: 600; margin-top: 3pt; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 12pt; }
+  thead tr { background: #f1f5f9; border-bottom: 1.5px solid #cbd5e1; }
+  th {
+    padding: 6pt 8pt;
+    font-size: 7pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    text-align: left;
+    white-space: nowrap;
+  }
+  th.right { text-align: right; }
+  th.center { text-align: center; }
+  td { padding: 5pt 8pt; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  td.right { text-align: right; }
+  td.center { text-align: center; }
+  tr.even { background: #ffffff; }
+  tr.odd { background: #f8fafc; }
+  .badge-mode { display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 1pt 5pt; font-size: 7pt; font-weight: 800; text-transform: uppercase; }
+
+  .grand-banner {
+    background: #1e3a8a;
+    border-radius: 10px;
+    padding: 10pt 16pt;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12pt;
+    margin-bottom: 20pt;
+    color: #ffffff;
+  }
+  .grand-title { font-size: 9.5pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  .grand-value { font-size: 16pt; font-weight: 900; letter-spacing: -0.5px; }
+
+  .footer-grid {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 16pt;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30pt;
+    margin-top: 20pt;
+    page-break-inside: avoid;
+  }
+  .statement-title { font-size: 7.5pt; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4pt; }
+  .statement-body { font-size: 7.5pt; color: #94a3b8; line-height: 1.6; font-style: italic; border-left: 3px solid #bfdbfe; padding-left: 8pt; }
+  .sig-container { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+  .signatures { display: flex; gap: 28pt; }
+  .sig-block { text-align: center; }
+  .sig-line { width: 110px; border-bottom: 1px solid #cbd5e1; margin-bottom: 4pt; }
+  .sig-label { font-size: 7pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #cbd5e1; }
+  .copyright { font-size: 7.5pt; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 10pt; }
+
+  @media print {
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
 <div class="header">
   <div>
     ${currentProfile?.logo_url ? `<img src="${currentProfile.logo_url}" alt="Logo" class="brand-logo" />` : ''}
-    <div class="brand">${shopName}</div>
-    <div class="brand-address">${shopAddress}</div>
-    ${contactLine ? `<div class="brand-contact">${contactLine}</div>` : ''}
+    <div class="brand-title">Futura</div>
+    <div class="brand-sub">Hardware &amp; Solutions</div>
+    <div class="brand-info">
+      <div>${shopAddress}</div>
+      <div>${contactLine || 'TIN: 12345678-0000 | VAT REG: 22334455'}</div>
+    </div>
   </div>
-  <div class="meta">
-    <div class="report-title">Business Analytics &amp; Financial Report</div>
-    <div><strong>Report Period:</strong> ${dateLabel}</div>
-    <div><strong>Generated:</strong> ${generatedTimeStr}</div>
-    <div style="margin-top:4px;"><strong>Status:</strong> <span class="badge">IRD Compliant</span></div>
+  <div class="meta-container">
+    <div class="report-badge">Business Analytics &amp; Financial Report</div>
+    <div class="period-heading">Reporting Period</div>
+    <div class="period-value">${dateLabel}</div>
+    <div class="gen-date">Generated: ${generatedTimeStr}</div>
+    <div class="ref-id">REF: FIN-${format(new Date(), 'yyyyMMdd')}-X</div>
   </div>
 </div>
 
-<div class="section-title">Performance Summary</div>
+<!-- PERFORMANCE SUMMARY CARDS -->
+<div class="section-heading">
+  <span class="section-dot"></span>
+  <span class="section-title">Financial Performance Summary</span>
+</div>
 <div class="kpi-grid">
-  <div class="kpi">
+  <div class="kpi-card dark">
     <div class="kpi-label">Total Revenue</div>
-    <div class="kpi-value">Rs. ${totalRevenue}</div>
-    <div class="kpi-sub">All categories combined</div>
+    <div>
+      <div class="kpi-value">Rs. ${totalRevenue}</div>
+      <div class="kpi-sub">All Categories</div>
+    </div>
   </div>
-  <div class="kpi green">
+  <div class="kpi-card green">
     <div class="kpi-label">Gross Profit</div>
-    <div class="kpi-value">Rs. ${grossProfit}</div>
-    <div class="kpi-sub">${margin}% gross margin</div>
+    <div>
+      <div class="kpi-value">Rs. ${grossProfit}</div>
+      <div class="kpi-sub">${margin}% Margin</div>
+    </div>
   </div>
-  <div class="kpi amber">
+  <div class="kpi-card amber">
     <div class="kpi-label">Credit Sales</div>
-    <div class="kpi-value">Rs. ${(data.creditSummary?.creditSalesTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub">${data.creditSummary?.creditTxnCount || 0} credit txns | Outstanding: Rs. ${(data.creditSummary?.totalOutstandingCredit || 0).toLocaleString('en-LK')}</div>
+    <div>
+      <div class="kpi-value">Rs. ${(data.creditSummary?.creditSalesTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+      <div class="kpi-sub">${data.creditSummary?.creditTxnCount || 0} Credit Txns</div>
+    </div>
   </div>
-  <div class="kpi">
+  <div class="kpi-card light">
     <div class="kpi-label">Transactions</div>
-    <div class="kpi-value">${txnCount}</div>
-    <div class="kpi-sub">Invoices in period</div>
+    <div>
+      <div class="kpi-value">${txnCount}</div>
+      <div class="kpi-sub">Active Invoices</div>
+    </div>
   </div>
-  <div class="kpi purple">
+  <div class="kpi-card purple">
     <div class="kpi-label">VAT Collected</div>
-    <div class="kpi-value">Rs. ${vatCollected}</div>
-    <div class="kpi-sub">Remittable to IRD</div>
+    <div>
+      <div class="kpi-value">Rs. ${vatCollected}</div>
+      <div class="kpi-sub">IRD Remittable (18%)</div>
+    </div>
   </div>
 </div>
 
-<div class="section-title">Tax Category Breakdown</div>
-<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-  <div class="kpi">
-    <div class="kpi-label">Category A — Taxable (18% VAT)</div>
-    <div class="kpi-value">Rs. ${catATotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub">Net (ex-VAT): Rs. ${catANet.toLocaleString('en-LK', { minimumFractionDigits: 2 })} &nbsp;|&nbsp; VAT: Rs. ${vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub" style="margin-top:2px;">${data.catA?.txns || 0} transactions</div>
+<!-- TAX CATEGORY BREAKDOWN -->
+<div class="section-heading">
+  <span class="section-dot"></span>
+  <span class="section-title">Tax Category Breakdown (Sri Lanka Standard)</span>
+</div>
+<div class="tax-grid">
+  <div class="tax-card">
+    <div class="tax-title">Category A — Taxable (18% VAT)</div>
+    <div class="tax-amount">Rs. ${catATotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="tax-sub">Net ex-VAT: Rs. ${catANet.toLocaleString('en-LK', { minimumFractionDigits: 2 })} &nbsp;|&nbsp; VAT: Rs. ${vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">Category B — Non-Taxable</div>
-    <div class="kpi-value">Rs. ${catBTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub" style="margin-top:2px;">${data.catB?.txns || 0} transactions</div>
+  <div class="tax-card">
+    <div class="tax-title">Category B — Non-Taxable &amp; Overflow</div>
+    <div class="tax-amount">Rs. ${catBTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="tax-sub">${data.catB?.txns || 0} overflow txns &nbsp;|&nbsp; ${data.catB?.items || 0} exempt items</div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">Category C — Labour / Services</div>
-    <div class="kpi-value">Rs. ${catCTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
-    <div class="kpi-sub" style="margin-top:2px;">${data.catC?.entries || 0} entries</div>
+  <div class="tax-card">
+    <div class="tax-title">Category C — Labour &amp; Services</div>
+    <div class="tax-amount">Rs. ${catCTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</div>
+    <div class="tax-sub">${data.catC?.entries || 0} man-hour &amp; service entries</div>
   </div>
 </div>
 
-<div class="section-title">All Transactions Ledger (${rows.length} records)</div>
+<!-- ALL TRANSACTIONS LEDGER TABLE -->
+<div class="section-heading">
+  <span class="section-dot"></span>
+  <span class="section-title">All Transactions Ledger (${rows.length} records)</span>
+</div>
 <table>
-  <thead><tr>
-    <th>Invoice #</th><th>Time</th><th>Mode</th><th>Category</th><th style="text-align:right">Amount</th>
-  </tr></thead>
-  <tbody>${rowsHtml}</tbody>
+  <colgroup>
+    <col style="width: 22%" />
+    <col style="width: 18%" />
+    <col style="width: 15%" />
+    <col style="width: 25%" />
+    <col style="width: 20%" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Invoice #</th>
+      <th>Time</th>
+      <th>Mode</th>
+      <th>Category</th>
+      <th class="right">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows.length === 0 ? `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">No transaction records found for the selected period.</td>
+      </tr>
+    ` : rows.map((r, i) => `
+      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+        <td style="font-weight: 700; font-family: monospace; color: #0f172a;">${r.id}</td>
+        <td style="color: #64748b;">${r.time ?? '—'}</td>
+        <td><span class="badge-mode">${r.mode ?? 'CASH'}</span></td>
+        <td style="font-weight: 600; color: #334155;">${r.category}</td>
+        <td class="right" style="font-weight: 900; color: #1e3a8a; font-family: monospace;">Rs. ${(r.rawAmount ?? 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('')}
+  </tbody>
 </table>
 
-<div class="footer">
-  <div class="footer-left">
-    <strong>${shopName}</strong> &bull; ${shopAddress} ${phone ? ` &bull; ${phone}` : ''}
-  </div>
+<!-- GRAND TOTAL BANNER -->
+<div class="grand-banner">
+  <div class="grand-title">Total Audited Period Revenue</div>
+  <div class="grand-value">Rs. ${totalRevenue}</div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer-grid">
   <div>
-    Generated: ${generatedTimeStr} &bull; IRD Compliant Official Financial Report
+    <div class="statement-title">Financial Accountability Statement</div>
+    <div class="statement-body">
+      This automated fiscal output is generated by the Futura Hardware Core Management Engine. Figures reflect closed accounts for the specified period. Approved for Internal Audit and IRD Tier-2 Declaration.
+    </div>
+  </div>
+  <div class="sig-container">
+    <div class="signatures">
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-label">Auditor Signature</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-label">Finance Approval</div>
+      </div>
+    </div>
+    <div class="copyright">
+      Futura Hardware Solutions &copy; ${new Date().getFullYear()}
+    </div>
   </div>
 </div>
-</body></html>`;
+
+</body>
+</html>`;
 
     const win = window.open('', '_blank');
     if (!win) return;

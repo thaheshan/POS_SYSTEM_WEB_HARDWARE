@@ -8,6 +8,8 @@ import {
   FileText,
   ChevronDown,
   FileSpreadsheet,
+  Edit2,
+  Check,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -25,30 +27,6 @@ const TIME_OPTIONS = [
   "Last 365 Days",
 ];
 
-const MOCK_ORDERS = [
-  {
-    id: "PROD-001",
-    name: "Holcim Cement 50kg",
-    unitPrice: 1650,
-    tax: 204,
-    total: 1650,
-  },
-  {
-    id: "PROD-002",
-    name: "Steel Rod 12mm",
-    unitPrice: 3200,
-    tax: 396,
-    total: 3200,
-  },
-  {
-    id: "PROD-003",
-    name: 'PVC Pipe 1"×10ft',
-    unitPrice: 480,
-    tax: 59,
-    total: 480,
-  },
-];
-
 export default function CategoryAReportModal({
   isOpen,
   onClose,
@@ -60,13 +38,40 @@ export default function CategoryAReportModal({
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
-  if (!isOpen) return null;
+  const [ordersList, setOrdersList] = useState<any[]>([]);
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState<string>("");
 
-  const orders = data.catA?.allTxns || [];
+  useEffect(() => {
+    if (data?.catA?.allTxns) {
+      setOrdersList(data.catA.allTxns);
+    } else {
+      setOrdersList([]);
+    }
+  }, [data]);
 
-  const subtotal = data.catA?.core || 0;
-  const vat = data.catA?.vat || 0;
+  const orders = ordersList.length > 0 ? ordersList : (data.catA?.allTxns || []);
+
+  const subtotal = orders.reduce(
+    (sum: number, o: any) => sum + (Number(o.rawAmount) || 0),
+    0
+  );
+  const vat = Math.round(subtotal * 0.18);
   const total = subtotal + vat;
+
+  const handleStartEditRow = (id: string, currentAmount: number) => {
+    setEditingRowId(id);
+    setEditingPrice(String(currentAmount || 0));
+  };
+
+  const handleSaveRowPrice = (id: string) => {
+    const newAmt = parseFloat(editingPrice);
+    if (isNaN(newAmt) || newAmt < 0) return;
+    setOrdersList((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, rawAmount: newAmt } : o))
+    );
+    setEditingRowId(null);
+  };
 
   const handleCSV = () => {
     const rows = [
@@ -317,7 +322,54 @@ export default function CategoryAReportModal({
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right text-[13px] font-bold text-gray-700 font-mono">
-                        Rs. {rawAmt.toLocaleString()}
+                        {editingRowId === o.id ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <span className="text-xs text-gray-400">Rs.</span>
+                            <input
+                              type="number"
+                              value={editingPrice}
+                              onChange={(e) => setEditingPrice(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveRowPrice(o.id);
+                                if (e.key === "Escape") setEditingRowId(null);
+                              }}
+                              autoFocus
+                              className="w-24 px-2 py-1 border-2 border-blue-500 rounded-lg text-right font-bold text-[12px] outline-none bg-white shadow-sm"
+                            />
+                            <button
+                              onClick={() => handleSaveRowPrice(o.id)}
+                              className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition active:scale-95"
+                              title="Save Price"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingRowId(null)}
+                              className="p-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 transition"
+                              title="Cancel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            className="flex items-center justify-end gap-1.5 group/price cursor-pointer"
+                            onClick={() => handleStartEditRow(o.id, rawAmt)}
+                            title="Click to edit price / amount"
+                          >
+                            <span>Rs. {rawAmt.toLocaleString()}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEditRow(o.id, rawAmt);
+                              }}
+                              className="opacity-0 group-hover/price:opacity-100 p-1 rounded hover:bg-blue-50 text-blue-600 transition"
+                              title="Edit Price"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span
@@ -327,7 +379,14 @@ export default function CategoryAReportModal({
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <span className="text-gray-300">—</span>
+                        <button
+                          onClick={() => handleStartEditRow(o.id, rawAmt)}
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all font-bold text-[11px] flex items-center gap-1 ml-auto"
+                          title="Change Price / Amount"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>Edit Price</span>
+                        </button>
                       </td>
                     </tr>
                   );

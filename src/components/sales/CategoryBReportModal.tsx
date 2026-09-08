@@ -55,13 +55,9 @@ export default function CategoryBReportModal({
   const router = useRouter();
   const [timeFilter, setTimeFilter] = useState("Last 24 Hours");
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [filter, setFilter] = useState<"all" | "nontax">("all");
   const [search, setSearch] = useState("");
-
-  if (!isOpen) return null;
-
-  const invoices = data.catB?.allTxns || [];
+  const invoices = data?.catB?.allTxns || [];
 
   const filtered = invoices.filter((inv: any) => {
     const matchFilter = filter === "all" || inv.type !== "Overflow";

@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
+import SettleCreditModal from '@/components/customers/SettleCreditModal';
 import { triggerBatchCreditReminders } from '@/utils/textlkSmsService';
 import { toastInfo, toastSuccess } from '@/lib/toast';
 
@@ -246,7 +247,7 @@ function ViewCustomerModal({ customer, onClose, onEdit }: { customer: Customer; 
 }
 
 // ─── Dots Menu ────────────────────────────────────────────────────────────────
-function CustomerMenu({ cust, onView, onEdit, onDelete }: { cust: Customer; onView: () => void; onEdit: () => void; onDelete: () => void }) {
+function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit }: { cust: Customer; onView: () => void; onEdit: () => void; onDelete: () => void; onSettleCredit?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -268,6 +269,14 @@ function CustomerMenu({ cust, onView, onEdit, onDelete }: { cust: Customer; onVi
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-20 w-44">
+          {onSettleCredit && cust.outstanding > 0 && (
+            <button
+              onClick={() => { onSettleCredit(); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-[12px] font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-2.5 transition-colors"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-600" /> Settle Credit
+            </button>
+          )}
           <button
             onClick={() => { onView(); setOpen(false); }}
             className="w-full text-left px-3 py-2 text-[12px] font-semibold text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2.5 transition-colors"
@@ -307,6 +316,8 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSettleCreditModal, setShowSettleCreditModal] = useState(false);
+  const [settleCreditCustomer, setSettleCreditCustomer] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
@@ -564,11 +575,20 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* ── ADD BUTTON ── */}
-        <div className="flex justify-end mb-6">
+        {/* ── ACTION BUTTONS ROW ── */}
+        <div className="flex justify-end items-center gap-3 mb-6">
+          <button
+            onClick={() => {
+              setSettleCreditCustomer(null);
+              setShowSettleCreditModal(true);
+            }}
+            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-[12px] text-[13px] font-black transition-all shadow-md shadow-emerald-700/20 active:scale-95"
+          >
+            <CreditCard className="w-4 h-4" /> Settle Credit
+          </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-6 py-2.5 rounded-[12px] text-[13px] font-black transition-colors shadow-sm shadow-blue-200"
+            className="flex items-center gap-2 bg-[#1e40af] hover:bg-blue-800 text-white px-5 py-2.5 rounded-[12px] text-[13px] font-black transition-all shadow-sm shadow-blue-200 active:scale-95"
           >
             <Plus className="w-4 h-4" /> Add Customer
           </button>
@@ -606,6 +626,7 @@ export default function CustomersPage() {
                       onView={() => setViewingCustomer(cust)}
                       onEdit={() => setEditingCustomer(cust)}
                       onDelete={() => setCustomerToDelete(cust)}
+                      onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
                     />
                   </div>
 
@@ -703,6 +724,7 @@ export default function CustomersPage() {
                           onView={() => setViewingCustomer(cust)}
                           onEdit={() => setEditingCustomer(cust)}
                           onDelete={() => setCustomerToDelete(cust)}
+                          onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
                         />
                       </div>
                     </td>
@@ -743,8 +765,15 @@ export default function CustomersPage() {
             </div>
           </div>
         )}
-
       </div>
+
+      <SettleCreditModal
+        isOpen={showSettleCreditModal}
+        onClose={() => setShowSettleCreditModal(false)}
+        onSuccess={() => fetchCustomers()}
+        initialCustomer={settleCreditCustomer}
+        allCustomers={customers}
+      />
     </MainLayout>
   );
 }
