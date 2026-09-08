@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import api from "@/api/axiosInstance";
 import { toast } from "sonner";
+import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
 
 export const ALL_MEASUREMENT_UNITS = [
   {
@@ -107,6 +108,24 @@ export default function EditInventoryModal({
   const [brands, setBrands] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+
+  const fetchSuppliers = async (autoSelectId?: string) => {
+    try {
+      const res = await api.get("/suppliers");
+      const supArr = res.data?.data || res.data?.suppliers || res.data || [];
+      const mapped = Array.isArray(supArr) ? supArr : [];
+      setSuppliers(mapped);
+      if (autoSelectId) {
+        const found = mapped.find((s: any) => String(s.id) === String(autoSelectId));
+        if (found) {
+          setSupplierId(String(found.id));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch suppliers", err);
+    }
+  };
 
   // Inline Category / Subcategory / Brand creation states
   const [newCatName, setNewCatName] = useState("");
@@ -1104,7 +1123,16 @@ export default function EditInventoryModal({
 
               {/* Supplier */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700">Supplier</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSupplierOpen(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                  >
+                    <span className="text-base leading-none">+</span> Supplier
+                  </button>
+                </div>
                 <div className="relative">
                   <select
                     value={supplierId}
@@ -1282,6 +1310,18 @@ export default function EditInventoryModal({
           </button>
         </div>
       </div>
+
+      {isAddSupplierOpen && (
+        <AddSupplierModal
+          isOpen={isAddSupplierOpen}
+          onClose={async (refresh, createdSupplier) => {
+            setIsAddSupplierOpen(false);
+            if (refresh) {
+              await fetchSuppliers(createdSupplier?.id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
