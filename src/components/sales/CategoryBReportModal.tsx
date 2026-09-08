@@ -55,6 +55,7 @@ export default function CategoryBReportModal({
   const router = useRouter();
   const [timeFilter, setTimeFilter] = useState("Last 24 Hours");
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [filter, setFilter] = useState<"all" | "nontax">("all");
   const [search, setSearch] = useState("");
   const invoices = data?.catB?.allTxns || [];
