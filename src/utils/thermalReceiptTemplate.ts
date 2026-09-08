@@ -121,9 +121,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
         margin: 0;
       }
       body {
-        width: 78mm;
+        width: 72mm;
         margin: 0 auto;
-        padding: 4mm 2mm;
+        padding: 2mm 0;
       }
     }
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -133,9 +133,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
       line-height: 1.3;
       color: #000;
       background: #fff;
-      width: 78mm;
+      width: 72mm;
       margin: 0 auto;
-      padding: 10px 4px;
+      padding: 6px 0;
     }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
