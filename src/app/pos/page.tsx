@@ -271,9 +271,45 @@ function QtyPopup({
   const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const popupBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.select(), 50);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handlePopupScrollKeys = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isTextInput = activeEl && (
+        activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA"
+      );
+
+      // If user is editing a text input, only intercept PageUp/PageDown (allow left/right/up/down inside input)
+      if (isTextInput && e.key !== "PageUp" && e.key !== "PageDown") return;
+
+      if (popupBodyRef.current) {
+        if (e.key === "ArrowDown" || e.key === "Down") {
+          e.preventDefault();
+          popupBodyRef.current.scrollBy({ top: 120, behavior: "smooth" });
+        } else if (e.key === "ArrowUp" || e.key === "Up") {
+          e.preventDefault();
+          popupBodyRef.current.scrollBy({ top: -120, behavior: "smooth" });
+        } else if (e.key === "PageDown") {
+          e.preventDefault();
+          popupBodyRef.current.scrollBy({ top: 300, behavior: "smooth" });
+        } else if (e.key === "PageUp") {
+          e.preventDefault();
+          popupBodyRef.current.scrollBy({ top: -300, behavior: "smooth" });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handlePopupScrollKeys);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handlePopupScrollKeys);
+    };
   }, []);
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -310,7 +346,12 @@ function QtyPopup({
         onClose={() => setShowError(false)} 
         message={`Cannot add ${parsedQty}. Only ${product.stock} ${activeUnit} available in stock.`} 
       />
-      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={onClose}>
+      <div 
+        className="fixed inset-0 z-[999] flex items-center justify-center p-4 overscroll-contain" 
+        onClick={onClose}
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         <div
           className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
@@ -358,7 +399,11 @@ function QtyPopup({
             </div>
           </div>
 
-          <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
+          <div 
+            ref={popupBodyRef}
+            className="p-5 space-y-3.5 overflow-y-auto flex-1 overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+          >
 
             {/* Editable sections only visible if isEditing is true */}
             {isEditing && (
@@ -1164,7 +1209,8 @@ export default function POSPage() {
         }
       }
 
-      // Up & Down Arrow Key Scrolling for POS Product Grid
+      // Up & Down Arrow Key Scrolling for POS Product Grid (disabled when modal is open)
+      const isAnyModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isLabourModalOpen);
       const isTextareaOrSelect =
         activeEl &&
         (activeEl.tagName === "TEXTAREA" ||
@@ -1172,7 +1218,7 @@ export default function POSPage() {
           activeEl.getAttribute("role") === "listbox" ||
           activeEl.getAttribute("role") === "combobox");
 
-      if (!isTextareaOrSelect && posProductGridRef.current) {
+      if (!isTextareaOrSelect && !isAnyModalOpen && posProductGridRef.current) {
         const key = e.key;
         const step = e.repeat ? 280 : 180;
         if (key === "ArrowDown" || key === "Down") {
