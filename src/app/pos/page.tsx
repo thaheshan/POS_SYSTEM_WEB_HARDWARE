@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import {
   Minus, Plus, X, ChevronDown, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
-  Smartphone, ShoppingCart, Users, Zap, Scan, Tag,
+  Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -249,15 +249,18 @@ function extractProductSellTypeAndUnit(item: any, originalProduct: any) {
 function QtyPopup({
   product,
   currentQty,
+  initialEditMode = false,
   onConfirm,
   onClose,
 }: {
   product: Product;
   currentQty: number;
+  initialEditMode?: boolean;
   onConfirm: (qty: number, customPrice?: number, customName?: string, customUnit?: string) => void;
   onClose: () => void;
 }) {
   const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
+  const [isEditing, setIsEditing] = useState(initialEditMode);
   const [productName, setProductName] = useState<string>(product.name);
   const [measurementUnit, setMeasurementUnit] = useState<string>(shortUnit);
   const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
@@ -313,7 +316,7 @@ function QtyPopup({
           className="relative bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-4 p-4 bg-gray-50 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-4 p-4 bg-gray-50 border-b border-gray-100 shrink-0 relative">
             <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border border-gray-200 shadow-sm bg-white">
               {product.img ? (
                 <img src={product.img} alt={productName} className="w-full h-full object-cover" />
@@ -323,101 +326,152 @@ function QtyPopup({
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0 pr-6">
+            <div className="flex-1 min-w-0 pr-16">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-0.5">{product.category}</p>
               <h3 className="text-[14px] font-black text-gray-900 leading-snug line-clamp-1">{productName}</h3>
               <p className="text-[11px] font-bold text-gray-500 mt-0.5">
-                Default: Rs. {product.price.toLocaleString()} / <span className="text-emerald-700 font-extrabold">{shortUnit}</span>
+                Price: Rs. {(parsedUnitPrice || 0).toLocaleString()} / <span className="text-emerald-700 font-extrabold">{activeUnit}</span>
               </p>
               <p className="text-[10px] font-bold text-amber-600">Stock: {product.stock} {shortUnit}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-500 p-1.5 rounded-full transition-colors shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsEditing(!isEditing)}
+                title={isEditing ? "Close Edit Mode" : "Edit Name, Unit & Price"}
+                className={`p-1.5 rounded-full transition-all text-xs font-bold flex items-center gap-1 ${
+                  isEditing
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'bg-gray-200 hover:bg-emerald-100 text-gray-600 hover:text-emerald-700'
+                }`}
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-500 p-1.5 rounded-full transition-colors shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
 
-            {/* Editable Product Name */}
-            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                  Product Name (Editable)
-                </p>
-                {productName.trim() !== product.name && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
-                      Inventory Updated
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setProductName(product.name)}
-                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                )}
-              </div>
-              <input
-                type="text"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                onKeyDown={handleKey}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
-                placeholder="Product name..."
-              />
-            </div>
+            {/* Editable sections only visible if isEditing is true */}
+            {isEditing && (
+              <div className="space-y-3 p-3 bg-amber-50/50 border border-amber-200/70 rounded-2xl animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-1 border-b border-amber-200/50">
+                  <span className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                    <Pencil className="w-3 h-3 text-amber-600" /> Edit Product Details
+                  </span>
+                  <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
+                    Saves to Inventory
+                  </span>
+                </div>
 
-            {/* Editable Unit / Count Type */}
-            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                  Unit / Count Type (Editable)
-                </p>
-                {activeUnit.toLowerCase() !== shortUnit.toLowerCase() && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
-                      Custom Unit
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setMeasurementUnit(shortUnit)}
-                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
-                    >
-                      Reset
-                    </button>
+                {/* Editable Product Name */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Product Name
+                    </p>
+                    {productName.trim() !== product.name && (
+                      <button
+                        type="button"
+                        onClick={() => setProductName(product.name)}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
-                )}
+                  <input
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    onKeyDown={handleKey}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    placeholder="Product name..."
+                  />
+                </div>
+
+                {/* Editable Unit / Count Type */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Unit / Count Type
+                    </p>
+                    {activeUnit.toLowerCase() !== shortUnit.toLowerCase() && (
+                      <button
+                        type="button"
+                        onClick={() => setMeasurementUnit(shortUnit)}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={measurementUnit}
+                    onChange={(e) => setMeasurementUnit(e.target.value)}
+                    onKeyDown={handleKey}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    placeholder="e.g. pcs, litre, mm, inch, m, kg, box..."
+                  />
+                  <div className="flex gap-1 overflow-x-auto no-scrollbar pt-0.5">
+                    {['pcs', 'litre', 'mm', 'inch', 'm', 'kg', 'ft', 'yd', 'box', 'pk', 'g', 'set'].map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setMeasurementUnit(u)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors shrink-0 ${
+                          activeUnit.toLowerCase() === u.toLowerCase()
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Editable Unit Selling Price */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Unit Selling Price (Rs.)
+                    </p>
+                    {Number(parsedUnitPrice) !== product.price && (
+                      <button
+                        type="button"
+                        onClick={() => setUnitPrice(product.price)}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm font-black text-gray-400">Rs.</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value)}
+                      onKeyDown={handleKey}
+                      className="w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-right font-black text-[15px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                value={measurementUnit}
-                onChange={(e) => setMeasurementUnit(e.target.value)}
-                onKeyDown={handleKey}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-bold text-[13px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all"
-                placeholder="e.g. pcs, litre, mm, inch, m, kg, box..."
-              />
-              <div className="flex gap-1 overflow-x-auto no-scrollbar pt-0.5">
-                {['pcs', 'litre', 'mm', 'inch', 'm', 'kg', 'ft', 'yd', 'box', 'pk', 'g', 'set'].map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    onClick={() => setMeasurementUnit(u)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors shrink-0 ${
-                      activeUnit.toLowerCase() === u.toLowerCase()
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200'
-                    }`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Quantity Input Section */}
             <div>
@@ -481,42 +535,6 @@ function QtyPopup({
                     +{val} {activeUnit}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Editable Unit Price Section */}
-            <div className="bg-gray-50/80 border border-gray-200/70 p-3 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                  Unit Selling Price (Rs.)
-                </p>
-                {Number(parsedUnitPrice) !== product.price && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
-                      Custom Price
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setUnitPrice(product.price)}
-                      className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="relative flex items-center">
-                <span className="absolute left-3 text-sm font-black text-gray-400">Rs.</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(e.target.value)}
-                  onKeyDown={handleKey}
-                  className="w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-right font-black text-[16px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
-                  placeholder="0.00"
-                />
               </div>
             </div>
 
@@ -799,6 +817,7 @@ export default function POSPage() {
 
   // Qty Popup state
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [pendingProductEditMode, setPendingProductEditMode] = useState<boolean>(false);
   const [selectedCartItemForDiscount, setSelectedCartItemForDiscount] = useState<CartItem | null>(null);
   const [isLabourModalOpen, setIsLabourModalOpen] = useState(false);
 
@@ -1308,10 +1327,14 @@ export default function POSPage() {
         <QtyPopup
           product={pendingProduct}
           currentQty={cart.find(c => c.id === pendingProduct.id)?.qty ?? 0}
+          initialEditMode={pendingProductEditMode}
           onConfirm={(qty, customPrice, customName, customUnit) =>
             addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit)
           }
-          onClose={() => setPendingProduct(null)}
+          onClose={() => {
+            setPendingProduct(null);
+            setPendingProductEditMode(false);
+          }}
         />
       )}
 
@@ -1590,7 +1613,10 @@ export default function POSPage() {
                       return (
                         <div
                           key={`${product.id}-${product.warehouseId || 'no-wh'}`}
-                          onClick={() => setPendingProduct(product)}
+                          onClick={() => {
+                            setPendingProduct(product);
+                            setPendingProductEditMode(false);
+                          }}
                           className={`product-card bg-white rounded-[16px] border shadow-sm overflow-hidden hover:shadow-md transition-all group flex flex-col h-full cursor-pointer min-w-0 ${
                             isHighlighted
                               ? 'border-blue-500 ring-4 ring-blue-500/25 shadow-lg scale-[1.01]'
@@ -1608,7 +1634,21 @@ export default function POSPage() {
                                 <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No Image</span>
                               </div>
                             )}
-                            <div className="absolute top-2.5 right-2.5 z-10">
+                            {/* Top Right: Edit Pencil Button */}
+                            <button
+                              type="button"
+                              title="Edit product name, unit & price"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPendingProduct(product);
+                                setPendingProductEditMode(true);
+                              }}
+                              className="absolute top-2.5 right-2.5 z-20 bg-white/90 hover:bg-amber-500 text-gray-600 hover:text-white p-1.5 rounded-lg shadow-md border border-gray-200/80 backdrop-blur-sm transition-all active:scale-90"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {/* Top Right (shifted left): Status Badge */}
+                            <div className="absolute top-2.5 right-10 z-10">
                               <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border ${
                                 product.status === 'In Stock' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-amber-500 text-white border-amber-400'
                               }`}>{product.status}</span>
