@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isWithinInterval } from 'date-fns';
 
+import { cn } from '@/lib/utils';
+
 interface SalesDatePickerProps {
   dateRange: DateRange | undefined;
   onSelect: (range: DateRange | undefined) => void;
@@ -70,6 +72,41 @@ export default function SalesDatePicker({ dateRange, onSelect }: SalesDatePicker
 
   return (
     <div className="w-full select-none">
+      {/* ── QUICK PRESETS ── */}
+      <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-gray-100 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => onSelect(undefined)}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
+            !dateRange?.from
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs font-black"
+              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600"
+          )}
+        >
+          All Dates (Anytime)
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelect({ from: new Date(), to: new Date() })}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
+            dateRange?.from && dateRange.to && isSameDay(dateRange.from, new Date()) && isSameDay(dateRange.to, new Date())
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs font-black"
+              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600"
+          )}
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelect({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}
+          className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all border shrink-0 bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600"
+        >
+          This Month
+        </button>
+      </div>
+
       {/* ── NAVIGATION HEADER ── */}
       <div className="flex items-center justify-between mb-5">
         <button

@@ -80,7 +80,6 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   // Footer
   lines.push(line);
   lines.push(center(`Thank you for shopping!`));
-  lines.push(center("Returns within 7 days with receipt."));
   lines.push(center("futurahardware.com"));
   lines.push("\n\n\n"); // Feed for paper cut
 
@@ -253,7 +252,6 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <!-- Footer -->
   <div class="text-center footer">
     <div>Thank you for shopping at ${storeNameText}!</div>
-    <div>Returns accepted within 7 days with receipt.</div>
     <div>futurahardware.com</div>
   </div>
 
@@ -272,14 +270,17 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     iframe.style.cssText =
       'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;opacity:0;pointer-events:none;';
 
+    let hasPrinted = false;
+
     const cleanup = () => {
       setTimeout(() => {
         try { document.body.removeChild(iframe); } catch {}
       }, 4000);
     };
 
-    // Set onload BEFORE appending so it never fires early
-    iframe.onload = () => {
+    const doPrint = () => {
+      if (hasPrinted) return;
+      hasPrinted = true;
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
@@ -289,6 +290,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
         cleanup();
       }
     };
+
+    // Set onload BEFORE appending so it never fires early
+    iframe.onload = doPrint;
 
     // Use blob URL as src — this reliably fires onload
     const blob = new Blob([html], { type: 'text/html' });
@@ -301,15 +305,211 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
 
     // Safety fallback: if onload doesn't fire within 2s, print anyway
     setTimeout(() => {
-      try {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        }
-      } catch {}
-      cleanup();
+      if (!hasPrinted) {
+        doPrint();
+      }
     }, 2000);
   };
 
   triggerPrint();
+}
+
+/**
+ * 3. Dedicated Return / Exchange Thermal Receipt Template Generator
+ * Triggers thermal print window directly with return items, refund totals, reason & restock status.
+ */
+export interface ReturnReceiptPayload {
+  storeName?: string;
+  storeAddress?: string;
+  storePhone?: string;
+  returnNo: string;
+  originalInvoiceNo: string;
+  date: string;
+  cashier: string;
+  customerName?: string;
+  reason: string;
+  isRestocked: boolean;
+  refundAmount: number;
+  items: {
+    name: string;
+    sku?: string;
+    qty: number;
+    price: number;
+    lineTotal: number;
+  }[];
+}
+
+export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
+  const storeNameText = data.storeName || "Futura Hardware";
+  const reasonText = (data.reason || "RETURN").replace(/_/g, " ").toUpperCase();
+
+  const itemRows = data.items
+    .map(
+      (item) => `
+    <tr>
+      <td colspan="3" class="item-name">${item.name}</td>
+    </tr>
+    <tr class="item-calc">
+      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
+    </tr>`
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Return-${data.returnNo}</title>
+  <style>
+    @media print {
+      @page {
+        size: auto;
+        margin: 0mm !important;
+      }
+      html, body {
+        width: 100% !important;
+        max-width: 58mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+      }
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #000;
+      background: #fff;
+      width: 100%;
+      max-width: 58mm;
+      margin: 0 auto;
+      padding: 4px 2px;
+      word-break: break-word;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .bold { font-weight: 800; }
+    .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; text-transform: uppercase; }
+    .subtitle { font-size: 10px; font-weight: 900; margin-bottom: 2px; color: #000; border: 1px border #000; padding: 2px 4px; display: inline-block; margin-top: 3px; }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    .double-divider { border-top: 2px double #000; margin: 5px 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    td { vertical-align: top; padding: 1px 0; }
+    .item-name { font-weight: 800; font-size: 11px; padding-top: 3px; word-break: break-word; }
+    .item-calc { font-size: 10.5px; border-bottom: 1px dotted #bbb; padding-bottom: 3px; }
+    .qty { width: 55%; font-weight: 700; }
+    .wh { width: 15%; font-size: 8px; color: #444; text-align: center; }
+    .line-total { width: 30%; text-align: right; font-weight: 900; }
+    .grand-total-box {
+      font-size: 13.5px;
+      font-weight: 900;
+      padding: 3px 0;
+    }
+    .footer { font-size: 9.5px; font-weight: 700; margin-top: 8px; line-height: 1.3; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="text-center">
+    <div class="title">${storeNameText}</div>
+    <div class="subtitle">*** RETURN / REFUND VOUCHER ***</div>
+    ${data.storeAddress ? `<div style="font-size:9.5px; font-weight:600;">${data.storeAddress}</div>` : ""}
+    ${data.storePhone ? `<div style="font-size:9.5px; font-weight:700;">Tel: ${data.storePhone}</div>` : ""}
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Meta Info -->
+  <table style="width:100%; font-size:10px; font-weight:700;">
+    <tr>
+      <td style="width:52%;">Return #: ${data.returnNo}</td>
+      <td style="width:48%; text-align:right;">${data.date}</td>
+    </tr>
+    <tr>
+      <td style="width:52%;">Orig Inv #: ${data.originalInvoiceNo}</td>
+      <td style="width:48%; text-align:right;">Cashier: ${data.cashier}</td>
+    </tr>
+    ${data.customerName ? `<tr><td colspan="2">Cust: ${data.customerName}</td></tr>` : ""}
+    <tr>
+      <td colspan="2" style="padding-top:2px;">Reason: <strong>${reasonText}</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="font-size:9.5px; font-weight:800;">
+        Stock Status: ${data.isRestocked ? "[RESTOCKED TO INVENTORY]" : "[DEFECTIVE - NOT RESTOCKED]"}
+      </td>
+    </tr>
+  </table>
+
+  <div class="divider"></div>
+
+  <!-- Returned Items Table -->
+  <div style="font-size:10px; font-weight:900; margin-bottom:2px;">RETURNED ITEMS:</div>
+  <table>
+    <tbody>
+      ${itemRows}
+    </tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <!-- Refund Summary -->
+  <div class="double-divider"></div>
+  <table style="width:100%;" class="grand-total-box">
+    <tr>
+      <td style="font-size:13.5px; font-weight:900;">TOTAL REFUND:</td>
+      <td style="font-size:13.5px; font-weight:900; text-align:right;">Rs. ${data.refundAmount.toLocaleString()}</td>
+    </tr>
+  </table>
+  <div class="double-divider"></div>
+
+  <!-- Footer -->
+  <div class="text-center footer">
+    <div>*** OFFICIAL RETURN VOUCHER ***</div>
+    <div>Thank you for your cooperation</div>
+    <div>futurahardware.com</div>
+  </div>
+</body>
+</html>`;
+
+  // Hidden Iframe Print
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;opacity:0;pointer-events:none;";
+
+  let hasPrinted = false;
+
+  const cleanup = () => {
+    setTimeout(() => {
+      try { document.body.removeChild(iframe); } catch {}
+    }, 4000);
+  };
+
+  const doPrint = () => {
+    if (hasPrinted) return;
+    hasPrinted = true;
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn("[Return Thermal Print] iframe.print() failed:", e);
+    } finally {
+      cleanup();
+    }
+  };
+
+  iframe.onload = doPrint;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  setTimeout(() => {
+    if (!hasPrinted) {
+      doPrint();
+    }
+  }, 2000);
 }

@@ -14,11 +14,13 @@ import {
   DollarSign, 
   RefreshCw,
   Tag,
-  Store
+  Store,
+  Printer
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { printReturnThermalHTMLReceipt } from '@/utils/thermalReceiptTemplate';
 
 interface ProductStockItem {
   id: string;
@@ -207,6 +209,32 @@ export default function ReturnProductPage() {
 
       setReturnSuccess(record);
       toastSuccess(`Supplier return processed! ${qtyNum} ${record.measurementUnit} returned to supplier & removed from inventory stock.`);
+
+      // ── Auto-print thermal return voucher ─────────────────────────────────
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      const dateStr = `${new Date().toLocaleDateString('en-GB')} ${hh}:${mi}`;
+      const isDefective = finalReason.toLowerCase().includes('defect') || finalReason.toLowerCase().includes('damage');
+
+      printReturnThermalHTMLReceipt({
+        storeName: 'Futura Hardware',
+        returnNo: returnRef,
+        originalInvoiceNo: `Stock Return (${selectedProduct.sku})`,
+        date: dateStr,
+        cashier: 'Staff',
+        reason: finalReason,
+        isRestocked: !isDefective,
+        refundAmount: record.refundTotal,
+        items: [{
+          name: selectedProduct.name,
+          sku: selectedProduct.sku,
+          qty: qtyNum,
+          price: selectedProduct.unitPrice,
+          lineTotal: record.refundTotal,
+        }],
+      });
+      // ─────────────────────────────────────────────────────────────────────
+
     } catch (err: any) {
       console.error('[ReturnProduct Error]', err);
       toastError(err, 'Failed to process product return. Please try again.');
@@ -292,19 +320,47 @@ export default function ReturnProductPage() {
               </div>
             </div>
 
-            <div className="flex gap-4 pt-2">
+            <div className="flex flex-col gap-3 pt-2">
               <button
-                onClick={resetForm}
-                className="flex-1 py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-sm transition-all shadow-md active:scale-95"
+                onClick={() => {
+                  const isDefective = (returnSuccess.reason || '').toLowerCase().includes('defect') || (returnSuccess.reason || '').toLowerCase().includes('damage');
+                  printReturnThermalHTMLReceipt({
+                    storeName: 'Futura Hardware',
+                    returnNo: returnSuccess.returnRef,
+                    originalInvoiceNo: `Stock Return (${returnSuccess.sku})`,
+                    date: returnSuccess.date,
+                    cashier: 'Staff',
+                    reason: returnSuccess.reason,
+                    isRestocked: !isDefective,
+                    refundAmount: returnSuccess.refundTotal,
+                    items: [{
+                      name: returnSuccess.productName,
+                      sku: returnSuccess.sku,
+                      qty: returnSuccess.returnQty,
+                      price: returnSuccess.unitPrice,
+                      lineTotal: returnSuccess.refundTotal,
+                    }],
+                  });
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-black text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
               >
-                Process Another Return
+                <Printer className="w-4 h-4" />
+                Re-print Return Receipt
               </button>
-              <Link
-                href="/pos"
-                className="flex-1 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm text-center transition-all shadow-md active:scale-95"
-              >
-                Go to POS Screen
-              </Link>
+              <div className="flex gap-4">
+                <button
+                  onClick={resetForm}
+                  className="flex-1 py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-sm transition-all shadow-md active:scale-95"
+                >
+                  Process Another Return
+                </button>
+                <Link
+                  href="/pos"
+                  className="flex-1 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm text-center transition-all shadow-md active:scale-95"
+                >
+                  Go to POS Screen
+                </Link>
+              </div>
             </div>
           </div>
         ) : (

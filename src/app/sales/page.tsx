@@ -45,10 +45,7 @@ const buildCategoryHref = (
 export default function SalesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role?.toLowerCase() === 'owner';
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: new Date(),
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [reportModal, setReportModal] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');

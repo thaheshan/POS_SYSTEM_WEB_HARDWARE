@@ -41,10 +41,7 @@ export default function ReportsPage() {
   // Enable all reports cards navigation as requested by the user
   const enableAllReports = true;
 
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-     from: new Date(),
-     to: new Date()
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [reportModal, setReportModal]     = useState<null | 'A' | 'B' | 'C'>(null);
   const [printCategory, setPrintCategory] = useState<null | 'A' | 'B' | 'C'>(null);
   const [printTimeFilter, setPrintTimeFilter] = useState('Last 24 Hours');

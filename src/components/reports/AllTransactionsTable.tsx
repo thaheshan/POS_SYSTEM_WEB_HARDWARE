@@ -17,7 +17,9 @@ import {
   RefreshCw,
   Receipt,
   Edit2,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import api from '@/api/axiosInstance';
 
@@ -81,6 +83,14 @@ export default function AllTransactionsTable({ dateRange }: Props) {
 
   const [txnToDelete, setTxnToDelete] = useState<SaleRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyInvoiceId = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const rows = useMemo(() => buildRows(data).filter(r => !removed.has(r.id)), [data, removed]);
 
@@ -130,7 +140,7 @@ export default function AllTransactionsTable({ dateRange }: Props) {
           <div>
             <h2 className="text-[18px] font-black text-gray-900 tracking-tight">All Transactions Ledger</h2>
             <p className="text-[13px] text-gray-500 font-medium">
-              {loading ? 'Loading…' : `${filtered.length} transaction${filtered.length !== 1 ? 's' : ''} in selected period`}
+              {loading ? 'Loading…' : `${filtered.length} transaction${filtered.length !== 1 ? 's' : ''} ${dateRange?.from ? 'in selected period' : '(All Invoices)'}`}
             </p>
           </div>
         </div>
@@ -193,7 +203,21 @@ export default function AllTransactionsTable({ dateRange }: Props) {
                   >
                     {/* Transaction ID */}
                     <td className="px-6 py-4">
-                      <span className="text-[13px] font-black text-blue-600 font-mono">{inv.id}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-black text-blue-600 font-mono">{inv.id}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyInvoiceId(e, inv.id)}
+                          className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-75 hover:opacity-100 shrink-0"
+                          title="Copy Invoice Number"
+                        >
+                          {copiedId === inv.id ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Customer Name */}
