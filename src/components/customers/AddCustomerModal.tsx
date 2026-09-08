@@ -6,7 +6,7 @@ import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
 
 export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (customer?: any) => void }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', customerType: 'Individual' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', customerType: 'Individual', outstandingBalance: '0' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,13 +18,18 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
       return;
     }
     setLoading(true);
+    const initialCredit = parseFloat(form.outstandingBalance) || 0;
     try {
       const response = await api.post('/customers', { 
         name: form.name, 
         phone: form.phone, 
         email: form.email || undefined, 
         address: form.address || undefined, 
-        customerType: form.customerType 
+        customerType: form.customerType,
+        outstandingBalance: initialCredit,
+        creditBalance: initialCredit,
+        outstanding_balance: initialCredit,
+        outstanding: initialCredit,
       });
       // Handle nested data objects
       let createdCustomer = response.data;
@@ -112,6 +117,24 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
                 <option value="Individual">Individual</option>
                 <option value="Business">Business</option>
               </select>
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <label className="text-[12px] font-black text-gray-700 flex items-center justify-between">
+                <span>Initial Outstanding Credit Balance (LKR)</span>
+                <span className="text-[10px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Opening Credit</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-3 text-[13px] font-black text-gray-400">Rs.</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.outstandingBalance}
+                  onChange={e => setForm(f => ({ ...f, outstandingBalance: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-[12px] text-[13px] font-black text-gray-900 outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
             </div>
           </div>
         </div>
