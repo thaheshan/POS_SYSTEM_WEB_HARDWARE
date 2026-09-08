@@ -100,8 +100,6 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
     }
   }, [categorySelect]);
 
-  if (!isOpen) return null;
-
   const handleSave = async () => {
     if (!name || !phone) {
       toast.error("Please fill in the required fields (Name, Phone)");

@@ -1,7 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/api/axiosInstance";
 import { toast } from "react-hot-toast";
 import {
@@ -32,6 +32,10 @@ import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
 export default function SuppliersPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -44,6 +48,59 @@ export default function SuppliersPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  // Reset to page 1 on filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, pageSize]);
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter((s) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        !term ||
+        s.name?.toLowerCase().includes(term) ||
+        s.email?.toLowerCase().includes(term) ||
+        s.phone?.toLowerCase().includes(term) ||
+        s.supplierCode?.toLowerCase().includes(term) ||
+        s.location?.toLowerCase().includes(term);
+
+      const matchesStatus =
+        statusFilter === "All" ||
+        statusFilter === "Status" ||
+        (statusFilter === "Active" && (s.status === "Active" || s.isActive === true)) ||
+        (statusFilter === "Inactive" && (s.status === "Inactive" || s.isActive === false));
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [suppliers, searchTerm, statusFilter]);
+
+  const totalFilteredCount = filteredSuppliers.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = totalFilteredCount === 0 ? 0 : (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalFilteredCount);
+
+  const paginatedSuppliers = useMemo(() => {
+    return filteredSuppliers.slice(startIndex, endIndex);
+  }, [filteredSuppliers, startIndex, endIndex]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (validCurrentPage <= 3) {
+        pages.push(1, 2, 3, "...", totalPages);
+      } else if (validCurrentPage >= totalPages - 2) {
+        pages.push(1, "...", totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", validCurrentPage, "...", totalPages);
+      }
+    }
+    return pages;
+  };
 
 
   const fetchSuppliers = async () => {
@@ -412,10 +469,14 @@ export default function SuppliersPage() {
             <div className="flex items-center justify-between gap-2">
               {/* Left icon group */}
               <div className="flex items-center gap-2 overflow-x-auto">
-                <select className="border border-gray-200 rounded-[12px] px-3 py-2 text-[13px] font-bold text-gray-600 outline-none hover:bg-gray-50 bg-white shrink-0">
-                  <option>Status</option>
-                  <option>Active</option>
-                  <option>Inactive</option>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border border-gray-200 rounded-[12px] px-3 py-2 text-[13px] font-bold text-gray-600 outline-none hover:bg-gray-50 bg-white shrink-0 cursor-pointer"
+                >
+                  <option value="All">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
                 <button className="w-9 h-9 shrink-0 border border-gray-200 rounded-[12px] flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors">
                   <FileText className="w-4 h-4" />
@@ -446,15 +507,9 @@ export default function SuppliersPage() {
           <div className="md:hidden divide-y divide-gray-100">
             {isLoading ? (
               <div className="py-12 text-center text-[13px] font-bold text-gray-400">Loading suppliers...</div>
-            ) : suppliers.filter((s) =>
-              s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-            ).length === 0 ? (
+            ) : paginatedSuppliers.length === 0 ? (
               <div className="py-12 text-center text-[13px] font-bold text-gray-400">No suppliers found.</div>
-            ) : suppliers.filter((s) =>
-              s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-            ).map((sup) => (
+            ) : paginatedSuppliers.map((sup) => (
               <div key={sup.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50/60 transition-colors">
                 {/* Header row: avatar + name + status */}
                 <div className="flex items-center gap-3">
@@ -543,14 +598,11 @@ export default function SuppliersPage() {
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-gray-500 font-bold">Loading suppliers...</td>
                   </tr>
-                ) : suppliers.length === 0 ? (
+                ) : paginatedSuppliers.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-gray-500 font-bold">No suppliers found.</td>
                   </tr>
-                ) : suppliers.filter((s) =>
-                  s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-                ).map((sup) => (
+                ) : paginatedSuppliers.map((sup) => (
                   <tr key={sup.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="py-4 px-6">
                       <input type="checkbox" className="rounded border-gray-300" />
@@ -604,30 +656,64 @@ export default function SuppliersPage() {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Real-time Dynamic Pagination */}
           <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[12px] font-bold text-gray-400">
-            <span className="text-center sm:text-left">
-              Showing {suppliers.length > 0 ? 1 : 0} to {suppliers.length} of {stats.totalSuppliers || suppliers.length} suppliers
+            <span className="text-center sm:text-left text-gray-600 font-semibold">
+              Showing {totalFilteredCount > 0 ? startIndex + 1 : 0} to {endIndex} of {totalFilteredCount} suppliers
             </span>
             <div className="flex flex-row flex-wrap items-center justify-center gap-3">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
-                <select className="border border-gray-200 rounded-md px-2 py-1 outline-none bg-white font-bold text-gray-700">
-                  <option>10</option>
-                  <option>25</option>
-                  <option>50</option>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="border border-gray-200 rounded-md px-2 py-1 outline-none bg-white font-bold text-gray-700 cursor-pointer hover:border-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
               <div className="flex items-center gap-1">
-                <button className="p-1 hover:text-gray-900">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={validCurrentPage <= 1}
+                  className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Previous Page"
+                >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button className="w-7 h-7 flex items-center justify-center bg-[#059669] text-white rounded-md">1</button>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">2</button>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">3</button>
-                <span className="px-1 text-gray-400">...</span>
-                <button className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-700 rounded-md">25</button>
-                <button className="p-1 hover:text-gray-900">
+
+                {getPageNumbers().map((p, idx) =>
+                  typeof p === "number" ? (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-7 h-7 flex items-center justify-center rounded-md font-extrabold text-[12px] transition-colors ${
+                        validCurrentPage === p
+                          ? "bg-[#059669] text-white shadow-sm"
+                          : "hover:bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={idx} className="px-1 text-gray-400 font-bold select-none">
+                      ...
+                    </span>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={validCurrentPage >= totalPages}
+                  className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Next Page"
+                >
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
