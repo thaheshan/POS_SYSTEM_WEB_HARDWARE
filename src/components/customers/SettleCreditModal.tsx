@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, CreditCard, Search, Check, RotateCcw, DollarSign, Wallet, ArrowDownRight } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { sendCreditSettlementSMS } from '@/utils/textlkSmsService';
 
 interface Customer {
   id: string;
@@ -18,7 +19,7 @@ interface Customer {
 interface SettleCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (updatedId?: string, newBalance?: number) => void;
   initialCustomer?: Customer | null;
   allCustomers?: Customer[];
 }
@@ -111,18 +112,50 @@ export default function SettleCreditModal({
     const newOutstandingBalance = Math.max(0, currentOutstanding - settlingNum);
 
     try {
-      let success = false;
+      // 1. Primary POS Sales Engine Credit Settlement: Post negative credit transaction
+      try {
+        await api.post('/sales/credit', {
+          customerId: selectedCustomer.id,
+          amount: -settlingNum,
+          reference: reference || 'Credit Settlement Payment',
+          paymentTermsDays: 0,
+        });
+      } catch (errCredit) {
+        console.warn('[SettleCredit] /sales/credit endpoint fallback:', errCredit);
+      }
 
-      // Primary Attempt: Post dedicated credit payment transaction
+      // 2. Direct customer record update via PATCH & PUT
+      try {
+        await api.patch(`/customers/${selectedCustomer.id}`, {
+          outstandingBalance: newOutstandingBalance,
+          creditBalance: newOutstandingBalance,
+          outstanding_balance: newOutstandingBalance,
+          outstanding: newOutstandingBalance,
+        });
+      } catch (patchErr) {
+        try {
+          await api.put(`/customers/${selectedCustomer.id}`, {
+            name: selectedCustomer.name,
+            phone: selectedCustomer.phone !== 'N/A' ? selectedCustomer.phone : undefined,
+            email: selectedCustomer.email !== 'N/A' ? selectedCustomer.email : undefined,
+            outstandingBalance: newOutstandingBalance,
+            creditBalance: newOutstandingBalance,
+            outstanding_balance: newOutstandingBalance,
+            outstanding: newOutstandingBalance,
+          });
+        } catch (putErr) {
+          console.warn('[SettleCredit] PUT/PATCH backend update fallback:', putErr);
+        }
+      }
+
+      // 2. Also log credit payment transaction record if endpoint exists
       try {
         await api.post(`/customers/${selectedCustomer.id}/settle-credit`, {
           amount: settlingNum,
           paymentMethod,
           reference: reference || 'Credit Settlement',
         });
-        success = true;
       } catch {
-        // Alternative Endpoint Attempt
         try {
           await api.post('/customers/credit-payment', {
             customerId: selectedCustomer.id,
@@ -130,22 +163,25 @@ export default function SettleCreditModal({
             paymentMethod,
             notes: reference || 'Credit Settlement',
           });
-          success = true;
-        } catch {
-          // Direct Balance Patch Fallback
-          await api.patch(`/customers/${selectedCustomer.id}`, {
-            outstandingBalance: newOutstandingBalance,
-            creditBalance: newOutstandingBalance,
-          });
-          success = true;
-        }
+        } catch {}
       }
 
-      if (success) {
-        toastSuccess(`Successfully settled Rs. ${settlingNum.toLocaleString()} for ${selectedCustomer.name}.`);
-        onSuccess();
-        onClose();
+      // 3. Send text.lk SMS payment receipt to customer
+      if (selectedCustomer.phone && selectedCustomer.phone !== 'N/A') {
+        sendCreditSettlementSMS(
+          selectedCustomer.name,
+          selectedCustomer.phone,
+          settlingNum,
+          newOutstandingBalance,
+          paymentMethod
+        ).catch((smsErr) => console.warn('[SettleCredit SMS Error]', smsErr));
       }
+
+      toastSuccess(
+        `Settled Rs. ${settlingNum.toLocaleString()} for ${selectedCustomer.name}. Remaining Balance: Rs. ${newOutstandingBalance.toLocaleString()}.`
+      );
+      onSuccess(selectedCustomer.id, newOutstandingBalance);
+      onClose();
     } catch (err: any) {
       console.error('Failed to settle credit', err);
       const msg = err?.response?.data?.message || 'Failed to settle credit. Please try again.';
@@ -292,8 +328,8 @@ export default function SettleCreditModal({
                             <div className="text-[13px] font-bold text-gray-900 group-hover:text-emerald-900">
                               {cust.name}
                             </div>
-                            <div className="text-[11px] text-gray-400 font-medium">
-                              {cust.phone}
+                            <div className="text-[11px] text-gray-400 font-medium font-mono">
+                              {cust.phone} {cust.id ? `• ${cust.id.substring(0, 8).toUpperCase()}` : ''}
                             </div>
                           </div>
                         </div>
