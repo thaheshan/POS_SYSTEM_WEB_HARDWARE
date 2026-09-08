@@ -493,7 +493,7 @@ export default function CustomersPage() {
         <EditCustomerModal
           customer={editingCustomer}
           onClose={() => setEditingCustomer(null)}
-          onSuccess={(updatedId, newBalance) => {
+          onSuccess={(updatedId?: string, newBalance?: number) => {
             if (updatedId && newBalance !== undefined) {
               setCustomers((prev) =>
                 prev.map((c) =>
@@ -858,7 +858,7 @@ export default function CustomersPage() {
       <SettleCreditModal
         isOpen={showSettleCreditModal}
         onClose={() => setShowSettleCreditModal(false)}
-        onSuccess={(updatedId, newBalance) => {
+        onSuccess={(updatedId?: string, newBalance?: number) => {
           if (updatedId && newBalance !== undefined) {
             setCustomers((prev) =>
               prev.map((c) =>
