@@ -444,7 +444,7 @@ export default function CustomersPage() {
       return;
     }
     toastInfo(`Sending credit reminder SMS to ${cust.name}...`);
-    const res = await sendSingleCreditReminderSMS(cust.name, cust.phone, cust.outstanding);
+    const res = await sendSingleCreditReminderSMS(cust.name, cust.phone, cust.outstanding, cust.id);
     if (res.success) {
       toastSuccess(`Credit reminder SMS sent to ${cust.name} (${cust.phone}) via TEXT.LK!`);
     } else {
@@ -655,8 +655,11 @@ export default function CustomersPage() {
         <div className="flex flex-wrap justify-end items-center gap-3 mb-6">
           <button
             onClick={async () => {
-              toastInfo("Dispatching TEXT.LK credit reminders...");
-              const res = await triggerBatchCreditReminders(customers);
+              toastInfo("Dispatching TEXT.LK credit reminders with purchase history...");
+              const creditList = customers
+                .filter(c => c.outstanding > 0 && c.phone && c.phone !== 'N/A')
+                .map(c => ({ id: c.id, name: c.name, phone: c.phone, outstanding: c.outstanding }));
+              const res = await triggerBatchCreditReminders(creditList);
               toastSuccess(res.message);
             }}
             className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-[12px] text-[13px] font-black transition-all shadow-md shadow-amber-600/20 active:scale-95"

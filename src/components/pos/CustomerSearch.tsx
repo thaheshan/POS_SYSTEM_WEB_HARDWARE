@@ -47,12 +47,16 @@ export default function CustomerSearch({ selectedCustomer, onSelectCustomer, onA
       else if (Array.isArray(res.data?.data)) data = res.data.data;
       else if (Array.isArray(res.data?.data?.data)) data = res.data.data.data;
 
-      setCustomers(data.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || 'N/A',
-        customerType: c.customerType || 'Individual'
-      })));
+      setCustomers(data.map((c: any) => {
+        const outVal = Number(c.outstandingBalance ?? c.creditBalance ?? c.outstanding_balance ?? c.outstanding ?? 0);
+        return {
+          id: c.id,
+          name: c.name,
+          phone: c.phone || 'N/A',
+          customerType: c.customerType || 'Individual',
+          outstandingBalance: isNaN(outVal) ? 0 : outVal,
+        };
+      }));
     } catch (err) {
       console.error('Failed to fetch customers for search:', err);
     } finally {
