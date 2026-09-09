@@ -277,7 +277,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
       setData({
         catA: {
           core: catACore,
-          vat: Math.round(catACore - (catACore / 1.18)),
+          vat: 0, // 3924FC6C (Trinco Hardware & Electricals): No VAT calculations, 100% of sales goes directly to revenue
           avg: catATxns ? Math.round(catACore / catATxns) : 0,
           items: catAItemCount,
           txns: catATxns,

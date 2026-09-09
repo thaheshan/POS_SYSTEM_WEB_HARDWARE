@@ -294,7 +294,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
           const rawCost = backendMatch.cost ?? 0;
           const rawBackendRev = backendMatch.revenue ?? 0;
           const totalInvoice = rawBackendRev + rawCost;
-          revenueTotal = Math.round(totalInvoice / 1.18);
+          revenueTotal = Math.round(totalInvoice);
           costTotal = rawCost;
         }
       }
@@ -305,7 +305,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
           const { realized } = extractTxRealizedRevenue(tx);
           if (realized > 0) {
             salesCount += 1;
-            revenueTotal += Math.round(realized / 1.18);
+            revenueTotal += Math.round(realized);
           }
         }
       });
@@ -344,7 +344,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
           const { realized } = extractTxRealizedRevenue(tx);
           if (realized > 0) {
             salesCount += 1;
-            revenueTotal += Math.round(realized / 1.18);
+            revenueTotal += Math.round(realized);
           }
         }
       });
@@ -353,7 +353,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
         const backendMatch = backendItems.find(b => b.name && b.name.toLowerCase() === dayName.toLowerCase());
         if (backendMatch) {
           salesCount = backendMatch.sales ?? 0;
-          revenueTotal = Math.round(((backendMatch.revenue ?? 0) + (backendMatch.cost ?? 0)) / 1.18);
+          revenueTotal = Math.round((backendMatch.revenue ?? 0) + (backendMatch.cost ?? 0));
         }
       }
 
@@ -391,7 +391,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
           const { realized } = extractTxRealizedRevenue(tx);
           if (realized > 0) {
             salesCount += 1;
-            revenueTotal += Math.round(realized / 1.18);
+            revenueTotal += Math.round(realized);
           }
         }
       });
@@ -425,7 +425,7 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
         const { realized } = extractTxRealizedRevenue(tx);
         if (realized > 0) {
           salesCount += 1;
-          revenueTotal += Math.round(realized / 1.18);
+          revenueTotal += Math.round(realized);
         }
       }
     });

@@ -653,11 +653,12 @@ export default function ReportsPage() {
              trendText={`Cat A: ${data.catA?.txns || 0}  •  Cat B: ${data.catB?.txns || 0}`}
           />
           <ReportStatCard 
-             title="VAT Collected"
-             value={loading ? '...' : `Rs. ${(data.catA.vat || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
-             icon={<div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center"><FileText className="w-5 h-5 text-[#9333ea]" /></div>}
+             title="Tax Status"
+             value="Non-VAT Account"
+             icon={<div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-emerald-600" /></div>}
              variant="white"
-             badge="IRD Compliant"
+             badge="100% Direct Revenue"
+             trendText="No VAT/Tax Deductions Applied"
           />
         </div>
 

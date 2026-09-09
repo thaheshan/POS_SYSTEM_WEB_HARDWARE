@@ -26,6 +26,7 @@ interface LowStockProductsTableProps {
   onReorder: (product: LowStockProduct) => void;
   onClearSelection: () => void;
   selectedVisibleCount: number;
+  onEditProduct?: (product: LowStockProduct) => void;
 }
 
 const severityStyles: Record<StockSeverity, string> = {
@@ -78,6 +79,7 @@ export default function LowStockProductsTable({
   onReorder,
   onClearSelection,
   selectedVisibleCount,
+  onEditProduct,
 }: LowStockProductsTableProps) {
   return (
     <div className="stock-fade-up stock-delay-3 relative flex-1 overflow-hidden bg-white">
@@ -113,10 +115,11 @@ export default function LowStockProductsTable({
             return (
               <div
                 key={product.id}
+                onClick={() => onEditProduct?.(product)}
                 className={cn(
-                  "rounded-xl border p-3 shadow-sm",
-                  severity === "Critical" && "border-red-100 bg-red-50/70",
-                  severity !== "Critical" && "border-amber-100 bg-amber-50/70",
+                  "rounded-xl border p-3 shadow-sm cursor-pointer transition hover:shadow-md",
+                  severity === "Critical" && "border-red-100 bg-red-50/70 hover:bg-red-100/80",
+                  severity !== "Critical" && "border-amber-100 bg-amber-50/70 hover:bg-amber-100/80",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -124,6 +127,7 @@ export default function LowStockProductsTable({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(event) =>
                         onToggleSelected(product.id, event.target.checked)
                       }
@@ -201,9 +205,13 @@ export default function LowStockProductsTable({
                     <Building2 className="w-3 h-3 text-slate-400" /> Supplier:
                   </span>
                   <span className="font-bold text-slate-800 flex items-center gap-1">
-                    {product.supplierName || "Futura Hardware Shop"}
+                    {product.supplierName || "—"}
                     {product.supplierPhone && (
-                      <a href={`tel:${product.supplierPhone}`} className="text-emerald-600 font-semibold hover:underline">
+                      <a 
+                        href={`tel:${product.supplierPhone}`} 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="text-emerald-600 font-semibold hover:underline"
+                      >
                         ({product.supplierPhone})
                       </a>
                     )}
@@ -221,7 +229,10 @@ export default function LowStockProductsTable({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onReorder(product)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReorder(product);
+                    }}
                     className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[12px] font-bold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
                   >
                     <ShoppingCart className="h-3.5 w-3.5" />
@@ -285,8 +296,9 @@ export default function LowStockProductsTable({
                   return (
                     <tr
                       key={product.id}
+                      onClick={() => onEditProduct?.(product)}
                       className={cn(
-                        "border-b border-slate-100 transition hover:bg-slate-50/80",
+                        "border-b border-slate-100 transition hover:bg-blue-50/70 cursor-pointer",
                         severity === "Critical" && "bg-rose-50/50",
                         severity === "Very Low" && "bg-amber-50/50",
                         severity === "Low" && "bg-amber-50/30",
@@ -296,6 +308,7 @@ export default function LowStockProductsTable({
                         <input
                           type="checkbox"
                           checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={(event) =>
                             onToggleSelected(product.id, event.target.checked)
                           }
@@ -309,7 +322,7 @@ export default function LowStockProductsTable({
                             <ProductGlyph category={product.category} />
                           </div>
                           <div className="space-y-0.5 min-w-0">
-                            <p className="text-[13px] font-bold tracking-tight text-slate-900 truncate">
+                            <p className="text-[13px] font-bold tracking-tight text-slate-900 truncate hover:text-blue-600">
                               {product.name}
                             </p>
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -374,18 +387,20 @@ export default function LowStockProductsTable({
                         <div className="space-y-0.5 min-w-0">
                           <p className="text-[12px] font-bold text-slate-900 flex items-center gap-1.5 truncate">
                             <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{product.supplierName || "Futura Hardware Shop"}</span>
+                            <span className="truncate">{product.supplierName || "—"}</span>
                           </p>
-                          <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
-                            <Phone className="h-3 w-3 text-emerald-600 shrink-0" />
-                            {product.supplierPhone ? (
-                              <a href={`tel:${product.supplierPhone}`} className="hover:text-emerald-700 hover:underline">
+                          {product.supplierPhone && (
+                            <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                              <Phone className="h-3 w-3 text-emerald-600 shrink-0" />
+                              <a 
+                                href={`tel:${product.supplierPhone}`} 
+                                onClick={(e) => e.stopPropagation()} 
+                                className="hover:text-emerald-700 hover:underline"
+                              >
                                 {product.supplierPhone}
                               </a>
-                            ) : (
-                              "0756645486"
-                            )}
-                          </p>
+                            </p>
+                          )}
                         </div>
                       </td>
 
@@ -403,7 +418,10 @@ export default function LowStockProductsTable({
                       <td className="px-4 py-2.5 align-middle text-right">
                         <button
                           type="button"
-                          onClick={() => onReorder(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReorder(product);
+                          }}
                           className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-95"
                         >
                           <ShoppingCart className="h-3.5 w-3.5" />
