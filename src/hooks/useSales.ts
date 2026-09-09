@@ -67,8 +67,8 @@ export function useSalesData(dateRange: DateRange | undefined) {
       const allCatATxns: any[] = [];
       const allCatBTxns: any[] = [];
       
-      let runningTotal = 0;
-      let currentDay = '';
+      let creditSettlementsTotal = 0;
+      let creditSettlementCount = 0;
 
       for (const inv of sorted) {
         const invDay = new Date(inv.createdAt).toISOString().split('T')[0];
@@ -77,23 +77,71 @@ export function useSalesData(dateRange: DateRange | undefined) {
           runningTotal = 0; // Reset daily threshold running total
         }
 
+        const invNum: string = inv.invoiceNumber || inv.id || '';
+
+        // ── Credit settlements (CRD- prefix): customer pays shop ────────────
+        // These are CASH INFLOWS, not sales. Do NOT count in catA/catB revenue.
+        const isCreditSettlement =
+          invNum.startsWith('CRD-') ||
+          (inv.saleType || '').toUpperCase() === 'CREDIT_SETTLEMENT' ||
+          (inv.type || '').toUpperCase() === 'CREDIT_SETTLEMENT' ||
+          (inv.transactionType || '').toUpperCase() === 'CREDIT_SETTLEMENT';
+
+        if (isCreditSettlement) {
+          const settleAmt = Math.abs(Number(inv.totalAmount || inv.amount || 0));
+          creditSettlementsTotal += settleAmt;
+          creditSettlementCount += 1;
+          // Add to cash totals (money received by shop)
+          cashSalesTotal += settleAmt;
+          cashTxnCount += 1;
+          continue; // Skip catA/catB revenue accumulation
+        }
+
         const amt = Number(inv.totalAmount || 0);
+
+        // Skip negative-amount non-settlement entries (e.g. returns recorded without RET- prefix)
+        if (amt < 0) continue;
+
+        const st = (inv.status || inv.paymentStatus || inv.payment_status || '').toString().toUpperCase();
+        const isUnpaid = st === 'UNPAID' || st === 'PENDING';
+
         const isCredit =
+          isUnpaid ||
+          st === 'PARTIAL' ||
           (inv.saleType || '').toString().toUpperCase() === 'CREDIT' ||
           (inv.paymentMethod || '').toString().toUpperCase() === 'CREDIT' ||
-          (inv.paymentStatus || '').toString().toUpperCase() === 'PARTIAL' ||
-          (inv.paymentStatus || '').toString().toUpperCase() === 'UNPAID' ||
           Number(inv.balance || 0) > 0 ||
           Number(inv.creditAmount || 0) > 0 ||
           inv.isCredit === true;
 
+        // Calculate upfront cash paid for credit sales
+        let paidUpfront = amt;
         if (isCredit) {
-          creditSalesTotal += amt;
+          if (inv.paidAmount !== undefined && inv.paidAmount !== null) {
+            paidUpfront = Math.max(0, Number(inv.paidAmount));
+          } else if (inv.amountPaid !== undefined && inv.amountPaid !== null) {
+            paidUpfront = Math.max(0, Number(inv.amountPaid));
+          } else if (inv.paid !== undefined && inv.paid !== null) {
+            paidUpfront = Math.max(0, Number(inv.paid));
+          } else if (isUnpaid) {
+            paidUpfront = 0;
+          } else {
+            const uncollected = Number(inv.balance ?? inv.creditAmount ?? 0);
+            paidUpfront = Math.max(0, amt - uncollected);
+          }
+        }
+
+        const uncollectedCredit = Math.max(0, amt - paidUpfront);
+
+        if (isCredit) {
+          creditSalesTotal += uncollectedCredit;
           creditTxnCount += 1;
+          cashSalesTotal += paidUpfront;
         } else {
           cashSalesTotal += amt;
           cashTxnCount += 1;
         }
+
         const rawId = inv.id || inv._id || '';
         const time = new Date(inv.createdAt).toLocaleTimeString([], {
           hour: '2-digit',
@@ -104,35 +152,38 @@ export function useSalesData(dateRange: DateRange | undefined) {
           : 'Cash';
 
         // Determine special type label for Returns/Exchanges
-        const isReturn = inv.invoiceNumber?.startsWith('RET-');
-        const isExchange = inv.invoiceNumber?.startsWith('EXC-');
+        const isReturn = invNum.startsWith('RET-');
+        const isExchange = invNum.startsWith('EXC-');
         const typeLabel = isReturn ? 'Return' : (isExchange ? 'Exchange' : null);
 
         const customerName = inv.customer?.name || inv.customerName || 'Walk-in Customer';
         const date = new Date(inv.createdAt).toISOString().split('T')[0];
         const status = inv.status ? (inv.status.charAt(0).toUpperCase() + inv.status.slice(1).toLowerCase()) : (isReturn ? 'Refunded' : 'Completed');
 
+        // Realized cash revenue from this transaction today
+        const revenueAmt = paidUpfront;
+
         const prevRunning = runningTotal;
-        runningTotal += amt;
+        runningTotal += revenueAmt;
 
         if (prevRunning >= threshold) {
           // Entire invoice is overflow / Cat B
-          catBOverflow += amt;
+          catBOverflow += revenueAmt;
           catBTxns += 1;
           catBItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow', status };
+          const txnObj = { id: invNum, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow', status };
           allCatBTxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
-        } else if (prevRunning + amt <= threshold) {
+        } else if (prevRunning + revenueAmt <= threshold) {
           // Entire invoice fits within Cat A threshold
-          catACore += amt;
+          catACore += revenueAmt;
           catATxns += 1;
           catAItemCount += inv.items?.length || 1;
-          const txnObj = { id: inv.invoiceNumber, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
+          const txnObj = { id: invNum, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
           allCatATxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else {
           // Invoice straddles the threshold — split it
-          const catAPortion = threshold - prevRunning;
-          const catBPortion = amt - catAPortion;
+          const catAPortion = Math.max(0, threshold - prevRunning);
+          const catBPortion = Math.max(0, revenueAmt - catAPortion);
           catACore += catAPortion;
           catBOverflow += catBPortion;
           catATxns += 1;
@@ -140,10 +191,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catAItemCount += inv.items?.length || 1;
           catBItemCount += inv.items?.length || 1;
 
-          const txnObjA = { id: inv.invoiceNumber, rawId, date, time, customerName, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
+          const txnObjA = { id: invNum, rawId, date, time, customerName, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
           allCatATxns.push({ ...txnObjA, rawAmount: catAPortion, timestamp: new Date(inv.createdAt).getTime() });
 
-          const txnObjB = { id: inv.invoiceNumber, rawId, date, time, customerName, amount: catBPortion.toLocaleString(), mode, type: typeLabel || 'Overflow', status };
+          const txnObjB = { id: invNum, rawId, date, time, customerName, amount: catBPortion.toLocaleString(), mode, type: typeLabel || 'Overflow', status };
           allCatBTxns.push({ ...txnObjB, rawAmount: catBPortion, timestamp: new Date(inv.createdAt).getTime() });
         }
       }
@@ -274,10 +325,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
           totalOutstandingCredit,
         },
         summary: {
-          totalSales: summaryRaw?.totalSales || runningTotal,
+          totalSales: runningTotal,
           totalPurchases: summaryRaw?.totalPurchases || 0,
-          totalExpenses: summaryRaw?.totalExpenses || catCTotal,
-          netProfit: summaryRaw?.netProfit || (runningTotal - catCTotal),
+          totalExpenses: catCTotal,
+          netProfit: runningTotal - catCTotal,
         },
       });
     } catch (error: any) {
