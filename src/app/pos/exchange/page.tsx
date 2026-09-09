@@ -5,6 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { ArrowLeft, ArrowLeftRight, Search, AlertCircle, CheckCircle2, Package, Plus } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/api/axiosInstance';
+import { printExchangeThermalHTMLReceipt, ExchangeReceiptPayload } from '@/utils/thermalReceiptTemplate';
 
 interface InvoiceItem {
   id: string; // invoiceItemId
@@ -155,6 +156,8 @@ export default function ExchangePage() {
   const newAmt = newItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const delta = newAmt - returnAmt;
 
+  const [lastExchangePrintData, setLastExchangePrintData] = useState<ExchangeReceiptPayload | null>(null);
+
   const handleProcess = async () => {
     if (!invoiceFound) return;
     setIsProcessing(true); setError('');
@@ -185,6 +188,52 @@ export default function ExchangePage() {
       });
       setDeltaVal(delta);
       setSuccess(true);
+
+      // ── Auto-print 80mm/58mm thermal exchange receipt ─────────────────────
+      const now = new Date();
+      const seq = String(Math.floor(Math.random() * 9000) + 1000);
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      const exchangeNo = `EXC-${yy}${mm}${dd}-${seq}`;
+      const dateStr = `${dd}/${mm}/20${yy} ${hh}:${mi}`;
+
+      const activeReturnItems = returnedItems
+        .filter(i => i.returnQuantity > 0)
+        .map(i => ({
+          name: i.name,
+          sku: i.sku,
+          qty: i.returnQuantity,
+          price: i.price,
+          lineTotal: i.price * i.returnQuantity,
+        }));
+
+      const activeNewItems = newItems.map(i => ({
+        name: i.name,
+        sku: i.sku,
+        qty: i.quantity,
+        price: i.price,
+        lineTotal: i.price * i.quantity,
+      }));
+
+      const printPayload: ExchangeReceiptPayload = {
+        storeName: 'Futura Hardware',
+        exchangeNo,
+        originalInvoiceNo: invoiceNumber,
+        date: dateStr,
+        cashier: 'Cashier',
+        returnedItems: activeReturnItems,
+        newItems: activeNewItems,
+        returnedTotal: returnAmt,
+        newTotal: newAmt,
+        deltaAmount: delta,
+      };
+
+      setLastExchangePrintData(printPayload);
+      printExchangeThermalHTMLReceipt(printPayload);
+      // ──────────────────────────────────────────────────────────────────────
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to process exchange. Check backend.';
       setError(msg);
@@ -201,8 +250,19 @@ export default function ExchangePage() {
             <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 className="w-10 h-10" /></div>
             <h2 className="text-2xl font-bold mb-2">Exchange Processed</h2>
             <p className="text-slate-500 mb-8">{deltaVal > 0 ? `Customer paid additional Rs. ${deltaVal.toLocaleString()}` : `Refunded Rs. ${Math.abs(deltaVal).toLocaleString()} to customer`}</p>
-            <button onClick={() => window.print()} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-3">Print Receipt</button>
-            <button onClick={() => { setSuccess(false); setInvoiceFound(false); setInvoiceNumber(''); setReturnedItems([]); setNewItems([]); }} className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">New Exchange</button>
+            <button
+              onClick={() => {
+                if (lastExchangePrintData) {
+                  printExchangeThermalHTMLReceipt(lastExchangePrintData);
+                } else {
+                  window.print();
+                }
+              }}
+              className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-3 hover:bg-slate-800 transition-colors"
+            >
+              Print Receipt
+            </button>
+            <button onClick={() => { setSuccess(false); setInvoiceFound(false); setInvoiceNumber(''); setReturnedItems([]); setNewItems([]); setLastExchangePrintData(null); }} className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">New Exchange</button>
           </div>
         </div>
       </MainLayout>

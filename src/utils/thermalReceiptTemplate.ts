@@ -513,3 +513,229 @@ export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
     }
   }, 2000);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── EXCHANGE RECEIPT THERMAL HTML PRINT ──────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ExchangeReceiptPayload {
+  storeName?: string;
+  storeAddress?: string;
+  storePhone?: string;
+  exchangeNo: string;
+  originalInvoiceNo: string;
+  date: string;
+  cashier: string;
+  customerName?: string;
+  returnedItems: {
+    name: string;
+    sku?: string;
+    qty: number;
+    price: number;
+    lineTotal: number;
+  }[];
+  newItems: {
+    name: string;
+    sku?: string;
+    qty: number;
+    price: number;
+    lineTotal: number;
+  }[];
+  returnedTotal: number;
+  newTotal: number;
+  deltaAmount: number;
+}
+
+export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
+  const storeNameText = data.storeName || "Futura Hardware";
+
+  const returnedRows = data.returnedItems
+    .map(
+      (item) => `
+    <tr>
+      <td colspan="3" class="item-name">${item.name}</td>
+    </tr>
+    <tr class="item-calc">
+      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
+    </tr>`
+    )
+    .join("");
+
+  const newRows = data.newItems
+    .map(
+      (item) => `
+    <tr>
+      <td colspan="3" class="item-name">${item.name}</td>
+    </tr>
+    <tr class="item-calc">
+      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
+    </tr>`
+    )
+    .join("");
+
+  const isAdditionalPaid = data.deltaAmount > 0;
+  const isRefunded = data.deltaAmount < 0;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Exchange-${data.exchangeNo}</title>
+  <style>
+    @media print {
+      @page {
+        size: auto;
+        margin: 0mm !important;
+      }
+      html, body {
+        width: 100% !important;
+        max-width: 58mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+      }
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      width: 58mm;
+      max-width: 58mm;
+      margin: 0 auto;
+      padding: 3mm 1mm;
+      color: #000;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .bold { font-weight: bold; }
+    .shop-title { font-size: 15px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; }
+    .receipt-title { font-size: 12px; font-weight: 800; text-transform: uppercase; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 4px 0; margin: 6px 0; }
+    .meta-table { width: 100%; margin-bottom: 6px; font-size: 10px; border-collapse: collapse; }
+    .meta-table td { padding: 1px 0; vertical-align: top; }
+    .meta-label { color: #333; width: 45%; }
+    .meta-val { font-weight: bold; text-align: right; }
+    .section-header { font-size: 10.5px; font-weight: 800; text-transform: uppercase; margin-top: 8px; margin-bottom: 4px; padding: 2px 0; border-bottom: 1px solid #000; }
+    .items-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    .items-table td { padding: 1px 0; vertical-align: top; }
+    .item-name { font-weight: 700; font-size: 11px; }
+    .item-calc { font-size: 10px; font-family: monospace; }
+    .item-calc .qty { width: 50%; }
+    .item-calc .wh { width: 20%; color: #555; }
+    .item-calc .line-total { width: 30%; text-align: right; font-weight: bold; }
+    .summary-table { width: 100%; border-top: 1px dashed #000; margin-top: 6px; padding-top: 4px; font-size: 11px; }
+    .summary-table td { padding: 2px 0; }
+    .grand-total { font-size: 13px; font-weight: 900; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; }
+    .footer { margin-top: 10px; border-top: 1px dashed #000; padding-top: 6px; font-size: 10px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="text-center">
+    <div class="shop-title">${storeNameText}</div>
+    ${data.storeAddress ? `<div>${data.storeAddress}</div>` : ""}
+    ${data.storePhone ? `<div>Tel: ${data.storePhone}</div>` : ""}
+    <div class="receipt-title">ITEM EXCHANGE RECEIPT</div>
+  </div>
+
+  <table class="meta-table">
+    <tr><td class="meta-label">Exchange No:</td><td class="meta-val">${data.exchangeNo}</td></tr>
+    <tr><td class="meta-label">Orig Invoice:</td><td class="meta-val">${data.originalInvoiceNo}</td></tr>
+    <tr><td class="meta-label">Date & Time:</td><td class="meta-val">${data.date}</td></tr>
+    <tr><td class="meta-label">Cashier:</td><td class="meta-val">${data.cashier}</td></tr>
+    ${data.customerName ? `<tr><td class="meta-label">Customer:</td><td class="meta-val">${data.customerName}</td></tr>` : ""}
+  </table>
+
+  <div class="section-header">1. RETURNED ITEMS</div>
+  <table class="items-table">
+    ${returnedRows || '<tr><td colspan="3">None</td></tr>'}
+  </table>
+
+  <div class="section-header">2. NEW ISSUED ITEMS</div>
+  <table class="items-table">
+    ${newRows || '<tr><td colspan="3">None</td></tr>'}
+  </table>
+
+  <table class="summary-table">
+    <tr>
+      <td>Total Returned:</td>
+      <td class="text-right bold">Rs. ${data.returnedTotal.toLocaleString()}</td>
+    </tr>
+    <tr>
+      <td>New Items Total:</td>
+      <td class="text-right bold">Rs. ${data.newTotal.toLocaleString()}</td>
+    </tr>
+    ${
+      isAdditionalPaid
+        ? `<tr class="grand-total">
+            <td class="bold">AMOUNT PAID TODAY:</td>
+            <td class="text-right bold">Rs. ${data.deltaAmount.toLocaleString()}</td>
+          </tr>`
+        : isRefunded
+        ? `<tr class="grand-total">
+            <td class="bold">AMOUNT REFUNDED:</td>
+            <td class="text-right bold">Rs. ${Math.abs(data.deltaAmount).toLocaleString()}</td>
+          </tr>`
+        : `<tr class="grand-total">
+            <td class="bold">EVEN EXCHANGE:</td>
+            <td class="text-right bold">Rs. 0</td>
+          </tr>`
+    }
+  </table>
+
+  <div class="footer">
+    <div class="bold">Thank you for shopping at ${storeNameText}!</div>
+    <div>Please retain this exchange receipt for your records.</div>
+  </div>
+</body>
+</html>`;
+
+  // Spool print job via invisible iframe
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+
+  let hasPrinted = false;
+
+  const cleanup = () => {
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
+    }, 4000);
+  };
+
+  const doPrint = () => {
+    if (hasPrinted) return;
+    hasPrinted = true;
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn("[Exchange Thermal Print] iframe.print() failed:", e);
+    } finally {
+      cleanup();
+    }
+  };
+
+  iframe.onload = doPrint;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  setTimeout(() => {
+    if (!hasPrinted) {
+      doPrint();
+    }
+  }, 2000);
+}

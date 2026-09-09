@@ -16,10 +16,12 @@ import {
   User,
   ShoppingBag,
   Download,
+  RotateCcw,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
 import { shopApi } from "@/api/shop";
 import { printThermalReceipt } from "@/utils/hardwareIntegration";
+import { printExchangeThermalHTMLReceipt } from "@/utils/thermalReceiptTemplate";
 import { format } from "date-fns";
 
 // ── PDF Invoice Generator ──────────────────────────────────────────────────────
@@ -36,6 +38,7 @@ async function downloadInvoicePDF({
   discount,
   tax,
   totalAmount,
+  returnedItems = [],
   shopProfile: initialProfile,
 }: {
   invoiceNo: string;
@@ -58,6 +61,13 @@ async function downloadInvoicePDF({
   discount: number;
   tax: number;
   totalAmount: number;
+  returnedItems?: {
+    productName: string;
+    sku: string;
+    qty: number;
+    unitPrice: number;
+    total: number;
+  }[];
   shopProfile?: any;
 }) {
   let currentProfile = initialProfile;
@@ -81,6 +91,20 @@ async function downloadInvoicePDF({
   const emailStr = currentProfile?.email ? `Email: ${currentProfile.email}` : "";
   const regNumStr = currentProfile?.businessRegistration ? `Reg/TRN: ${currentProfile.businessRegistration}` : "";
   const contactLine = [phoneStr, emailStr, regNumStr].filter(Boolean).join(" | ");
+
+  const returnedItemRows = (returnedItems || [])
+    .map((item, i) => `
+    <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+      <td style="text-align:center;color:#b45309;font-weight:700;">${i + 1}</td>
+      <td>
+        <div style="font-weight:700;color:#0f172a;font-size:12px;">${item.productName}</div>
+        ${item.sku ? `<div style="font-size:10px;color:#b45309;font-family:monospace;margin-top:2px;">SKU: ${item.sku}</div>` : ""}
+      </td>
+      <td style="text-align:center;font-weight:800;color:#0f172a;">${item.qty}</td>
+      <td style="text-align:right;color:#334155;font-family:monospace;">LKR ${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align:right;font-weight:800;color:#b45309;font-family:monospace;">-LKR ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+    </tr>
+  `).join("");
 
   const itemRows = items.length === 0 ? `
     <tr>
@@ -169,7 +193,7 @@ async function downloadInvoicePDF({
       ${contactLine ? `<div class="brand-contact">${contactLine}</div>` : ""}
     </div>
     <div class="invoice-label">
-      <div class="report-title">INVOICE</div>
+      <div class="report-title">${returnedItems.length > 0 ? "EXCHANGE RECEIPT" : "INVOICE"}</div>
       <div style="font-size:13px;font-weight:900;color:#0f172a;font-family:monospace;margin-top:2px;">${invoiceNo}</div>
       <div style="margin-top:6px;"><span class="badge">IRD Compliant</span></div>
     </div>
@@ -198,7 +222,27 @@ async function downloadInvoicePDF({
     </div>
   </div>
 
-  <div class="section-title">Items Purchased (${items.length})</div>
+  ${
+    returnedItems.length > 0
+      ? `
+    <div class="section-title" style="color:#b45309;border-left-color:#d97706;">Returned Items (Exchange Credit)</div>
+    <table style="margin-bottom:16px;">
+      <thead>
+        <tr style="background:#d97706;">
+          <th style="width:36px;" class="center">#</th>
+          <th>Product &amp; Details</th>
+          <th style="width:60px;" class="center">Qty</th>
+          <th style="width:130px;" class="right">Unit Price</th>
+          <th style="width:140px;" class="right">Return Total</th>
+        </tr>
+      </thead>
+      <tbody>${returnedItemRows}</tbody>
+    </table>
+    `
+      : ""
+  }
+
+  <div class="section-title">${returnedItems.length > 0 ? "New Issued Items" : "Items Purchased"} (${items.length})</div>
   <table>
     <thead>
       <tr>
@@ -490,10 +534,68 @@ export default function TransactionDetailsModal({
         );
       }
 
-      // Use real items if found, otherwise empty (table shows its own empty state)
-      const finalItems = normalized.length > 0 ? normalized : [];
+      // Extract returned items from all possible properties or stringified JSON or negative quantities in rawItems
+      let rawReturned =
+        invoice.returnedItems ||
+        invoice.returned_items ||
+        invoice.returnItems ||
+        invoice.returned_products ||
+        invoice.exchangedItems ||
+        invoice.exchangeItems ||
+        invoice.oldItems ||
+        invoice.previousItems ||
+        invoice.returnDetails ||
+        invoice.exchangeDetails ||
+        [];
 
-      setData({ ...invoice, _normalizedItems: finalItems });
+      if (typeof rawReturned === "string" && rawReturned.trim().startsWith("[")) {
+        try {
+          rawReturned = JSON.parse(rawReturned);
+        } catch {}
+      }
+
+      // Check if rawItems array itself contains items marked as return/returned or negative quantity
+      const itemsInRawThatAreReturned = rawItems.filter(
+        (i: any) =>
+          Number(i.quantity ?? i.qty ?? 0) < 0 ||
+          Number(i.total ?? i.amount ?? 0) < 0 ||
+          i.type === "RETURN" ||
+          i.type === "RETURNED" ||
+          i.isReturn === true ||
+          i.isReturned === true
+      );
+
+      const combinedReturned = [
+        ...(Array.isArray(rawReturned) ? rawReturned : []),
+        ...itemsInRawThatAreReturned,
+      ];
+
+      const normalizedReturned = combinedReturned.map((item) => {
+        const norm = normalizeItem(item);
+        return {
+          ...norm,
+          qty: Math.abs(norm.qty),
+          total: Math.abs(norm.total),
+        };
+      });
+
+      // Filter out returned items from finalItems if they were mixed into rawItems with negative values
+      const cleanNewItems = normalized.filter(
+        (i: any) =>
+          i.qty > 0 &&
+          i.type !== "RETURN" &&
+          i.type !== "RETURNED" &&
+          !i.isReturn &&
+          !i.isReturned
+      );
+
+      const finalItems = cleanNewItems.length > 0 ? cleanNewItems : normalized;
+
+      setData({
+        ...invoice,
+        _normalizedItems: finalItems,
+        _normalizedReturnedItems: normalizedReturned,
+      });
       setEditData({
         customerName: invoice.customerName || invoice.customer?.name || "",
         phone: invoice.customerPhone || invoice.customer?.phone || "",
@@ -672,7 +774,43 @@ export default function TransactionDetailsModal({
   const txnType = data?.paymentMethod || data?.saleType || "CASH";
   const cashier = data?.user?.name || data?.cashierName || "System";
 
+  const returnedViewItems: any[] = data?._normalizedReturnedItems || [];
+
   const handleThermalPrint = async () => {
+    if (returnedViewItems.length > 0 || invNum.startsWith("EXC-")) {
+      printExchangeThermalHTMLReceipt({
+        storeName: shopProfile?.name || "Futura Hardware",
+        storeAddress:
+          [shopProfile?.address, shopProfile?.city, shopProfile?.district]
+            .filter(Boolean)
+            .join(", ") || "Sri Lanka",
+        storePhone: shopProfile?.phone || "",
+        exchangeNo: invNum,
+        originalInvoiceNo: data?.originalInvoiceNo || data?.original_invoice_no || "N/A",
+        date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
+        cashier,
+        customerName: customer,
+        returnedItems: returnedViewItems.map((it) => ({
+          name: it.productName,
+          sku: it.sku,
+          qty: it.qty,
+          price: it.unitPrice,
+          lineTotal: it.total,
+        })),
+        newItems: viewItems.map((it) => ({
+          name: it.productName,
+          sku: it.sku,
+          qty: it.qty,
+          price: it.unitPrice,
+          lineTotal: it.total,
+        })),
+        returnedTotal: returnedViewItems.reduce((acc, i) => acc + i.total, 0),
+        newTotal: subtotal,
+        deltaAmount: totalAmount,
+      });
+      return;
+    }
+
     const payload = {
       storeName: shopProfile?.name || "Futura Hardware POS",
       storeAddress:
@@ -879,11 +1017,82 @@ export default function TransactionDetailsModal({
               {/* ── VIEW / RECEIPT ── */}
               {(activeTab === "view" || activeTab === "receipt") && (
                 <div className="max-w-[900px] mx-auto space-y-6 pb-24">
+                  {/* Returned Items block (if exchange transaction) */}
+                  {returnedViewItems.length > 0 && (
+                    <div className="bg-amber-50/60 p-6 rounded-2xl shadow-sm border border-amber-200">
+                      <h4 className="text-[14px] font-black text-amber-900 mb-5 flex items-center gap-2">
+                        <RotateCcw className="w-4 h-4 text-amber-600" />
+                        Returned Items (Exchange Credit)
+                        <span className="ml-auto text-[12px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                          {returnedViewItems.length}{" "}
+                          {returnedViewItems.length === 1 ? "item" : "items"}
+                        </span>
+                      </h4>
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b-2 border-amber-200">
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest w-10">
+                              #
+                            </th>
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest">
+                              Product
+                            </th>
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest w-20 text-center">
+                              SKU
+                            </th>
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest w-16 text-center">
+                              Qty
+                            </th>
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest w-32 text-right">
+                              Unit Price
+                            </th>
+                            <th className="pb-3 text-[10px] font-black text-amber-700 uppercase tracking-widest w-32 text-right">
+                              Return Total
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {returnedViewItems.map((item, i) => (
+                            <tr
+                              key={i}
+                              className="border-b border-amber-100 last:border-0 hover:bg-amber-100/40 transition-colors"
+                            >
+                              <td className="py-4 text-[13px] text-amber-700">
+                                {i + 1}
+                              </td>
+                              <td className="py-4">
+                                <p className="text-[13px] font-bold text-slate-900">
+                                  {item.productName}
+                                </p>
+                              </td>
+                              <td className="py-4 text-center">
+                                <span className="text-[11px] font-mono text-amber-700">
+                                  {item.sku || "—"}
+                                </span>
+                              </td>
+                              <td className="py-4 text-center">
+                                <span className="text-[13px] font-black text-slate-900">
+                                  {item.qty}
+                                </span>
+                              </td>
+                              <td className="py-4 text-right text-[13px] font-medium text-slate-700 font-mono">
+                                Rs. {item.unitPrice.toLocaleString()}
+                              </td>
+                              <td className="py-4 text-right text-[14px] font-black text-amber-800 font-mono">
+                                −Rs. {item.total.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
                   {/* Items table */}
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h4 className="text-[14px] font-black text-gray-900 mb-5 flex items-center gap-2">
                       <ShoppingBag className="w-4 h-4 text-blue-500" />
-                      Items Purchased
+                      {returnedViewItems.length > 0 ? "New Issued Items" : "Items Purchased"}
                       <span className="ml-auto text-[12px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                         {viewItems.length}{" "}
                         {viewItems.length === 1 ? "item" : "items"}
@@ -1308,6 +1517,7 @@ export default function TransactionDetailsModal({
                   discount,
                   tax,
                   totalAmount,
+                  returnedItems: returnedViewItems,
                   shopProfile,
                 })
               }
@@ -1330,6 +1540,7 @@ export default function TransactionDetailsModal({
                   discount,
                   tax,
                   totalAmount,
+                  returnedItems: returnedViewItems,
                   shopProfile,
                 })
               }
