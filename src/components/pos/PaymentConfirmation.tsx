@@ -393,7 +393,7 @@ export default function PaymentConfirmation({
       api
         .get(`/customers/${customerId}`)
         .then((res) => {
-          const data = res.data?.data || res.data;
+          const data = res.data?.data?.data || res.data?.data || res.data;
           setCustomerAccount(data);
         })
         .catch(() => {});
@@ -424,10 +424,24 @@ export default function PaymentConfirmation({
 
   const isCreditSale = selectedMethod.toLowerCase() === "credit";
   const creditLeftover = isCreditSale ? Math.max(0, total - effectivePaidAmount) : 0;
-  const existingCreditBalance = Number(
-    customerAccount?.outstandingBalance || customerAccount?.outstanding_balance || 0
-  );
-  const newTotalOutstanding = existingCreditBalance + creditLeftover;
+  const rawCustomer =
+    (customerAccount && (customerAccount.data?.data || customerAccount.data || customerAccount)) ||
+    (selectedCustomer && (selectedCustomer.data?.data || selectedCustomer.data || selectedCustomer)) ||
+    {};
+
+  const existingCreditBalance =
+    rawCustomer.outstandingBalance !== undefined && rawCustomer.outstandingBalance !== null
+      ? Number(rawCustomer.outstandingBalance)
+      : rawCustomer.creditBalance !== undefined && rawCustomer.creditBalance !== null
+      ? Number(rawCustomer.creditBalance)
+      : rawCustomer.outstanding_balance !== undefined && rawCustomer.outstanding_balance !== null
+      ? Number(rawCustomer.outstanding_balance)
+      : rawCustomer.outstanding !== undefined && rawCustomer.outstanding !== null
+      ? Number(rawCustomer.outstanding)
+      : 0;
+
+  const validExistingCredit = isNaN(existingCreditBalance) ? 0 : existingCreditBalance;
+  const newTotalOutstanding = validExistingCredit + creditLeftover;
 
   // Execute Hardware Cash Drawer Kick (ESC/POS)
   const handleDrawerKick = async () => {
@@ -505,6 +519,69 @@ export default function PaymentConfirmation({
 
     setProcessing(true);
     try {
+      // Fetch fresh customer outstanding balance right before processing
+      // (avoids stale/unloaded customerAccount causing incorrect total)
+      let freshExistingBalance = 0;
+      
+      // 1. Direct check on selectedCustomer prop object
+      const directVal = Number(
+        selectedCustomer?.outstandingBalance ??
+          selectedCustomer?.outstanding ??
+          selectedCustomer?.creditBalance ??
+          selectedCustomer?.outstanding_balance
+      );
+      if (!isNaN(directVal) && directVal > 0) {
+        freshExistingBalance = directVal;
+      }
+
+      // 2. Fetch fresh from backend API
+      if (isCreditSale && customerId) {
+        try {
+          const custRes = await api.get(`/customers/${customerId}`);
+          const d = custRes.data?.data?.data || custRes.data?.data || custRes.data;
+          const fetched = Number(
+            d?.outstandingBalance ?? d?.creditBalance ?? d?.outstanding_balance ?? d?.outstanding
+          );
+          if (!isNaN(fetched) && fetched > 0) {
+            freshExistingBalance = fetched;
+          }
+        } catch {}
+
+        // 3. Fallback to GET /customers list if single lookup returned 0 or failed
+        if (freshExistingBalance === 0) {
+          try {
+            const allRes = await api.get("/customers");
+            let allData: any[] = [];
+            if (Array.isArray(allRes.data)) allData = allRes.data;
+            else if (Array.isArray(allRes.data?.data)) allData = allRes.data.data;
+            else if (Array.isArray(allRes.data?.data?.data)) allData = allRes.data.data.data;
+
+            const match = allData.find(
+              (c: any) =>
+                c.id === customerId ||
+                (customerPhone && c.phone && c.phone.replace(/\s+/g, "").includes(customerPhone.replace(/\s+/g, ""))) ||
+                (customerName && c.name?.toLowerCase() === customerName.toLowerCase())
+            );
+
+            if (match) {
+              const matchedBal = Number(
+                match.outstandingBalance ?? match.creditBalance ?? match.outstanding_balance ?? match.outstanding ?? 0
+              );
+              if (!isNaN(matchedBal) && matchedBal > 0) {
+                freshExistingBalance = matchedBal;
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // If still 0, check validExistingCredit as fallback
+      if (freshExistingBalance === 0 && validExistingCredit > 0) {
+        freshExistingBalance = validExistingCredit;
+      }
+
+      const freshTotalOutstanding = freshExistingBalance + creditLeftover;
+
       const payload = {
         invoiceNumber: invoiceRef,
         items: items.map((item) => ({
@@ -523,10 +600,13 @@ export default function PaymentConfirmation({
         notes,
         customerId,
         creditAmountAdded: creditLeftover,
-        newTotalOutstanding,
+        newTotalOutstanding: freshTotalOutstanding,
       };
 
-      console.log("[POS Checkout] Submitting transaction payload:", payload);
+      console.log(
+        "[POS Checkout] Submitting transaction payload:",
+        { ...payload, freshExistingBalance, freshTotalOutstanding }
+      );
       await api.post("/sales/checkout", payload);
 
       // 1. Automatically trigger Hardware Cash Drawer Kick
@@ -537,17 +617,23 @@ export default function PaymentConfirmation({
 
       // Trigger TEXT.LK Credit SMS Notification if Credit sale
       if (isCreditSale && customerPhone && customerPhone !== "N/A") {
-        sendCreditPurchaseSMS({
-          customerName: customerName || "Valued Customer",
-          customerPhone,
-          date: new Date().toLocaleDateString("en-GB"),
-          items: items.map((i) => ({ name: i.name, qty: i.qty })), // Purchased item count per date split (NO per-item unit prices!)
-          totalOrderAmount: total,
-          amountPaid: effectivePaidAmount,
-          leftoverCreditAmount: creditLeftover,
-          totalOutstandingCreditBalance: newTotalOutstanding,
-          invoiceRef,
-        });
+        try {
+          const smsRes = await sendCreditPurchaseSMS({
+            customerName: customerName || "Valued Customer",
+            customerPhone,
+            date: new Date().toLocaleDateString("en-GB"),
+            items: items.map((i) => ({ name: i.name, qty: i.qty })),
+            totalOrderAmount: total,
+            amountPaid: effectivePaidAmount,
+            leftoverCreditAmount: creditLeftover,
+            totalOutstandingCreditBalance: freshTotalOutstanding,
+            invoiceRef,
+            shopName: storeName,
+          });
+          console.log("[POS Checkout] Credit SMS Result:", smsRes);
+        } catch (smsErr) {
+          console.warn("[POS Checkout] Credit SMS Exception:", smsErr);
+        }
       }
 
       toastSuccess(
