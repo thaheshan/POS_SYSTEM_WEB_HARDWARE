@@ -324,11 +324,11 @@ export default function TaxReportsPage() {
             <span className="text-[11px] text-gray-400 font-medium mt-1 block">18% VAT applicable</span>
           </div>
           <div className="bg-white border-t-4 border-[#9333ea] rounded-[16px] p-5 shadow-sm">
-            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">VAT Collected</span>
-            <span className="text-[22px] font-black tracking-tight text-[#9333ea] block">
-              {loading ? '…' : `Rs. ${ytdVAT.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
+            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Tax Status</span>
+            <span className="text-[20px] font-black tracking-tight text-[#9333ea] block">
+              Non-VAT Account
             </span>
-            <span className="text-[11px] text-gray-400 font-medium mt-1 block">Remittable to IRD</span>
+            <span className="text-[11px] text-gray-400 font-medium mt-1 block">100% Direct Realized Revenue</span>
           </div>
           <div className="bg-white border-t-4 border-[#059669] rounded-[16px] p-5 shadow-sm">
             <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Non-Taxable (Cat B)</span>

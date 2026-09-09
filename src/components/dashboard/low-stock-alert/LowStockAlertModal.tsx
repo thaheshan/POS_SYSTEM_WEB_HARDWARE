@@ -11,6 +11,8 @@ import { getInventoryValueAtRisk, getStockSeverity, type LowStockProduct } from 
 import api from "@/api/axiosInstance";
 import { shopApi } from "@/api/shop";
 import { format } from "date-fns";
+import EditInventoryModal from "@/components/inventory/EditInventoryModal";
+import { toast } from "sonner";
 
 interface LowStockAlertModalProps {
   isOpen: boolean;
@@ -34,6 +36,9 @@ export default function LowStockAlertModal({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState("");
   const [liveProducts, setLiveProducts] = useState<LowStockProduct[]>([]);
+  const [rawItems, setRawItems] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shopProfile, setShopProfile] = useState<any>(null);
 
@@ -58,35 +63,90 @@ export default function LowStockAlertModal({
     const fetchLowStock = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get('/stock?low_stock=true&out_of_stock=true');
+        const [stockRes, suppliersRes] = await Promise.allSettled([
+          api.get('/stock?low_stock=true&out_of_stock=true'),
+          api.get('/suppliers'),
+        ]);
+
+        // Unpack suppliers into a lookup map
+        const suppliersMap: Record<string, { name: string; phone: string }> = {};
+        if (suppliersRes.status === 'fulfilled') {
+          const supRaw = suppliersRes.value.data;
+          const supItems: any[] = Array.isArray(supRaw)
+            ? supRaw
+            : Array.isArray(supRaw?.data)
+            ? supRaw.data
+            : Array.isArray(supRaw?.data?.data)
+            ? supRaw.data.data
+            : Array.isArray(supRaw?.items)
+            ? supRaw.items
+            : [];
+
+          supItems.forEach((s: any) => {
+            const sid = s.id || s._id;
+            if (sid) {
+              suppliersMap[sid] = {
+                name: s.name || s.supplier_name || s.companyName || s.company_name || "",
+                phone: s.phone || s.mobile || s.contactNo || s.contact_number || "",
+              };
+            }
+          });
+        }
 
         // Handle NestJS ResponseInterceptor double-wrapping
-        const payload = res.data?.data;
-        const items: any[] = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
+        let items: any[] = [];
+        if (stockRes.status === 'fulfilled') {
+          const res = stockRes.value;
+          const payload = res.data?.data;
+          items = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(res.data)
+            ? res.data
+            : [];
+        }
 
-        const mapped: LowStockProduct[] = items.map((item: any, index: number) => ({
-          id: item.product_id || item.id || `ls-${index}`,
-          name: item.product_name || item.product?.name || item.name || "Unknown",
-          sku: item.sku || item.product?.sku || "N/A",
-          category: item.category_name || item.product?.category?.name || item.category || "Uncategorized",
-          currentStock: Number(item.available_quantity ?? item.quantity ?? 0),
-          reorderLevel: Number(item.minimum_stock_level ?? 20),
-          reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 20) - Number(item.available_quantity ?? 0)),
-          lastSale: "Recently",
-          unitsSold: 0,
-          unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
-          warehouseId: item.warehouse_id,
-          warehouseName: item.warehouse_name,
-          supplierName: item.supplier_name || item.supplier?.name || item.product?.supplier?.name || item.product?.supplierName || "Futura Hardware Shop",
-          supplierPhone: item.supplier_phone || item.supplier?.phone || item.supplier?.mobile || item.product?.supplier?.phone || item.product?.supplierPhone || "0756645486",
-        }));
+        const mapped: LowStockProduct[] = items.map((item: any, index: number) => {
+          const supId = item.supplier_id || item.supplierId || item.product?.supplier_id || item.product?.supplierId;
+          const matchedSup = supId ? suppliersMap[supId] : null;
 
+          const liveSupplierName =
+            item.supplier_name ||
+            item.supplier?.name ||
+            item.product?.supplier?.name ||
+            item.product?.supplierName ||
+            matchedSup?.name ||
+            "";
+
+          const liveSupplierPhone =
+            item.supplier_phone ||
+            item.supplier?.phone ||
+            item.supplier?.mobile ||
+            item.product?.supplier?.phone ||
+            item.product?.supplierPhone ||
+            matchedSup?.phone ||
+            "";
+
+          return {
+            id: item.product_id || item.id || `ls-${index}`,
+            name: item.product_name || item.product?.name || item.name || "Unknown",
+            sku: item.sku || item.product?.sku || "N/A",
+            category: item.category_name || item.product?.category?.name || item.category || "Uncategorized",
+            currentStock: Number(item.available_quantity ?? item.quantity ?? 0),
+            reorderLevel: Number(item.minimum_stock_level ?? 20),
+            reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 20) - Number(item.available_quantity ?? 0)),
+            lastSale: "Recently",
+            unitsSold: 0,
+            unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
+            warehouseId: item.warehouse_id,
+            warehouseName: item.warehouse_name,
+            supplierName: liveSupplierName,
+            supplierPhone: liveSupplierPhone,
+          };
+        });
+
+        setRawItems(items);
         setLiveProducts(mapped);
       } catch (err) {
         console.error("Failed to fetch low stock data", err);
@@ -211,6 +271,195 @@ export default function LowStockAlertModal({
 
   const handleReorder = (product: LowStockProduct) => {
     openPurchaseOrders([product]);
+  };
+
+  const handleEditProduct = async (product: LowStockProduct) => {
+    const raw = rawItems.find(
+      (item) =>
+        item.product_id === product.id ||
+        item.id === product.id ||
+        item.sku === product.sku ||
+        item.product?.id === product.id ||
+        item.product?.sku === product.sku
+    );
+
+    const base = raw?.product ? { ...raw.product, ...raw } : raw || {};
+    const prodId = base.product_id || base.id || base.product?.id || product.id;
+
+    const initialItem = {
+      ...base,
+      id: prodId,
+      name: base.name || base.product_name || product.name,
+      sku: base.sku || product.sku,
+      category: base.category_name || base.category?.name || base.category || product.category,
+      categoryId: base.category_id || base.categoryId || base.category?.id || "",
+      subCategoryId: base.subcategory_id || base.subCategoryId || base.subcategory?.id || "",
+      brandId: base.brand_id || base.brandId || base.brand?.id || "",
+      supplierId: base.supplier_id || base.supplierId || base.supplier?.id || "",
+      warehouseId: base.warehouse_id || base.warehouseId || product.warehouseId || "",
+      unitCost: Number(base.selling_price ?? base.sellingPrice ?? base.price ?? product.unitCost),
+      sellingPrice: Number(base.selling_price ?? base.sellingPrice ?? base.price ?? product.unitCost),
+      costPrice: Number(base.purchase_price ?? base.cost_price ?? base.costPrice ?? base.purchasePrice ?? 0),
+      purchasePrice: Number(base.purchase_price ?? base.cost_price ?? base.costPrice ?? base.purchasePrice ?? 0),
+      qty: Number(base.available_quantity ?? base.quantity ?? base.qty ?? product.currentStock),
+      minStock: Number(base.minimum_stock_level ?? base.min_stock_level ?? base.minStock ?? product.reorderLevel),
+      minimumStockLevel: Number(base.minimum_stock_level ?? base.min_stock_level ?? base.minStock ?? product.reorderLevel),
+      barcode: base.barcode || "",
+      description: base.description || "",
+      shortDescription: base.short_description || base.shortDescription || "",
+      unit: base.measurement_unit || base.unit || "Pieces (pcs)",
+    };
+
+    setEditingItem(initialItem);
+    setIsEditModalOpen(true);
+
+    if (prodId && typeof prodId === "string" && !prodId.startsWith("ls-")) {
+      try {
+        const res = await api.get(`/products/${prodId}`);
+        const fullProd = res.data?.data || res.data;
+        if (fullProd && typeof fullProd === "object") {
+          setEditingItem((prev: any) => ({
+            ...prev,
+            ...fullProd,
+            id: fullProd.id || prodId,
+            name: fullProd.name || prev.name,
+            sku: fullProd.sku || prev.sku,
+            sellingPrice: fullProd.sellingPrice ?? fullProd.price ?? prev.sellingPrice,
+            unitCost: fullProd.sellingPrice ?? fullProd.price ?? prev.sellingPrice,
+            purchasePrice: fullProd.purchasePrice ?? fullProd.costPrice ?? prev.purchasePrice,
+            costPrice: fullProd.purchasePrice ?? fullProd.costPrice ?? prev.costPrice,
+            qty: fullProd.qty ?? fullProd.quantity ?? prev.qty,
+            minStock: fullProd.minimumStockLevel ?? fullProd.minStock ?? prev.minStock,
+            minimumStockLevel: fullProd.minimumStockLevel ?? fullProd.minStock ?? prev.minimumStockLevel,
+            categoryId: fullProd.categoryId || fullProd.category_id || prev.categoryId,
+            subCategoryId: fullProd.subCategoryId || fullProd.subcategory_id || prev.subCategoryId,
+            brandId: fullProd.brandId || fullProd.brand_id || prev.brandId,
+            supplierId: fullProd.supplierId || fullProd.supplier_id || prev.supplierId,
+            warehouseId: fullProd.warehouseId || fullProd.warehouse_id || prev.warehouseId,
+            barcode: fullProd.barcode || prev.barcode,
+            description: fullProd.description || prev.description,
+            shortDescription: fullProd.shortDescription || prev.shortDescription,
+            unit: fullProd.unit || fullProd.measurementUnit || prev.unit,
+          }));
+        }
+      } catch {
+        // Fall back to pre-mapped initialItem
+      }
+    }
+  };
+
+  const handleSaveEditProduct = async (updatedData: any) => {
+    if (!editingItem) return;
+    const targetId =
+      editingItem.product_id || editingItem.id || editingItem.product?.id || editingItem.sku;
+    try {
+      const {
+        isDiscountEnabled,
+        discountType,
+        maxAllowedDiscount,
+        defaultDiscountValue,
+        imageFile,
+        ...coreData
+      } = updatedData;
+
+      if (imageFile instanceof File) {
+        const formData = new FormData();
+        Object.entries(coreData).forEach(([key, val]) => {
+          if (val !== undefined && val !== null) {
+            formData.append(key, String(val));
+          }
+        });
+        formData.append("imageFile", imageFile);
+        await api.patch(`/products/${targetId}`, formData);
+      } else {
+        await api.patch(`/products/${targetId}`, coreData);
+      }
+
+      if (isDiscountEnabled) {
+        await api.patch(`/products/${targetId}/discount-config`, {
+          isDiscountEnabled,
+          discountType,
+          maxAllowedDiscount: Number(maxAllowedDiscount || 0),
+          defaultDiscountValue: Number(defaultDiscountValue || 0),
+        });
+      }
+
+      toast.success(`Product "${updatedData.name || editingItem.name}" updated successfully!`);
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+
+      // Refresh live low stock data
+      const [stockRes, suppliersRes] = await Promise.allSettled([
+        api.get('/stock?low_stock=true&out_of_stock=true'),
+        api.get('/suppliers'),
+      ]);
+      const suppliersMap: Record<string, { name: string; phone: string }> = {};
+      if (suppliersRes.status === 'fulfilled') {
+        const supRaw = suppliersRes.value.data;
+        const supItems: any[] = Array.isArray(supRaw)
+          ? supRaw
+          : Array.isArray(supRaw?.data)
+          ? supRaw.data
+          : Array.isArray(supRaw?.data?.data)
+          ? supRaw.data.data
+          : Array.isArray(supRaw?.items)
+          ? supRaw.items
+          : [];
+
+        supItems.forEach((s: any) => {
+          const sid = s.id || s._id;
+          if (sid) {
+            suppliersMap[sid] = {
+              name: s.name || s.supplier_name || s.companyName || s.company_name || "",
+              phone: s.phone || s.mobile || s.contactNo || s.contact_number || "",
+            };
+          }
+        });
+      }
+
+      let items: any[] = [];
+      if (stockRes.status === 'fulfilled') {
+        const res = stockRes.value;
+        const payload = res.data?.data;
+        items = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+      }
+
+      const mapped: LowStockProduct[] = items.map((item: any, index: number) => {
+        const supId = item.supplier_id || item.supplierId || item.product?.supplier_id || item.product?.supplierId;
+        const matchedSup = supId ? suppliersMap[supId] : null;
+
+        return {
+          id: item.product_id || item.id || `ls-${index}`,
+          name: item.product_name || item.product?.name || item.name || "Unknown",
+          sku: item.sku || item.product?.sku || "N/A",
+          category: item.category_name || item.product?.category?.name || item.category || "Uncategorized",
+          currentStock: Number(item.available_quantity ?? item.quantity ?? 0),
+          reorderLevel: Number(item.minimum_stock_level ?? 20),
+          reorderQty: Math.max(0, Number(item.minimum_stock_level ?? 20) - Number(item.available_quantity ?? 0)),
+          lastSale: "Recently",
+          unitsSold: 0,
+          unitCost: Number(item.selling_price ?? item.product?.sellingPrice ?? 0),
+          warehouseId: item.warehouse_id,
+          warehouseName: item.warehouse_name,
+          supplierName: item.supplier_name || item.supplier?.name || item.product?.supplier?.name || matchedSup?.name || "",
+          supplierPhone: item.supplier_phone || item.supplier?.phone || item.product?.supplier?.phone || matchedSup?.phone || "",
+        };
+      });
+
+      setRawItems(items);
+      setLiveProducts(mapped);
+    } catch (err: any) {
+      console.error("Failed to update product details", err);
+      toast.error(
+        err?.response?.data?.message || "Failed to update product details. Please try again."
+      );
+    }
   };
 
   const handleExportPdf = async () => {
@@ -487,6 +736,7 @@ export default function LowStockAlertModal({
                 onReorder={handleReorder}
                 onClearSelection={clearSelection}
                 selectedVisibleCount={selectedVisibleCount}
+                onEditProduct={handleEditProduct}
               />
             )}
 
@@ -498,6 +748,13 @@ export default function LowStockAlertModal({
           </div>
         </div>
       </div>
+
+      <EditInventoryModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEditProduct}
+        item={editingItem}
+      />
     </div>
   );
 }

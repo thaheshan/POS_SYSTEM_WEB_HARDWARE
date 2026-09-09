@@ -371,8 +371,8 @@ function CategoryAReportPageContent() {
               bg: "bg-blue-50",
             },
             {
-              label: "VAT Collected (18%)",
-              value: `Rs. ${(catA.vat || 0).toLocaleString()}`,
+              label: "Tax Status",
+              value: "Non-VAT Account",
               icon: Percent,
               color: "text-purple-600",
               bg: "bg-purple-50",
