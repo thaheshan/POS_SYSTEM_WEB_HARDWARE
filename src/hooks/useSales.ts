@@ -69,6 +69,8 @@ export function useSalesData(dateRange: DateRange | undefined) {
       
       let creditSettlementsTotal = 0;
       let creditSettlementCount = 0;
+      let currentDay = '';
+      let runningTotal = 0;
 
       for (const inv of sorted) {
         const invDay = new Date(inv.createdAt).toISOString().split('T')[0];
