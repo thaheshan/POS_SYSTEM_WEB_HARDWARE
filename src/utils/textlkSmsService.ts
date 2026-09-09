@@ -11,12 +11,32 @@ import api from "@/api/axiosInstance";
 const TEXT_LK_API_URL = "https://app.text.lk/api/v3/sms/send";
 const TEXT_LK_API_TOKEN = "5712|3BWcH4C9bFA69kplnjXmXlauJmxG1HIsPuXef5RF1eafd116";
 
+/**
+ * Dynamically fetch the current Shop Name from active user session / localStorage.
+ * Defaults to "Futura Hardware" if not found.
+ */
+export function getShopName(): string {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("shop_name") || localStorage.getItem("store_name");
+    if (saved && saved.trim()) return saved.trim();
+    try {
+      const userRaw = localStorage.getItem("pos_user") || localStorage.getItem("user");
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        const name = u?.shop?.name || u?.shopName || u?.shop_name || u?.tenantName;
+        if (name && name.trim()) return name.trim();
+      }
+    } catch {}
+  }
+  return "Futura Hardware";
+}
+
 export function getTEXTLKSenderID(): string {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("TEXT_LK_SENDER_ID");
     if (saved && saved.trim()) return saved.trim();
   }
-  return "FuturaHW"; // Replace with your exact approved Sender ID from text.lk dashboard
+  return "TextLKDemo";
 }
 
 /**
@@ -31,52 +51,6 @@ export function normaliseLKPhone(raw: string): string {
   return phone;
 }
 
-export interface CreditPurchaseSMSPayload {
-  customerName: string;
-  customerPhone: string;
-  date: string;
-  items: { name: string; qty: number }[]; // Items with qty ONLY — no per-item prices
-  totalOrderAmount: number;
-  amountPaid: number;
-  leftoverCreditAmount: number;
-  totalOutstandingCreditBalance: number;
-  invoiceRef: string;
-}
-
-/**
- * Format Credit Purchase SMS — sent when a credit sale is completed at POS.
- * Per specification:
- * - Includes customer name, invoice ref, date
- * - Includes purchased item names and purchase count ONLY (NO per-item prices)
- * - Includes total credit amount / outstanding balance
- */
-export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload): string {
-  const itemsLine = data.items.map((i) => `${i.name} (x${i.qty})`).join(", ");
-
-  return (
-    `Futura Hardware: Dear ${data.customerName}, purchase on ${data.date} (Inv: ${data.invoiceRef}). ` +
-    `Items: ${itemsLine}. ` +
-    `Order Total: Rs. ${data.totalOrderAmount.toLocaleString()}. ` +
-    `Credit Added: Rs. ${data.leftoverCreditAmount.toLocaleString()}. ` +
-    `Total Outstanding Balance: Rs. ${data.totalOutstandingCreditBalance.toLocaleString()}. ` +
-    `Thank you! Info: futurahardware.com`
-  );
-}
-
-/**
- * Format Monthly/Batch Credit Reminder Template
- */
-export function formatMonthlyCreditReminderSMSTemplate(
-  customerName: string,
-  totalOutstandingCreditBalance: number
-): string {
-  return (
-    `Futura Hardware: Dear ${customerName}, this is a friendly reminder that your current outstanding credit balance is ` +
-    `Rs. ${totalOutstandingCreditBalance.toLocaleString()}. Please visit the shop or contact us to settle your account. ` +
-    `Thank you! Info: futurahardware.com`
-  );
-}
-
 /**
  * Core function to send SMS via text.lk API v3
  */
@@ -89,41 +63,324 @@ export async function sendViaTEXTLK(
     return { success: false, message: `Invalid phone number: ${recipient}` };
   }
 
+  const senderId = getTEXTLKSenderID();
+
   try {
-    const res = await fetch(TEXT_LK_API_URL, {
+    // Call internal Next.js API route (runs Node.js server-to-server to bypass browser CSRF & CORS)
+    const res = await fetch("/api/shop/self-report-payment", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${TEXT_LK_API_TOKEN}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "send-sms",
         recipient: normalised,
-        sender_id: getTEXTLKSenderID(),
-        type: "plain",
+        sender_id: senderId,
         message,
       }),
     });
 
     const json = await res.json().catch(() => ({}));
-    console.log("[TEXT.LK API v3 Response]", normalised, res.status, json);
+    console.log("[TEXT.LK Server Proxy Response]", normalised, res.status, json);
 
-    // Also inform backend endpoint if present as secondary record
-    api.post("/sms/send-credit-notification", {
-      phone: normalised,
-      message,
-    }).catch(() => {});
+    if (res.ok && json?.status !== "error" && !json?.message?.toLowerCase?.().includes("csrf")) {
+      return { success: true, message: `SMS sent via TEXT.LK to ${normalised}.` };
+    }
 
     return {
-      success: true,
-      message: `SMS sent via TEXT.LK to ${normalised}.`,
+      success: false,
+      message: json?.message || "Failed to send SMS via TEXT.LK",
     };
   } catch (err: any) {
-    console.warn("[TEXT.LK SMS Network Warning]:", err?.message || err);
-    return {
-      success: true,
-      message: "Credit recorded. SMS dispatch queued via TEXT.LK gateway.",
+    console.warn("[TEXT.LK SMS Proxy Warning]:", err?.message || err);
+    return { success: false, message: err?.message || "SMS dispatch error" };
+  }
+}
+
+export interface CreditPurchaseSMSPayload {
+  customerName: string;
+  customerPhone: string;
+  date: string;
+  items: { name: string; qty: number }[]; // Items with qty ONLY — NO per-item prices
+  totalOrderAmount: number;
+  amountPaid: number;
+  leftoverCreditAmount: number;
+  totalOutstandingCreditBalance: number;
+  invoiceRef: string;
+  shopName?: string;
+}
+
+/**
+ * Format Credit Purchase SMS — sent when a credit sale is completed at POS checkout.
+ * Structured with clear section line breaks and gaps.
+ * NO per-item prices — ONLY item names and purchase count (xQty).
+ * Includes Shop Name at the start and end.
+ */
+export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload): string {
+  const shopName = data.shopName || getShopName();
+  const itemsList =
+    data.items && data.items.length > 0
+      ? data.items.map((i) => `• ${i.qty}x ${i.name}`).join("\n")
+      : "• Credit Purchase Items";
+
+  return [
+    `[${shopName}]`,
+    `--------------------------------`,
+    `Dear ${data.customerName},`,
+    ``,
+    `CREDIT PURCHASE RECEIPT`,
+    `Date: ${data.date}`,
+    `Invoice: ${data.invoiceRef}`,
+    ``,
+    `Purchased Items (Qty Only):`,
+    itemsList,
+    ``,
+    `Order Total: Rs. ${data.totalOrderAmount.toLocaleString()}`,
+    `Amount Paid Today: Rs. ${data.amountPaid.toLocaleString()}`,
+    `Credit Added Today: Rs. ${data.leftoverCreditAmount.toLocaleString()}`,
+    ``,
+    `Total Outstanding Credit: Rs. ${data.totalOutstandingCreditBalance.toLocaleString()}`,
+    `--------------------------------`,
+    `Thank you for purchasing with ${shopName}!`,
+  ].join("\n");
+}
+
+/**
+ * Format Monthly/Batch/Single Credit Reminder Template
+ * Includes Shop Name at the start and end, structured line gaps,
+ * and optional recent bills purchase history details.
+ */
+export function formatMonthlyCreditReminderSMSTemplate(
+  customerName: string,
+  totalOutstandingCreditBalance: number,
+  purchaseHistorySummary?: string,
+  shopNameOverride?: string
+): string {
+  const shopName = shopNameOverride || getShopName();
+
+  const lines = [
+    `[${shopName}]`,
+    `--------------------------------`,
+    `Dear ${customerName},`,
+    ``,
+    `CREDIT ACCOUNT REMINDER`,
+  ];
+
+  if (purchaseHistorySummary && purchaseHistorySummary.trim()) {
+    lines.push(
+      ``,
+      `Recent Outstanding Purchases:`,
+      purchaseHistorySummary.trim()
+    );
+  }
+
+  lines.push(
+    ``,
+    `Current Total Outstanding Balance:`,
+    `Rs. ${totalOutstandingCreditBalance.toLocaleString()}`,
+    ``,
+    `Please visit our shop or contact us to settle your outstanding balance at your earliest convenience.`,
+    `--------------------------------`,
+    `Thank you for purchasing with ${shopName}!`
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * Format Credit Settlement Payment Receipt Template
+ */
+export function formatCreditSettlementSMSTemplate(
+  customerName: string,
+  amountPaid: number,
+  remainingBalance: number,
+  paymentMethod: string,
+  shopNameOverride?: string
+): string {
+  const shopName = shopNameOverride || getShopName();
+
+  return [
+    `[${shopName}]`,
+    `--------------------------------`,
+    `Dear ${customerName},`,
+    ``,
+    `CREDIT SETTLEMENT RECEIPT`,
+    `Payment Received: Rs. ${amountPaid.toLocaleString()}`,
+    `Payment Method: ${paymentMethod}`,
+    ``,
+    `Remaining Outstanding Balance: Rs. ${remainingBalance.toLocaleString()}`,
+    `--------------------------------`,
+    `Thank you for purchasing with ${shopName}!`,
+  ].join("\n");
+}
+
+/**
+ * Helper to fetch and format recent credit purchase history for a customer.
+ * Lists items with QUANTITIES ONLY — NO individual product prices!
+ */
+export async function fetchCustomerCreditHistorySummary(
+  customerId?: string,
+  customerPhone?: string,
+  customerName?: string
+): Promise<string> {
+  if (!customerId && !customerPhone && !customerName) return "";
+  try {
+    const res = await api.get("/sales", { params: { limit: 500 } });
+    // Unwrap all possible backend response shapes
+    const rawData =
+      res.data?.data?.data ||
+      res.data?.data?.items ||
+      res.data?.data ||
+      res.data?.items ||
+      res.data ||
+      [];
+    const allSales: any[] = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(rawData?.items)
+      ? rawData.items
+      : [];
+
+    const normalisePhone = (p: string) =>
+      p ? p.replace(/\s+/g, "").replace(/^\+/, "").replace(/^0/, "94") : "";
+    const normCustPhone = customerPhone ? normalisePhone(customerPhone) : "";
+    const normCustName = customerName ? customerName.trim().toLowerCase() : "";
+
+    // Step 1: Filter by customer identity (ID, phone, or name)
+    const matchingCustomerSales = allSales.filter((s: any) => {
+      const matchId =
+        customerId &&
+        (s.customerId === customerId ||
+          s.customer_id === customerId ||
+          s.customer?.id === customerId);
+
+      const matchPhone =
+        normCustPhone &&
+        (normalisePhone(s.customerPhone || "") === normCustPhone ||
+          normalisePhone(s.phone || "") === normCustPhone ||
+          normalisePhone(s.customer?.phone || "") === normCustPhone);
+
+      const matchName =
+        normCustName &&
+        (s.customerName?.toLowerCase() === normCustName ||
+          s.customer?.name?.toLowerCase() === normCustName ||
+          s.name?.toLowerCase() === normCustName);
+
+      return matchId || matchPhone || matchName;
+    });
+
+    if (matchingCustomerSales.length === 0) return "";
+
+    // Step 2: Prefer credit sales, fall back to all sales for this customer
+    let creditSales = matchingCustomerSales.filter((s: any) => {
+      const pm = String(s.paymentMethod || "").toUpperCase();
+      return (
+        pm.includes("CREDIT") ||
+        Number(s.creditAmountAdded || s.creditAmount || s.leftoverCreditAmount || 0) > 0
+      );
+    });
+    if (creditSales.length === 0) creditSales = matchingCustomerSales;
+
+    const recentSales = creditSales
+      .sort((a: any, b: any) =>
+        new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()
+      )
+      .slice(0, 3);
+
+    // ── Deep item extractor (mirrors TransactionDetailsModal logic) ──
+    const looksLikeItem = (o: any): boolean => {
+      if (!o || typeof o !== "object" || Array.isArray(o)) return false;
+      return (
+        "productId" in o || "product_id" in o ||
+        "productName" in o || "product_name" in o ||
+        "itemName" in o || "item_name" in o ||
+        "stockId" in o || "stock_id" in o ||
+        "quantity" in o || "qty" in o ||
+        "unitPrice" in o || "unit_price" in o ||
+        !!o.product?.name || !!o.stock?.product?.name
+      );
     };
+
+    const deepExtractItems = (obj: any, depth = 0): any[] => {
+      if (!obj || typeof obj !== "object" || depth > 6) return [];
+      if (Array.isArray(obj) && obj.length > 0 && looksLikeItem(obj[0])) return obj;
+      const itemKeys = [
+        "items", "saleItems", "sale_items", "orderItems", "invoiceItems",
+        "lineItems", "line_items", "products", "cart", "details",
+        "transaction_items", "purchasedItems", "purchased_items",
+      ];
+      for (const k of itemKeys) {
+        const val = obj[k];
+        if (typeof val === "string" && val.trim().startsWith("[")) {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed) && parsed.length > 0 && looksLikeItem(parsed[0])) return parsed;
+          } catch {}
+        }
+        if (Array.isArray(val) && val.length > 0 && looksLikeItem(val[0])) return val;
+      }
+      for (const k of Object.keys(obj)) {
+        let arr: any = obj[k];
+        if (typeof arr === "string" && arr.trim().startsWith("[")) {
+          try { arr = JSON.parse(arr); } catch {}
+        }
+        if (Array.isArray(arr) && arr.length > 0 && looksLikeItem(arr[0])) return arr;
+      }
+      for (const k of Object.keys(obj)) {
+        const child = obj[k];
+        if (child && typeof child === "object" && !Array.isArray(child)) {
+          const found = deepExtractItems(child, depth + 1);
+          if (found.length > 0) return found;
+        }
+      }
+      return [];
+    };
+
+    const extractProductName = (i: any): string =>
+      i.productName || i.product_name || i.itemName || i.item_name ||
+      i.productTitle || i.product?.name || i.stock?.product?.name ||
+      i.stockItem?.product?.name || i.stockItem?.name ||
+      i.item?.name || i.name || i.title || i.label || "";
+
+    // Step 3: Format lines, fetching full sale detail if items are missing from list
+    const lines: string[] = [];
+    for (const s of recentSales) {
+      const dateStr = s.createdAt
+        ? new Date(s.createdAt).toLocaleDateString("en-GB")
+        : s.date || "";
+      const invRef = s.invoiceNumber || s.invoiceNo || s.invoice_number || s.id || "INV";
+      const billTotal = Number(s.total || s.totalAmount || s.amount || 0);
+
+      // Try deep extraction from list response first
+      let saleItems = deepExtractItems(s);
+
+      // If no items, fetch full sale detail by ID
+      if (saleItems.length === 0 && s.id) {
+        try {
+          const detailRes = await api.get(`/sales/${s.id}`);
+          saleItems = deepExtractItems(detailRes.data);
+        } catch {}
+      }
+
+      const itemList =
+        saleItems.length > 0
+          ? saleItems
+              .map((i: any) => `${Number(i.quantity || i.qty || i.count || 1)}x ${extractProductName(i) || "Item"}`)
+              .join(", ")
+          : null;
+
+      lines.push(
+        [
+          `• Inv: ${invRef} (${dateStr})`,
+          itemList ? `  Items: ${itemList}` : null,
+          `  Bill Total: Rs. ${billTotal.toLocaleString()}`,
+        ].filter(Boolean).join("\n")
+      );
+    }
+
+    return lines.join("\n\n");
+  } catch (err) {
+    console.warn("Could not fetch customer purchase history for SMS reminder", err);
+    return "";
   }
 }
 
@@ -147,9 +404,20 @@ export async function sendCreditPurchaseSMS(
 export async function sendSingleCreditReminderSMS(
   customerName: string,
   phone: string,
-  outstandingBalance: number
+  outstandingBalance: number,
+  customerId?: string,
+  purchaseHistorySummary?: string
 ): Promise<{ success: boolean; message: string }> {
-  const message = formatMonthlyCreditReminderSMSTemplate(customerName, outstandingBalance);
+  let summary = purchaseHistorySummary || "";
+  if (!summary && (customerId || phone || customerName)) {
+    summary = await fetchCustomerCreditHistorySummary(customerId, phone, customerName);
+  }
+
+  const message = formatMonthlyCreditReminderSMSTemplate(
+    customerName,
+    outstandingBalance,
+    summary
+  );
   return sendViaTEXTLK(phone, message);
 }
 
@@ -163,11 +431,12 @@ export async function sendCreditSettlementSMS(
   remainingBalance: number,
   paymentMethod: string
 ): Promise<{ success: boolean; message: string }> {
-  const message =
-    `Futura Hardware: Dear ${customerName}, thank you for your payment of Rs. ${amountPaid.toLocaleString()} ` +
-    `towards credit settlement (${paymentMethod}). ` +
-    `Remaining Outstanding Balance: Rs. ${remainingBalance.toLocaleString()}. ` +
-    `Info: futurahardware.com`;
+  const message = formatCreditSettlementSMSTemplate(
+    customerName,
+    amountPaid,
+    remainingBalance,
+    paymentMethod
+  );
   console.log("[TEXT.LK SMS] Sending Credit Settlement Receipt:", { recipient: phone, message });
   return sendViaTEXTLK(phone, message);
 }
@@ -177,7 +446,7 @@ export async function sendCreditSettlementSMS(
  * and dispatches TEXT.LK SMS reminders to each.
  */
 export async function triggerBatchCreditReminders(
-  creditCustomers?: { name: string; phone: string; outstanding: number }[]
+  creditCustomers?: { id?: string; name: string; phone: string; outstanding: number; purchaseHistorySummary?: string }[]
 ): Promise<{ success: boolean; sentCount: number; message: string }> {
   let list = creditCustomers || [];
 
@@ -188,6 +457,7 @@ export async function triggerBatchCreditReminders(
       const items: any[] = Array.isArray(rawData) ? rawData : Array.isArray(rawData?.data) ? rawData.data : [];
       list = items
         .map((c: any) => ({
+          id: c.id,
           name: c.name || "Customer",
           phone: c.phone || "",
           outstanding: Number(c.outstandingBalance ?? c.outstanding ?? 0),
@@ -210,9 +480,16 @@ export async function triggerBatchCreditReminders(
 
   let sent = 0;
   for (const c of eligible) {
-    const res = await sendSingleCreditReminderSMS(c.name, c.phone, c.outstanding);
+    const historySummary = c.purchaseHistorySummary || (await fetchCustomerCreditHistorySummary(c.id, c.phone, c.name));
+    const res = await sendSingleCreditReminderSMS(
+      c.name,
+      c.phone,
+      c.outstanding,
+      c.id,
+      historySummary
+    );
     if (res.success) sent++;
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 250));
   }
 
   return {
@@ -221,4 +498,5 @@ export async function triggerBatchCreditReminders(
     message: `Batch SMS credit reminders sent to ${sent} customer(s) via TEXT.LK.`,
   };
 }
+
 
