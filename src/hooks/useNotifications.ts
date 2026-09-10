@@ -31,7 +31,7 @@ export function useNotifications() {
         api.get('/notifications/unread-count'),
         api.get('/dashboard/recent-transactions', { params: { limit: 15 } }),
         api.get('/stock?low_stock=true&out_of_stock=true'),
-        api.get('/api/shop/subscription-status'),
+        api.get('/shops/subscription-status'),
       ]);
 
       // 1. Base DB Notifications

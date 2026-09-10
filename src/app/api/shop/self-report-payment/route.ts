@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     // Server-to-server text.lk SMS proxy (bypasses browser CORS & CSRF token checks)
     if (body?.action === "send-sms" || (body?.recipient && body?.message)) {
       const recipient = body.recipient;
-      const senderId = body.sender_id || "TextLKDemo";
+      const senderId = body.sender_id || "TrincoHW"; // Approved Sender ID from text.lk
       const message = body.message;
 
       console.log("[SMS Server Proxy] Sending SMS server-to-server:", { recipient, senderId });
@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
       let json = await res.json().catch(() => ({}));
       console.log("[SMS Server Proxy Result]", res.status, json);
 
-      // Fallback: If custom sender ID failed, retry with TextLKDemo
+      // Fallback: If custom sender ID failed, retry with TrincoHW
       if (!res.ok || json?.status === "error" || json?.errors) {
-        if (senderId !== "TextLKDemo") {
-          console.warn("[SMS Server Proxy] Retrying with TextLKDemo...", json);
+        if (senderId !== "TrincoHW") {
+          console.warn("[SMS Server Proxy] Retrying with TrincoHW...", json);
           res = await fetch(TEXT_LK_API_URL, {
             method: "POST",
             headers: {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
             },
             body: JSON.stringify({
               recipient,
-              sender_id: "TextLKDemo",
+              sender_id: "TrincoHW",
               type: "plain",
               message,
             }),
