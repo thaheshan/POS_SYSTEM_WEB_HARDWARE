@@ -45,13 +45,13 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(line);
 
   // Item Table
-  lines.push(leftRight("ITEM", "QTY x PRICE   TOTAL"));
+  lines.push(leftRight("ITEM", "QTY"));
   lines.push(line);
 
   data.items.forEach((item) => {
-    const maxNameLength = widthChars - 18;
+    const maxNameLength = widthChars - 8;
     const nameStr = item.name.length > maxNameLength ? item.name.slice(0, maxNameLength - 2) + ".." : item.name;
-    const rightStr = `${item.qty}x${item.price} = ${item.lineTotal}`;
+    const rightStr = `${item.qty}x`;
     lines.push(leftRight(nameStr, rightStr));
   });
 
@@ -100,9 +100,8 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="qty" colspan="2">${item.qty} x</td>
       <td class="wh">${item.warehouseName || ""}</td>
-      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -350,9 +349,8 @@ export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="qty" colspan="2">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
-      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -556,9 +554,8 @@ export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="qty" colspan="2">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
-      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -570,9 +567,8 @@ export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x Rs. ${item.price.toLocaleString()}</td>
+      <td class="qty" colspan="2">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
-      <td class="line-total">Rs. ${item.lineTotal.toLocaleString()}</td>
     </tr>`
     )
     .join("");

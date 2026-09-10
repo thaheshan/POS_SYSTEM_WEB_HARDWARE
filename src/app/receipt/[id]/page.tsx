@@ -169,15 +169,11 @@ export default function PublicReceiptPage() {
                     <p className="text-[13px] font-bold text-slate-900 leading-tight">
                       {item.product?.name || "Item"}
                     </p>
-                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">
-                      {Number(item.quantity)} × Rs.{" "}
-                      {Number(item.unitPrice).toLocaleString("en-LK", { minimumFractionDigits: 2 })}
+                    <p className="text-[11px] font-extrabold text-slate-500 mt-0.5">
+                      {Number(item.quantity)} ×
                     </p>
                   </div>
                 </div>
-                <p className="text-[14px] font-black text-slate-900 font-mono whitespace-nowrap">
-                  Rs. {Number(item.lineTotal).toLocaleString("en-LK", { minimumFractionDigits: 2 })}
-                </p>
               </div>
             ))}
           </div>

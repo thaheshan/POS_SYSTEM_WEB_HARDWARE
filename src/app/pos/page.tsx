@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import {
   Minus, Plus, X, ChevronDown, ChevronUp, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
-  Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil,
+  Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil, Percent, DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -256,7 +256,16 @@ function QtyPopup({
   product: Product;
   currentQty: number;
   initialEditMode?: boolean;
-  onConfirm: (qty: number, customPrice?: number, customName?: string, customUnit?: string, customStock?: number) => void;
+  onConfirm: (
+    qty: number, 
+    customPrice?: number, 
+    customName?: string, 
+    customUnit?: string, 
+    customStock?: number,
+    customDiscountValue?: number,
+    customDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT',
+    customMaxDiscount?: number
+  ) => void;
   onClose: () => void;
 }) {
   const shortUnit = parseShortUnit(product.measurementUnit || (product as any).unit, product.sellType === 'loose');
@@ -265,6 +274,18 @@ function QtyPopup({
   const [measurementUnit, setMeasurementUnit] = useState<string>(shortUnit);
   const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
   const [stockCount, setStockCount] = useState<number | string>(product.stock);
+
+  // Discount Selection States & Max Discount Limit Editing State
+  const hasDiscountApproval = Boolean(product.isDiscountEnabled && product.isDiscountApproved);
+  const [selectedDiscountType, setSelectedDiscountType] = useState<'PERCENTAGE' | 'FIXED_AMOUNT'>(
+    product.discountType || 'PERCENTAGE'
+  );
+  const [discountValInput, setDiscountValInput] = useState<string | number>(
+    product.defaultDiscountValue ? String(product.defaultDiscountValue) : ''
+  );
+  const [maxDiscountLimit, setMaxDiscountLimit] = useState<number | string>(
+    product.maxAllowedDiscount !== undefined && product.maxAllowedDiscount !== null ? String(product.maxAllowedDiscount) : ''
+  );
 
   const activeUnit = measurementUnit.trim() || shortUnit;
   const isLoose = product.sellType === 'loose' || activeUnit === 'm' || activeUnit === 'kg' || activeUnit === 'L' || activeUnit === 'ft' || activeUnit === 'in' || activeUnit === 'yd' || activeUnit === 'g' || activeUnit === 'mm' || activeUnit === 'litre';
@@ -328,7 +349,31 @@ function QtyPopup({
 
   const parsedQty = typeof qty === 'string' ? parseFloat(qty) || 0 : qty;
   const parsedUnitPrice = typeof unitPrice === 'string' ? (parseFloat(unitPrice) >= 0 ? parseFloat(unitPrice) : product.price) : unitPrice;
-  const total = (parsedUnitPrice || 0) * Math.max(0, parsedQty);
+
+  // Discount & Max Limit Calculation
+  const parsedDiscountVal = typeof discountValInput === 'number'
+    ? discountValInput
+    : (parseFloat(String(discountValInput)) >= 0 ? parseFloat(String(discountValInput)) : 0);
+
+  const maxAllowedDiscount = typeof maxDiscountLimit === 'number'
+    ? maxDiscountLimit
+    : (parseFloat(String(maxDiscountLimit)) >= 0 ? parseFloat(String(maxDiscountLimit)) : Number(product.maxAllowedDiscount || 0));
+
+  const isDiscountOverMax = hasDiscountApproval && maxAllowedDiscount > 0 && parsedDiscountVal > maxAllowedDiscount;
+
+  let unitDiscountAmount = 0;
+  if (hasDiscountApproval && parsedDiscountVal > 0) {
+    if (selectedDiscountType === 'PERCENTAGE') {
+      unitDiscountAmount = Number(((parsedUnitPrice * parsedDiscountVal) / 100).toFixed(2));
+    } else {
+      unitDiscountAmount = parsedDiscountVal;
+    }
+  }
+
+  const effectiveUnitPrice = Math.max(0, parsedUnitPrice - unitDiscountAmount);
+  const grossSubtotal = (parsedUnitPrice || 0) * Math.max(0, parsedQty);
+  const totalDiscountSaved = (unitDiscountAmount || 0) * Math.max(0, parsedQty);
+  const total = effectiveUnitPrice * Math.max(0, parsedQty);
 
   const handleConfirm = () => {
     const finalQty = Math.max(isLoose ? 0.01 : 1, parsedQty);
@@ -337,7 +382,16 @@ function QtyPopup({
       setShowError(true);
       return;
     }
-    onConfirm(finalQty, parsedUnitPrice, productName, activeUnit, parsedStock);
+    onConfirm(
+      finalQty, 
+      parsedUnitPrice, 
+      productName, 
+      activeUnit, 
+      parsedStock, 
+      hasDiscountApproval ? parsedDiscountVal : undefined,
+      hasDiscountApproval ? selectedDiscountType : undefined,
+      maxAllowedDiscount
+    );
   };
 
   const scrollPopupUp = () => {
@@ -606,6 +660,40 @@ function QtyPopup({
                     placeholder="0"
                   />
                 </div>
+
+                {/* Editable Maximum Discount Limit */}
+                <div className="space-y-1 pt-1 border-t border-amber-200/60">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-amber-600" /> Max Discount Limit ({selectedDiscountType === 'PERCENTAGE' ? '%' : 'Rs.'})
+                    </p>
+                    {Number(maxDiscountLimit) !== (product.maxAllowedDiscount ?? 0) && (
+                      <button
+                        type="button"
+                        onClick={() => setMaxDiscountLimit(product.maxAllowedDiscount ?? 0)}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-xs font-black text-amber-700">
+                      {selectedDiscountType === 'PERCENTAGE' ? '%' : 'Rs.'}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={selectedDiscountType === 'PERCENTAGE' ? 100 : undefined}
+                      step="any"
+                      value={maxDiscountLimit}
+                      onChange={(e) => setMaxDiscountLimit(e.target.value)}
+                      onKeyDown={handleKey}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-amber-300 rounded-xl font-black text-[14px] text-amber-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all font-mono"
+                      placeholder="e.g. 15"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -674,13 +762,126 @@ function QtyPopup({
               </div>
             </div>
 
+            {/* Approved Product Discount Selection Section */}
+            {hasDiscountApproval && (
+              <div className="space-y-2 p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-emerald-600" /> Approved Product Discount
+                  </span>
+                  {maxAllowedDiscount > 0 && (
+                    <span className="text-[9px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Max: {selectedDiscountType === 'PERCENTAGE' ? `${maxAllowedDiscount}%` : `Rs. ${maxAllowedDiscount}`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Discount Type Selector (% vs Rs.) */}
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-emerald-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDiscountType('PERCENTAGE')}
+                    className={`py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center justify-center gap-1 ${
+                      selectedDiscountType === 'PERCENTAGE'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5" /> Percentage (%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDiscountType('FIXED_AMOUNT')}
+                    className={`py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center justify-center gap-1 ${
+                      selectedDiscountType === 'FIXED_AMOUNT'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" /> Fixed Amount (Rs.)
+                  </button>
+                </div>
+
+                {/* Discount Value Input */}
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-xs font-black text-emerald-600">
+                    {selectedDiscountType === 'PERCENTAGE' ? '%' : 'Rs.'}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={selectedDiscountType === 'PERCENTAGE' ? 100 : undefined}
+                    step="any"
+                    value={discountValInput}
+                    onChange={(e) => setDiscountValInput(e.target.value)}
+                    onKeyDown={handleKey}
+                    className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-right font-black text-[14px] outline-none transition-all font-mono ${
+                      isDiscountOverMax
+                        ? 'border-red-400 text-red-600 ring-2 ring-red-500/20'
+                        : 'border-emerald-300 text-emerald-950 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
+                    }`}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Warning if discount exceeds max limit */}
+                {isDiscountOverMax && (
+                  <p className="text-[10px] font-extrabold text-red-600 flex items-center gap-1 pt-0.5">
+                    <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />
+                    Discount exceeds max allowed limit ({selectedDiscountType === 'PERCENTAGE' ? `${maxAllowedDiscount}%` : `Rs. ${maxAllowedDiscount}`}).
+                  </p>
+                )}
+
+                {/* Quick Discount Preset Chips */}
+                <div className="flex gap-1 overflow-x-auto no-scrollbar pt-0.5">
+                  {selectedDiscountType === 'PERCENTAGE'
+                    ? [0, 5, 10, 15, 20, product.defaultDiscountValue || 0].filter((v, i, a) => v >= 0 && a.indexOf(v) === i).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setDiscountValInput(v > 0 ? String(v) : '')}
+                          className={`px-2 py-0.5 rounded text-[10px] font-extrabold border transition-all shrink-0 ${
+                            parsedDiscountVal === v
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {v === 0 ? 'No Discount' : `${v}%`}
+                        </button>
+                      ))
+                    : [0, 50, 100, 200, 500, product.defaultDiscountValue || 0].filter((v, i, a) => v >= 0 && a.indexOf(v) === i).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setDiscountValInput(v > 0 ? String(v) : '')}
+                          className={`px-2 py-0.5 rounded text-[10px] font-extrabold border transition-all shrink-0 ${
+                            parsedDiscountVal === v
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {v === 0 ? 'No Discount' : `Rs. ${v}`}
+                        </button>
+                      ))
+                  }
+                </div>
+              </div>
+            )}
+
             {/* Line Total Summary */}
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-2.5 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-gray-500">
                   {parsedQty} {activeUnit} × Rs. {(parsedUnitPrice || 0).toLocaleString()}
+                  {unitDiscountAmount > 0 && (
+                    <span className="text-emerald-700 font-extrabold ml-1">
+                      (-Rs. {unitDiscountAmount.toLocaleString()}/unit)
+                    </span>
+                  )}
                 </p>
-                <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">Line Total</p>
+                <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mt-0.5">
+                  Line Total {totalDiscountSaved > 0 && <span className="text-emerald-600 font-bold">(Saved Rs. {totalDiscountSaved.toLocaleString()})</span>}
+                </p>
               </div>
               <span className="text-[18px] font-black text-[#059669] font-mono">
                 Rs. {total.toLocaleString()}
@@ -1089,7 +1290,10 @@ export default function POSPage() {
     customPrice?: number,
     customName?: string,
     customUnit?: string,
-    customStock?: number
+    customStock?: number,
+    customDiscountValue?: number,
+    customDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT',
+    customMaxDiscount?: number
   ) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
@@ -1101,14 +1305,16 @@ export default function POSPage() {
     const finalName = customName && customName.trim() ? customName.trim() : product.name;
     const finalUnit = customUnit && customUnit.trim() ? customUnit.trim() : (product.measurementUnit || 'pcs');
     const finalStock = customStock !== undefined && !isNaN(customStock) && customStock >= 0 ? customStock : product.stock;
+    const finalMaxDiscount = customMaxDiscount !== undefined && !isNaN(customMaxDiscount) && customMaxDiscount >= 0 ? customMaxDiscount : Number(product.maxAllowedDiscount || 0);
 
     const isNameChanged = finalName !== product.name;
     const isPriceChanged = finalPrice !== product.price;
     const isUnitChanged = finalUnit !== (product.measurementUnit || 'pcs');
     const isStockChanged = finalStock !== product.stock;
+    const isMaxDiscountChanged = customMaxDiscount !== undefined && customMaxDiscount !== Number(product.maxAllowedDiscount || 0);
 
     // Permanently update product details in database and POS inventory list if changed
-    if (isNameChanged || isPriceChanged || isUnitChanged || isStockChanged) {
+    if (isNameChanged || isPriceChanged || isUnitChanged || isStockChanged || isMaxDiscountChanged) {
       const updatePayload: Record<string, any> = {};
       if (isNameChanged) updatePayload.name = finalName;
       if (isPriceChanged) updatePayload.sellingPrice = finalPrice;
@@ -1117,6 +1323,9 @@ export default function POSPage() {
         updatePayload.stock = finalStock;
         updatePayload.quantity = finalStock;
       }
+      if (isMaxDiscountChanged) {
+        updatePayload.maxAllowedDiscount = finalMaxDiscount;
+      }
 
       api.patch(`/products/${product.id}`, updatePayload).then(() => {
         toast.success(`Product permanently updated in Inventory! (${finalName}, Stock: ${finalStock} ${finalUnit}, Rs. ${finalPrice.toLocaleString()})`);
@@ -1124,28 +1333,63 @@ export default function POSPage() {
         console.error("Failed to permanently update product details in database:", err);
       });
 
+      if (isMaxDiscountChanged) {
+        api.patch(`/products/${product.id}/discount-config`, {
+          isDiscountEnabled: true,
+          discountType: customDiscountType || product.discountType || 'PERCENTAGE',
+          maxAllowedDiscount: finalMaxDiscount,
+          defaultDiscountValue: customDiscountValue ?? product.defaultDiscountValue ?? 0,
+        }).then(() => {
+          toast.success(`Max Discount Limit permanently set to ${finalMaxDiscount}${customDiscountType === 'FIXED_AMOUNT' ? ' Rs.' : '%'} in database!`);
+        }).catch((err) => {
+          console.error("Failed to update discount-config endpoint:", err);
+        });
+      }
+
       setProductsList((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, name: finalName, price: finalPrice, measurementUnit: finalUnit, stock: finalStock } : p))
+        prev.map((p) => (p.id === product.id ? { 
+          ...p, 
+          name: finalName, 
+          price: finalPrice, 
+          measurementUnit: finalUnit, 
+          stock: finalStock,
+          maxAllowedDiscount: finalMaxDiscount,
+        } : p))
       );
+    }
+
+    // Determine applied discount from popup selection or product defaults
+    let discountAmount = 0;
+    let discountPercentage = 0;
+    const selDiscountType = customDiscountType || product.discountType || 'PERCENTAGE';
+    const selDiscountVal = customDiscountValue !== undefined 
+      ? customDiscountValue 
+      : (product.isDiscountEnabled && product.isDiscountApproved ? Number(product.defaultDiscountValue ?? 0) : 0);
+
+    if (product.isDiscountEnabled && product.isDiscountApproved && selDiscountVal > 0) {
+      if (selDiscountType === 'PERCENTAGE') {
+        discountPercentage = selDiscountVal;
+        discountAmount = Number(((finalPrice * selDiscountVal) / 100).toFixed(2));
+      } else {
+        discountAmount = selDiscountVal;
+        discountPercentage = finalPrice > 0 ? Number(((selDiscountVal / finalPrice) * 100).toFixed(2)) : 0;
+      }
     }
 
     setCart((prev) => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, name: finalName, qty, price: finalPrice, measurementUnit: finalUnit } : item);
-      }
-
-      let discountAmount = 0;
-      let discountPercentage = 0;
-      const defaultVal = Number(product.defaultDiscountValue ?? 0);
-      if (product.isDiscountEnabled && product.isDiscountApproved && defaultVal > 0) {
-        if (product.discountType === 'PERCENTAGE') {
-          discountPercentage = defaultVal;
-          discountAmount = Number(((finalPrice * defaultVal) / 100).toFixed(2));
-        } else {
-          discountAmount = defaultVal;
-          discountPercentage = Number(((defaultVal / finalPrice) * 100).toFixed(2));
-        }
+        return prev.map(item => item.id === product.id ? { 
+          ...item, 
+          name: finalName, 
+          qty, 
+          price: finalPrice, 
+          measurementUnit: finalUnit,
+          discountAmount,
+          discountPercentage,
+          primaryDiscountValue: selDiscountVal,
+          primaryDiscountType: selDiscountType,
+        } : item);
       }
 
       return [...prev, {
@@ -1161,11 +1405,13 @@ export default function POSPage() {
         measurementUnit: finalUnit,
         isDiscountEnabled: product.isDiscountEnabled,
         isDiscountApproved: product.isDiscountApproved,
-        discountType: product.discountType,
+        discountType: selDiscountType,
         maxAllowedDiscount: product.maxAllowedDiscount,
         defaultDiscountValue: product.defaultDiscountValue,
         discountAmount,
         discountPercentage,
+        primaryDiscountValue: selDiscountVal,
+        primaryDiscountType: selDiscountType,
       }];
     });
     setActiveTab('items');
@@ -1534,8 +1780,8 @@ export default function POSPage() {
           product={pendingProduct}
           currentQty={cart.find(c => c.id === pendingProduct.id)?.qty ?? 0}
           initialEditMode={pendingProductEditMode}
-          onConfirm={(qty, customPrice, customName, customUnit, customStock) =>
-            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit, customStock)
+          onConfirm={(qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount) =>
+            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount)
           }
           onClose={() => {
             setPendingProduct(null);

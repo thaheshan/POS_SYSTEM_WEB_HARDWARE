@@ -121,7 +121,7 @@ export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload):
   const shopName = data.shopName || getShopName();
   const itemsList =
     data.items && data.items.length > 0
-      ? data.items.map((i) => `• ${i.qty}x ${i.name}`).join("\n")
+      ? data.items.map((i) => `• ${i.name}`).join("\n")
       : "• Credit Purchase Items";
 
   return [
@@ -133,7 +133,7 @@ export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload):
     `Date: ${data.date}`,
     `Invoice: ${data.invoiceRef}`,
     ``,
-    `Purchased Items (Qty Only):`,
+    `Purchased Items:`,
     itemsList,
     ``,
     `Order Total: Rs. ${data.totalOrderAmount.toLocaleString()}`,
@@ -366,7 +366,7 @@ export async function fetchCustomerCreditHistorySummary(
       const itemList =
         saleItems.length > 0
           ? saleItems
-              .map((i: any) => `${Number(i.quantity || i.qty || i.count || 1)}x ${extractProductName(i) || "Item"}`)
+              .map((i: any) => `${extractProductName(i) || "Item"}`)
               .join(", ")
           : null;
 
