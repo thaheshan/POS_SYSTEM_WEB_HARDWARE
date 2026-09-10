@@ -36,7 +36,7 @@ export function getTEXTLKSenderID(): string {
     const saved = localStorage.getItem("TEXT_LK_SENDER_ID");
     if (saved && saved.trim()) return saved.trim();
   }
-  return "TextLKDemo";
+  return "TrincoHW"; // Approved Sender ID: text.lk account — Trinco Hardware & Electricals (3924FC6C)
 }
 
 /**
@@ -79,15 +79,18 @@ export async function sendViaTEXTLK(
     });
 
     const json = await res.json().catch(() => ({}));
-    console.log("[TEXT.LK Server Proxy Response]", normalised, res.status, json);
+    console.log("[TEXT.LK Server Proxy Response]", normalised, "HTTP Status:", res.status, "Payload:", JSON.stringify(json));
 
-    if (res.ok && json?.status !== "error" && !json?.message?.toLowerCase?.().includes("csrf")) {
+    const isSuccess = res.ok && (json?.status === "success" || json?.status === 200 || (json?.status !== "error" && !json?.message?.toLowerCase?.().includes("csrf") && !json?.errors));
+
+    if (isSuccess) {
       return { success: true, message: `SMS sent via TEXT.LK to ${normalised}.` };
     }
 
+    const errMsg = json?.message || (json?.errors ? JSON.stringify(json.errors) : "Failed to send SMS via TEXT.LK");
     return {
       success: false,
-      message: json?.message || "Failed to send SMS via TEXT.LK",
+      message: errMsg,
     };
   } catch (err: any) {
     console.warn("[TEXT.LK SMS Proxy Warning]:", err?.message || err);
