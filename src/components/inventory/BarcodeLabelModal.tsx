@@ -1,7 +1,27 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, Printer, Download, Barcode, Plus, Minus, Image as ImageIcon, FileText, Zap } from "lucide-react";
+import {
+  X,
+  Printer,
+  Download,
+  Barcode,
+  Plus,
+  Minus,
+  Image as ImageIcon,
+  FileText,
+  Zap,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  CheckCircle2,
+  Maximize2,
+  MoveHorizontal,
+  MoveVertical,
+  Layers,
+  Settings2,
+} from "lucide-react";
 
 interface BarcodeLabelModalProps {
   product: {
@@ -15,7 +35,7 @@ interface BarcodeLabelModalProps {
   onClose: () => void;
 }
 
-// ─── JsBarcode dynamic loader ───────────────────────────────────────────────
+// ─── JsBarcode dynamic script loader ─────────────────────────────────────────
 let jsBarcodeLoaded = false;
 function loadJsBarcode(): Promise<void> {
   return new Promise((resolve) => {
@@ -34,56 +54,118 @@ function loadJsBarcode(): Promise<void> {
   });
 }
 
-// ─── ZPL Generator for ZDesigner ZD230 203dpi ────────────────────────────────
-// ZD230 @ 203dpi: 1mm ≈ 8 dots
-// Label: 50mm × 25mm  →  400 × 200 dots per label
-// 2-up: two labels side-by-side on 100mm × 25mm print width
-// -3mm X offset correction = -24 dots
-function generateZPL(
+// ─── Default Alignment & Printer Settings Interface ─────────────────────────
+export interface LabelAlignmentSettings {
+  preset: "zd230_2up" | "thermal_1up" | "custom";
+  unit: "mm";
+  labelWidth: number; // e.g. 50mm
+  labelHeight: number; // e.g. 25mm
+  labelsAcross: number; // 1 or 2 (horizontal count)
+  horizontalGap: number; // gap between side-by-side labels in mm (e.g. 0mm or 2mm)
+  topOffset: number; // top margin offset in mm (-10 to +10)
+  leftOffset: number; // left margin offset in mm (-10 to +10)
+  speed: number; // 2, 3, 4, 5, 6 inch/s
+  darkness: number; // 0 to 30
+  fontSizeScale: number; // 80% to 140%
+  barcodeHeight: number; // height in mm
+  barWidth: "1mm" | "2mm" | "3mm";
+  showPrice: boolean;
+  showStoreName: boolean;
+  showCategory: boolean;
+}
+
+const DEFAULT_SETTINGS: LabelAlignmentSettings = {
+  preset: "zd230_2up",
+  unit: "mm",
+  labelWidth: 50,
+  labelHeight: 25,
+  labelsAcross: 2,
+  horizontalGap: 0,
+  topOffset: 0,
+  leftOffset: 0,
+  speed: 6,
+  darkness: 15,
+  fontSizeScale: 100,
+  barcodeHeight: 10,
+  barWidth: "2mm",
+  showPrice: false,
+  showStoreName: false,
+  showCategory: false,
+};
+
+// ─── Advanced ZPL Generator for Zebra ZD230 203dpi ───────────────────────────
+// ZD230 @ 203dpi: 1mm ≈ 8.0 dots (203 / 25.4)
+function generateZPLCode(
   productName: string,
   skuCode: string,
   price: string | undefined,
-  showPrice: boolean,
-  copies: number,
+  settings: LabelAlignmentSettings,
+  copies: number
 ): string {
   const MM_TO_DOTS = 203 / 25.4; // ≈ 8.0 dots/mm at 203dpi
 
-  const labelW   = Math.round(50 * MM_TO_DOTS);  // 400 dots
-  const labelH   = Math.round(25 * MM_TO_DOTS);  // 200 dots
-  const offsetX  = -Math.round(3 * MM_TO_DOTS);  // -24 dots (-3mm correction)
+  const labelW = Math.round(settings.labelWidth * MM_TO_DOTS);
+  const labelH = Math.round(settings.labelHeight * MM_TO_DOTS);
+  const gapDots = Math.round(settings.horizontalGap * MM_TO_DOTS);
+  const totalPaperW = (labelW + gapDots) * settings.labelsAcross - gapDots;
 
-  const truncName = productName.length > 22 ? productName.slice(0, 21) + "~" : productName;
-  const truncSku  = skuCode.length > 18 ? skuCode.slice(0, 18) : skuCode;
+  const topOffsetDots = Math.round(settings.topOffset * MM_TO_DOTS);
+  const leftOffsetDots = Math.round(settings.leftOffset * MM_TO_DOTS);
 
-  // Dot positions within each label
-  const nameY    = 10;
-  const barcodeX = 10;
-  const barcodeY = 40;
-  const barcodeH = 80;   // ~10mm tall barcode
-  const barcodeNW = 2;   // narrow bar width: 2 dots ≈ 0.25mm (readable @ 203dpi)
-  const skuY     = 135;
-  const priceY   = 162;
+  const barcodeHDots = Math.round(settings.barcodeHeight * MM_TO_DOTS);
+  const fontScale = settings.fontSizeScale / 100;
 
-  const buildLabel = (xShift: number) => {
+  const fontNameSize = Math.round(18 * fontScale);
+  const fontSkuSize = Math.round(15 * fontScale);
+  const fontPriceSize = Math.round(22 * fontScale);
+
+  const nameY = Math.max(2, 10 + topOffsetDots);
+  const barcodeY = Math.max(15, nameY + fontNameSize + 8);
+  const skuY = barcodeY + barcodeHDots + 12;
+  const priceY = skuY + fontSkuSize + 8;
+
+  const truncName =
+    productName.length > 24 ? productName.slice(0, 23) + "~" : productName;
+  const truncSku = skuCode.length > 18 ? skuCode.slice(0, 18) : skuCode;
+
+  const buildSingleLabelZPL = (labelIndex: number) => {
+    const xBase =
+      leftOffsetDots + labelIndex * (labelW + gapDots) + Math.round(2 * MM_TO_DOTS);
+
     const lines = [
-      `^FO${xShift + barcodeX},${nameY}^A0N,18,18^FD${truncName}^FS`,
-      `^FO${xShift + barcodeX},${barcodeY}^BY${barcodeNW}^BCN,${barcodeH},N,N,N^FD${truncSku}^FS`,
-      `^FO${xShift + barcodeX},${skuY}^A0N,16,16^FD${truncSku}^FS`,
+      `^FO${xBase},${nameY}^A0N,${fontNameSize},${fontNameSize}^FD${truncName}^FS`,
+      `^FO${xBase},${barcodeY}^BY2,2,${barcodeHDots}^BCN,${barcodeHDots},N,N,N^FD${truncSku}^FS`,
+      `^FO${xBase},${skuY}^A0N,${fontSkuSize},${fontSkuSize}^FD${truncSku}^FS`,
     ];
-    if (showPrice && price) {
-      lines.push(`^FO${xShift + barcodeX},${priceY}^A0N,22,22^FDRs.${parseFloat(price).toLocaleString()}^FS`);
+
+    if (settings.showPrice && price) {
+      lines.push(
+        `^FO${xBase},${priceY}^A0N,${fontPriceSize},${fontPriceSize}^FDRs.${parseFloat(
+          price
+        ).toLocaleString()}^FS`
+      );
     }
     return lines.join("\n");
   };
 
-  // Label A at offset X, Label B at offset X + labelW (side-by-side 2-up)
+  const labelsZPL: string[] = [];
+  for (let a = 0; a < settings.labelsAcross; a++) {
+    labelsZPL.push(buildSingleLabelZPL(a));
+  }
+
+  // Calculate actual ZPL print quantity per row
+  const rowCopies = Math.ceil(copies / settings.labelsAcross);
+
   return `^XA
-^PW${labelW * 2}
+~TA000
+~JSN
+^PR${settings.speed},${settings.speed}
+~MD${settings.darkness}
+^PW${totalPaperW}
 ^LL${labelH}
 ^LH0,0
-${buildLabel(offsetX)}
-${buildLabel(offsetX + labelW)}
-^PQ${copies},0,1,Y
+${labelsZPL.join("\n")}
+^PQ${rowCopies},0,1,Y
 ^XZ`;
 }
 
@@ -94,99 +176,246 @@ export default function BarcodeLabelModal({
 }: BarcodeLabelModalProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [qty, setQty] = useState(1);
-  const [labelSize, setLabelSize] = useState<"small" | "medium" | "large">("medium");
-  const [barWidth, setBarWidth] = useState<"1mm" | "2mm" | "3mm">("2mm");
-  const [showPrice, setShowPrice] = useState(false);
-  const [showStoreName, setShowStoreName] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+  const [activeTab, setActiveTab] = useState<"preview" | "settings">("preview");
+
+  // Load alignment settings from localStorage if saved
+  const [settings, setSettings] = useState<LabelAlignmentSettings>(() => {
+    try {
+      const saved = localStorage.getItem("pos_barcode_label_settings");
+      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  });
 
   const skuCode = product?.sku || product?.id?.slice(0, 12) || "NOSKU";
 
-  const sizeConfig = {
-    small:  { w: 220, h: 90,  barcodeH: 40, font: 10 },
-    medium: { w: 300, h: 120, barcodeH: 55, font: 12 },
-    large:  { w: 390, h: 150, barcodeH: 70, font: 14 },
-  };
-  const cfg = sizeConfig[labelSize];
+  const price =
+    typeof product?.unitCost === "string"
+      ? product.unitCost.replace(/[^\d.]/g, "")
+      : product?.unitCost?.toString() || "";
 
-  const barWidthScale = { "1mm": 1.0, "2mm": 1.8, "3mm": 2.6 }[barWidth];
+  // Save settings automatically to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("pos_barcode_label_settings", JSON.stringify(settings));
+    } catch (e) {
+      console.warn("Could not save barcode label settings to localStorage", e);
+    }
+  }, [settings]);
 
   useEffect(() => {
     loadJsBarcode().then(() => setLoaded(true));
   }, []);
 
+  const barWidthScale = { "1mm": 1.1, "2mm": 1.8, "3mm": 2.6 }[settings.barWidth];
+
   useEffect(() => {
-    if (!loaded || !svgRef.current || !product) return;
-    try {
-      (window as any).JsBarcode(svgRef.current, skuCode, {
-        format: "CODE128",
-        width: barWidthScale,
-        height: cfg.barcodeH,
-        displayValue: false,
-        margin: 0,
-        background: "transparent",
+    if (!loaded || !product) return;
+
+    // Render primary SVG used for printing & exports
+    if (svgRef.current) {
+      try {
+        (window as any).JsBarcode(svgRef.current, skuCode, {
+          format: "CODE128",
+          width: barWidthScale,
+          height: settings.barcodeHeight * 3.5,
+          displayValue: false,
+          margin: 0,
+          background: "transparent",
+        });
+      } catch (e) {}
+    }
+
+    // Render all preview SVGs in the modal (both Label 1 and Label 2 in 2-Up)
+    setTimeout(() => {
+      const previewSvgs = document.querySelectorAll<SVGSVGElement>(".barcode-svg-preview");
+      previewSvgs.forEach((svg) => {
+        try {
+          (window as any).JsBarcode(svg, skuCode, {
+            format: "CODE128",
+            width: 1.2, // optimal scaling so bars never overflow preview card
+            height: 28,
+            displayValue: false,
+            margin: 0,
+            background: "transparent",
+          });
+          svg.style.maxWidth = "100%";
+          svg.style.height = "28px";
+          svg.style.overflow = "hidden";
+        } catch (e) {}
       });
-    } catch (e) { /* invalid barcode fallback */ }
-  }, [loaded, skuCode, labelSize, barWidthScale, cfg.barcodeH]);
+    }, 10);
+  }, [loaded, skuCode, settings.barWidth, settings.barcodeHeight, barWidthScale, activeTab, settings.labelsAcross, settings.preset]);
 
   if (!product) return null;
 
-  const price =
-    typeof product.unitCost === "string"
-      ? product.unitCost.replace(/[^\d.]/g, "")
-      : product.unitCost?.toString() || "";
+  // ─── Preset Switcher ────────────────────────────────────────────────────────
+  const applyPreset = (preset: "zd230_2up" | "thermal_1up" | "custom") => {
+    if (preset === "zd230_2up") {
+      setSettings((prev) => ({
+        ...prev,
+        preset: "zd230_2up",
+        labelWidth: 50,
+        labelHeight: 25,
+        labelsAcross: 2,
+        horizontalGap: 0,
+        topOffset: 0,
+        leftOffset: 0,
+        speed: 6,
+        darkness: 15,
+      }));
+    } else if (preset === "thermal_1up") {
+      setSettings((prev) => ({
+        ...prev,
+        preset: "thermal_1up",
+        labelWidth: 50,
+        labelHeight: 25,
+        labelsAcross: 1,
+        horizontalGap: 0,
+        topOffset: 0,
+        leftOffset: 0,
+        speed: 6,
+        darkness: 15,
+      }));
+    } else {
+      setSettings((prev) => ({ ...prev, preset: "custom" }));
+    }
+  };
 
-  // ─── Thermal 50mm×25mm 2-up HTML (for browser print to ZD230) ─────────────
-  // At 96dpi screen: 50mm≈189px, 25mm≈94px — we use @page size:100mm 25mm
-  const getThermalHTML = (svgContent: string, copies: number) => {
-    const lw = 189; // 50mm at 96dpi
-    const lh = 94;  // 25mm at 96dpi
-    const oneLabel = `<div style="width:${lw}px;height:${lh}px;border:0.5px solid #000;background:#fff;padding:3px 5px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-family:'Courier New',monospace;box-sizing:border-box;flex-shrink:0;">
-  <div style="font-size:8.5px;font-weight:900;color:#000;width:100%;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${product.name}</div>
-  <div style="width:100%;display:flex;justify-content:center;">${svgContent}</div>
-  <div style="font-size:7.5px;font-weight:700;color:#000;letter-spacing:1px;">${skuCode}</div>
-  ${showPrice && price ? `<div style="font-size:10px;font-weight:900;color:#000;">Rs.${parseFloat(price).toLocaleString()}</div>` : ""}
-</div>`;
+  // ─── HTML Printable Document Generator (Browser Thermal Print) ──────────────
+  const getThermalHTML = (svgContent: string, copiesCount: number) => {
+    const labelW_px = Math.round(settings.labelWidth * 3.78); // 1mm ≈ 3.78px at 96dpi
+    const labelH_px = Math.round(settings.labelHeight * 3.78);
+    const paperW_mm =
+      (settings.labelWidth + settings.horizontalGap) * settings.labelsAcross -
+      settings.horizontalGap;
 
-    // Pair labels 2-up per row
-    const rows: string[] = [];
-    for (let i = 0; i < copies; i += 2) {
-      rows.push(`<div style="display:flex;width:${lw * 2}px;margin:0;padding:0;">${oneLabel}${i + 1 < copies ? oneLabel : `<div style="width:${lw}px;"></div>`}</div>`);
+    const oneLabelHTML = `
+      <div style="
+        width: ${settings.labelWidth}mm;
+        height: ${settings.labelHeight}mm;
+        box-sizing: border-box;
+        padding: 1.5mm 2mm;
+        margin-top: ${settings.topOffset}mm;
+        margin-left: ${settings.leftOffset}mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background: #ffffff;
+        border: 0.2mm solid #e5e7eb;
+        overflow: hidden;
+        flex-shrink: 0;
+      ">
+        ${
+          settings.showStoreName && storeName
+            ? `<div style="font-size:${Math.round(
+                7 * (settings.fontSizeScale / 100)
+              )}pt;font-weight:900;color:#059669;text-transform:uppercase;letter-spacing:0.3px;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${storeName}</div>`
+            : ""
+        }
+        <div style="
+          font-size: ${Math.round(8.5 * (settings.fontSizeScale / 100))}pt;
+          font-weight: 900;
+          color: #000000;
+          width: 100%;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          line-height: 1.1;
+        ">${product.name}</div>
+        
+        <div style="width:100%;display:flex;justify-content:center;align-items:center;height:${settings.barcodeHeight}mm;margin:0.5mm 0;">
+          ${svgContent}
+        </div>
+
+        <div style="
+          font-size: ${Math.round(7.5 * (settings.fontSizeScale / 100))}pt;
+          font-weight: 800;
+          color: #111827;
+          letter-spacing: 0.5px;
+        ">${skuCode}</div>
+
+        ${
+          settings.showPrice && price
+            ? `<div style="font-size:${Math.round(
+                9 * (settings.fontSizeScale / 100)
+              )}pt;font-weight:900;color:#059669;">Rs. ${parseFloat(
+                price
+              ).toLocaleString()}</div>`
+            : ""
+        }
+        ${
+          settings.showCategory && product.category
+            ? `<div style="font-size:6pt;color:#6b7280;font-weight:600;">${product.category}</div>`
+            : ""
+        }
+      </div>
+    `;
+
+    const labelRows: string[] = [];
+    for (let i = 0; i < copiesCount; i += settings.labelsAcross) {
+      const rowLabels: string[] = [];
+      for (let a = 0; a < settings.labelsAcross; a++) {
+        if (i + a < copiesCount) {
+          rowLabels.push(oneLabelHTML);
+        } else {
+          rowLabels.push(`<div style="width:${settings.labelWidth}mm;"></div>`);
+        }
+      }
+      labelRows.push(
+        `<div style="display:flex;gap:${settings.horizontalGap}mm;width:${paperW_mm}mm;page-break-inside:avoid;margin:0;padding:0;">${rowLabels.join(
+          ""
+        )}</div>`
+      );
     }
 
-    return `<!DOCTYPE html><html><head><title>Thermal ${product.name}</title>
-<style>
-  * { margin:0;padding:0;box-sizing:border-box; }
-  body { margin:0;padding:0; }
-  @media print {
-    @page { size: 100mm 25mm; margin: 0; }
-    body { margin:0;padding:0; }
-  }
-</style></head><body>${rows.join("")}<script>window.onload=()=>window.print();</script></body></html>`;
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Barcode_${skuCode}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { margin:0; padding:0; background:#ffffff; -webkit-print-color-adjust:exact; }
+    @media print {
+      @page {
+        size: ${paperW_mm}mm ${settings.labelHeight}mm;
+        margin: 0;
+      }
+      html, body {
+        width: ${paperW_mm}mm;
+        height: ${settings.labelHeight}mm;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${labelRows.join("")}
+  <script>
+    window.onload = () => {
+      window.print();
+    };
+  </script>
+</body>
+</html>`;
   };
 
-  const getStandardLabelHTML = (svgContent: string, count: number) => {
-    const label = `<div style="width:${cfg.w}px;height:${cfg.h}px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;padding:8px 12px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-family:'Segoe UI',sans-serif;page-break-inside:avoid;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-      ${showStoreName && storeName ? `<div style="font-size:${cfg.font - 1}px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:0.5px;width:100%;text-align:center;">${storeName}</div>` : ""}
-      <div style="font-size:${cfg.font + 1}px;font-weight:900;color:#111827;text-align:center;max-width:${cfg.w - 24}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${product.name}</div>
-      <div style="width:100%;display:flex;justify-content:center;">${svgContent}</div>
-      <div style="font-size:${cfg.font}px;font-weight:800;color:#374151;letter-spacing:1px;">${skuCode}</div>
-      ${showPrice && price ? `<div style="font-size:${cfg.font + 3}px;font-weight:900;color:#059669;">Rs. ${parseFloat(price).toLocaleString()}</div>` : ""}
-      ${product.category ? `<div style="font-size:${cfg.font - 1}px;color:#9ca3af;font-weight:600;">${product.category}</div>` : ""}
-    </div>`;
-    const repeated = Array(count).fill(label).join("\n");
-    return `<!DOCTYPE html><html><head><title>Barcode Labels</title>
-<style>* { margin:0;padding:0;box-sizing:border-box; } body { background:#f9fafb;padding:24px; } .grid { display:flex;flex-wrap:wrap;gap:12px; } @media print { body { background:#fff;padding:8mm; } .grid { gap:6mm; } @page { margin:8mm; } }</style>
-</head><body><div class="grid">${repeated}</div><script>window.onload=()=>window.print();</script></body></html>`;
-  };
-
-  // ─── Thermal print: opens browser print with @page 100mm×25mm ─────────────
+  // ─── Direct Browser Print Trigger ──────────────────────────────────────────
   const handleThermalPrint = () => {
     if (!svgRef.current) return;
     const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svgEl.style.width  = "170px";
-    svgEl.style.height = "36px";
+    svgEl.style.width = "100%";
+    svgEl.style.height = `${settings.barcodeHeight * 3.78}px`;
+
     const win = window.open("", "_blank");
     if (win) {
       win.document.write(getThermalHTML(svgEl.outerHTML, qty));
@@ -194,273 +423,610 @@ export default function BarcodeLabelModal({
     }
   };
 
-  // ─── Standard browser print ───────────────────────────────────────────────
-  const handlePrint = () => {
-    if (!svgRef.current) return;
-    const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
-    svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svgEl.style.width  = `${cfg.w - 24}px`;
-    svgEl.style.height = `${cfg.barcodeH}px`;
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(getStandardLabelHTML(svgEl.outerHTML, qty));
-      win.document.close();
-    }
-  };
-
-  // ─── Download ZPL for ZD230 ───────────────────────────────────────────────
+  // ─── Download ZPL Command file for Zebra ZD230 ─────────────────────────────
   const handleDownloadZPL = () => {
-    const zpl = generateZPL(product!.name, skuCode, price, showPrice, qty);
+    const zpl = generateZPLCode(product.name, skuCode, price, settings, qty);
     const blob = new Blob([zpl], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `label-${skuCode}.zpl`;
+    a.download = `ZD230_${skuCode}_${settings.labelsAcross}up.zpl`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
 
-  // ─── Download Image ───────────────────────────────────────────────────────
+  // ─── Export Image (PNG / JPEG) ─────────────────────────────────────────────
   const handleDownloadImage = (format: "png" | "jpeg") => {
     if (!svgRef.current || !product) return;
     const canvas = document.createElement("canvas");
-    const scale = 3;
-    canvas.width  = cfg.w * scale;
-    canvas.height = cfg.h * scale;
+    const scale = 4;
+    const wPx = Math.round(settings.labelWidth * 3.78);
+    const hPx = Math.round(settings.labelHeight * 3.78);
+
+    canvas.width = wPx * scale;
+    canvas.height = hPx * scale;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     ctx.scale(scale, scale);
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, cfg.w, cfg.h);
+    ctx.fillRect(0, 0, wPx, hPx);
+
     ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    if ((ctx as any).roundRect) (ctx as any).roundRect(2, 2, cfg.w - 4, cfg.h - 4, 8);
-    else ctx.rect(2, 2, cfg.w - 4, cfg.h - 4);
-    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, wPx - 2, hPx - 2);
+
     const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const svgBlob = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(svgEl));
+    const svgBlob =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(new XMLSerializer().serializeToString(svgEl));
+
     const img = new Image();
     img.onload = () => {
-      let y = 16;
-      if (showStoreName && storeName) {
-        ctx.font = `800 ${cfg.font - 1}px "Segoe UI", sans-serif`;
+      let y = 10;
+      const fontScale = settings.fontSizeScale / 100;
+
+      if (settings.showStoreName && storeName) {
+        ctx.font = `800 ${Math.round(8 * fontScale)}px "Segoe UI", sans-serif`;
         ctx.fillStyle = "#059669";
         ctx.textAlign = "center";
-        ctx.fillText(storeName.toUpperCase(), cfg.w / 2, y);
-        y += cfg.font + 4;
+        ctx.fillText(storeName.toUpperCase(), wPx / 2, y);
+        y += 10;
       }
-      ctx.font = `900 ${cfg.font + 1}px "Segoe UI", sans-serif`;
+
+      ctx.font = `900 ${Math.round(10 * fontScale)}px "Segoe UI", sans-serif`;
       ctx.fillStyle = "#111827";
       ctx.textAlign = "center";
-      ctx.fillText(product.name, cfg.w / 2, y, cfg.w - 24);
-      y += 8;
-      const barcodeW = cfg.w - 32;
-      ctx.drawImage(img, (cfg.w - barcodeW) / 2, y, barcodeW, cfg.barcodeH);
-      y += cfg.barcodeH + 14;
-      ctx.font = `800 ${cfg.font}px "Segoe UI", sans-serif`;
+      ctx.fillText(product.name, wPx / 2, y, wPx - 10);
+      y += 6;
+
+      const barcodeH = settings.barcodeHeight * 3.78;
+      ctx.drawImage(img, 10, y, wPx - 20, barcodeH);
+      y += barcodeH + 12;
+
+      ctx.font = `800 ${Math.round(9 * fontScale)}px "Segoe UI", sans-serif`;
       ctx.fillStyle = "#374151";
       ctx.textAlign = "center";
-      ctx.fillText(skuCode, cfg.w / 2, y);
-      y += cfg.font + 4;
-      if (showPrice && price) {
-        ctx.font = `900 ${cfg.font + 3}px "Segoe UI", sans-serif`;
+      ctx.fillText(skuCode, wPx / 2, y);
+      y += 12;
+
+      if (settings.showPrice && price) {
+        ctx.font = `900 ${Math.round(11 * fontScale)}px "Segoe UI", sans-serif`;
         ctx.fillStyle = "#059669";
         ctx.textAlign = "center";
-        ctx.fillText(`Rs. ${parseFloat(price).toLocaleString()}`, cfg.w / 2, y);
+        ctx.fillText(`Rs. ${parseFloat(price).toLocaleString()}`, wPx / 2, y);
       }
-      const sanitizedProdName = product.name
-        ? product.name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_").trim()
-        : "";
-      const nameSuffix = sanitizedProdName ? `_${sanitizedProdName}` : "";
 
       const a = document.createElement("a");
-      a.href = canvas.toDataURL(format === "png" ? "image/png" : "image/jpeg", 0.95);
-      a.download = `barcode-${skuCode}${nameSuffix}.${format === "png" ? "png" : "jpg"}`;
+      a.href = canvas.toDataURL(
+        format === "png" ? "image/png" : "image/jpeg",
+        0.95
+      );
+      a.download = `barcode_${skuCode}.${format}`;
       a.click();
     };
     img.src = svgBlob;
   };
 
-  // ─── Download HTML ────────────────────────────────────────────────────────
-  const handleDownloadHTML = () => {
-    if (!svgRef.current || !product) return;
-    const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
-    svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svgEl.style.width  = `${cfg.w - 24}px`;
-    svgEl.style.height = `${cfg.barcodeH}px`;
-    const blob = new Blob([getStandardLabelHTML(svgEl.outerHTML, qty)], { type: "text/html" });
-
-    const sanitizedProdName = product.name
-      ? product.name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_").trim()
-      : "";
-    const nameSuffix = sanitizedProdName ? `_${sanitizedProdName}` : "";
-
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `barcode-label-${skuCode}${nameSuffix}.html`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInput =
-        activeEl &&
-        (activeEl.tagName === "INPUT" ||
-          activeEl.tagName === "TEXTAREA" ||
-          activeEl.tagName === "SELECT" ||
-          (activeEl as HTMLElement).isContentEditable);
-
-      if (e.key === "Escape" || (e.key === "Backspace" && !isInput)) {
-        e.preventDefault();
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 overscroll-contain animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-xl border border-gray-100 overflow-hidden max-h-[92vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/80 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <Barcode className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
+              <Barcode className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-[15px] font-black text-gray-900">Barcode Label Generator</h2>
-              <p className="text-[11px] text-gray-400 font-medium">{product.name}</p>
+              <h2 className="text-[16px] font-black text-gray-900 leading-snug">
+                Barcode Label Printer & Setup
+              </h2>
+              <p className="text-[11px] text-emerald-700 font-extrabold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                ZDesigner ZD230 203dpi & Thermal Transfer Ready
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-200/70 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto">
-          {/* Label Preview */}
-          <div className="flex justify-center">
-            <div
-              className="border-2 border-dashed border-emerald-200 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center gap-2 p-4"
-              style={{ width: cfg.w, minHeight: cfg.h }}
-            >
-              {showStoreName && storeName && (
-                <p className="font-black text-emerald-600 tracking-widest uppercase text-center w-full" style={{ fontSize: cfg.font - 1 }}>
-                  {storeName}
-                </p>
-              )}
-              <p
-                className="font-black text-gray-900 text-center w-full leading-tight"
-                style={{
-                  fontSize:
-                    product.name.length > 45 ? cfg.font - 3 :
-                    product.name.length > 35 ? cfg.font - 2 :
-                    product.name.length > 25 ? cfg.font - 1 :
-                    cfg.font + 1,
-                  maxWidth: cfg.w - 24,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {product.name}
-              </p>
-              <svg ref={svgRef} style={{ width: cfg.w - 24, height: cfg.barcodeH }} />
-              <p className="font-bold text-gray-600 tracking-widest" style={{ fontSize: cfg.font }}>{skuCode}</p>
-              {showPrice && price && (
-                <p className="font-black text-emerald-600" style={{ fontSize: cfg.font + 3 }}>
-                  Rs. {parseFloat(price).toLocaleString()}
-                </p>
-              )}
-              {product.category && (
-                <p className="text-gray-400 font-semibold" style={{ fontSize: cfg.font - 1 }}>{product.category}</p>
-              )}
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-200 bg-gray-100/50 p-1 px-6 gap-2">
+          <button
+            onClick={() => setActiveTab("preview")}
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === "preview"
+                ? "bg-white text-emerald-700 shadow-sm border border-gray-200/80"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Printer className="w-3.5 h-3.5" /> Label Preview & Print
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === "settings"
+                ? "bg-white text-emerald-700 shadow-sm border border-gray-200/80"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Settings2 className="w-3.5 h-3.5" /> Printer Alignment & Offsets
+          </button>
+        </div>
 
-          {/* Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Label Size</label>
-              <div className="flex gap-1">
-                {(["small", "medium", "large"] as const).map((s) => (
-                  <button key={s} onClick={() => setLabelSize(s)}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-colors capitalize ${labelSize === s ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                    {s}
+        {/* Modal Scrollable Body */}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 show-scrollbar">
+          {activeTab === "preview" ? (
+            <>
+              {/* Preset Selector Badges */}
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">
+                  Select Printer Layout Preset
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => applyPreset("zd230_2up")}
+                    className={`p-2.5 rounded-2xl border text-left transition-all relative ${
+                      settings.preset === "zd230_2up"
+                        ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20"
+                        : "bg-white border-gray-200 hover:border-emerald-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-gray-900">
+                        Zebra ZD230 (2-Up)
+                      </span>
+                      {settings.preset === "zd230_2up" && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[9.5px] font-bold text-gray-500 mt-0.5">
+                      50×25mm (100mm Roll)
+                    </p>
                   </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Bar Width</label>
-              <div className="flex gap-1">
-                {(["1mm", "2mm", "3mm"] as const).map((w) => (
-                  <button key={w} onClick={() => setBarWidth(w)}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-colors ${barWidth === w ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                    {w}
+
+                  <button
+                    onClick={() => applyPreset("thermal_1up")}
+                    className={`p-2.5 rounded-2xl border text-left transition-all relative ${
+                      settings.preset === "thermal_1up"
+                        ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20"
+                        : "bg-white border-gray-200 hover:border-emerald-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-gray-900">
+                        Single Roll (1-Up)
+                      </span>
+                      {settings.preset === "thermal_1up" && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[9.5px] font-bold text-gray-500 mt-0.5">
+                      50×25mm Single Strip
+                    </p>
                   </button>
-                ))}
+
+                  <button
+                    onClick={() => applyPreset("custom")}
+                    className={`p-2.5 rounded-2xl border text-left transition-all relative ${
+                      settings.preset === "custom"
+                        ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20"
+                        : "bg-white border-gray-200 hover:border-emerald-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-gray-900">
+                        Custom Offsets
+                      </span>
+                      {settings.preset === "custom" && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[9.5px] font-bold text-gray-500 mt-0.5">
+                      User Defined Specs
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Label Strip Visualizer Preview */}
+              <div className="bg-gray-100/90 border border-gray-200 rounded-3xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="flex items-center justify-between w-full mb-2 px-1">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                    Paper Strip Preview ({settings.labelsAcross}-Up Side by Side)
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
+                    {settings.labelWidth * settings.labelsAcross}mm ×{" "}
+                    {settings.labelHeight}mm
+                  </span>
+                </div>
+
+                {/* Container representing thermal sticker roll */}
+                <div className="flex items-center gap-2 p-2 bg-white rounded-2xl border-2 border-dashed border-emerald-300 shadow-sm max-w-full overflow-x-auto">
+                  {Array.from({ length: settings.labelsAcross }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-gray-300 rounded-xl bg-white shadow-sm flex flex-col items-center justify-between p-2 shrink-0 transition-all overflow-hidden"
+                      style={{
+                        width: 170, // proportional preview
+                        height: 98,
+                        marginTop: `${settings.topOffset}px`,
+                        marginLeft: `${settings.leftOffset}px`,
+                      }}
+                    >
+                      {settings.showStoreName && storeName && (
+                        <p className="font-black text-emerald-600 text-[8px] tracking-widest uppercase text-center w-full truncate">
+                          {storeName}
+                        </p>
+                      )}
+                      <p className="font-black text-gray-900 text-[9.5px] text-center w-full leading-tight truncate px-1">
+                        {product.name}
+                      </p>
+                      <div className="w-full flex items-center justify-center overflow-hidden my-0.5">
+                        <svg
+                          className="barcode-svg-preview w-full max-w-full h-[28px] overflow-hidden"
+                          style={{ maxWidth: "100%", height: 28, overflow: "hidden" }}
+                        />
+                      </div>
+                      <p className="font-bold text-gray-600 text-[9px] tracking-wider font-mono">
+                        {skuCode}
+                      </p>
+                      {settings.showPrice && price && (
+                        <p className="font-black text-emerald-600 text-[10px]">
+                          Rs. {parseFloat(price).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hidden Master SVG for Print & Export Cloning */}
+                <svg ref={svgRef} className="hidden" style={{ display: "none" }} />
+              </div>
+
+              {/* Fast Toggles & Print Copies */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Print Quantity */}
+                <div className="space-y-1 bg-gray-50 border border-gray-200/80 p-3 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Number of Labels
+                    </label>
+                    <span className="text-[10px] font-bold text-gray-400">
+                      ({Math.ceil(qty / settings.labelsAcross)} Row Prints)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      className="w-9 h-9 rounded-xl bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-700 transition-all active:scale-90"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={qty}
+                      onChange={(e) =>
+                        setQty(Math.max(1, parseInt(e.target.value) || 1))
+                      }
+                      className="flex-1 h-9 text-center font-mono font-black text-[16px] text-gray-900 border border-gray-300 rounded-xl outline-none focus:border-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setQty((q) => Math.min(500, q + 1))}
+                      className="w-9 h-9 rounded-xl bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-700 transition-all active:scale-90"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Display Toggles */}
+                <div className="bg-gray-50 border border-gray-200/80 p-3 rounded-2xl space-y-2">
+                  <span className="block text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                    Include On Label
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.showPrice}
+                        onChange={(e) =>
+                          setSettings({ ...settings, showPrice: e.target.checked })
+                        }
+                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-[11px] font-bold text-gray-700">
+                        Show Price
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.showStoreName}
+                        onChange={(e) =>
+                          setSettings({ ...settings, showStoreName: e.target.checked })
+                        }
+                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-[11px] font-bold text-gray-700">
+                        Store Name
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                {/* Main Direct Thermal Print */}
+                <button
+                  type="button"
+                  onClick={handleThermalPrint}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[14px] shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-wider"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print Barcode Labels ({qty} Labels / {settings.labelsAcross}-Up)
+                </button>
+
+                {/* Secondary Action Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadZPL}
+                    className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black transition-all flex items-center justify-center gap-1 shadow-sm active:scale-95"
+                    title="Download ZPL II file for Zebra ZD230 / BarTender"
+                  >
+                    <Zap className="w-3.5 h-3.5" /> Download ZPL
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadImage("png")}
+                    className="py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-black transition-all border border-blue-200 flex items-center justify-center gap-1 active:scale-95"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" /> PNG Image
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadImage("jpeg")}
+                    className="py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-black transition-all border border-purple-200 flex items-center justify-center gap-1 active:scale-95"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" /> JPEG Image
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Settings & Alignment Tab */
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-emerald-600" />
+                  Label Dimensions & Printer Offsets
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSettings(DEFAULT_SETTINGS)}
+                  className="text-[10px] font-bold text-gray-500 hover:text-gray-800 flex items-center gap-1 underline"
+                >
+                  <RotateCcw className="w-3 h-3" /> Reset to Defaults
+                </button>
+              </div>
+
+              {/* Dimension Settings */}
+              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">
+                    Label Width (mm)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="20"
+                    max="120"
+                    value={settings.labelWidth}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        labelWidth: parseFloat(e.target.value) || 50,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-xl font-mono font-bold text-xs text-gray-900 outline-none focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">
+                    Label Height (mm)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="15"
+                    max="100"
+                    value={settings.labelHeight}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        labelHeight: parseFloat(e.target.value) || 25,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-xl font-mono font-bold text-xs text-gray-900 outline-none focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">
+                    Labels Across (Horizontal)
+                  </label>
+                  <select
+                    value={settings.labelsAcross}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        labelsAcross: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-xl font-bold text-xs text-gray-900 outline-none focus:border-emerald-600"
+                  >
+                    <option value={1}>1-Up (Single Label Strip)</option>
+                    <option value={2}>2-Up (Side-by-Side Strip)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">
+                    Horizontal Gap (mm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="10"
+                    value={settings.horizontalGap}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        horizontalGap: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-xl font-mono font-bold text-xs text-gray-900 outline-none focus:border-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Offset Fine-Tuning */}
+              <div className="space-y-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200/80">
+                <span className="block text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-1">
+                  <MoveHorizontal className="w-3.5 h-3.5 text-amber-600" />
+                  Printer Offsets & Alignment Tuning
+                </span>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">
+                      Left Offset (mm): {settings.leftOffset}mm
+                    </label>
+                    <input
+                      type="range"
+                      min="-10"
+                      max="10"
+                      step="0.5"
+                      value={settings.leftOffset}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          leftOffset: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full accent-amber-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">
+                      Top Offset (mm): {settings.topOffset}mm
+                    </label>
+                    <input
+                      type="range"
+                      min="-10"
+                      max="10"
+                      step="0.5"
+                      value={settings.topOffset}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          topOffset: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full accent-amber-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Hardware Density & Speed Settings */}
+              <div className="grid grid-cols-2 gap-3 bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200/80">
+                <div>
+                  <label className="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1">
+                    Print Speed (inch/s)
+                  </label>
+                  <select
+                    value={settings.speed}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        speed: parseInt(e.target.value) || 6,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-blue-300 rounded-xl font-bold text-xs text-gray-900 outline-none focus:border-blue-600"
+                  >
+                    <option value={2}>2.0 in/s (High Quality)</option>
+                    <option value={4}>4.0 in/s (Balanced)</option>
+                    <option value={6}>6.0 in/s (Fast - ZD230 Standard)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1">
+                    Darkness / Density (0 - 30)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="30"
+                    value={settings.darkness}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        darkness: parseInt(e.target.value) || 15,
+                      })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-blue-300 rounded-xl font-mono font-bold text-xs text-gray-900 outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("preview")}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  Save & Apply Settings
+                </button>
               </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Copies</label>
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                  <Minus className="w-3 h-3 text-gray-600" />
-                </button>
-                <span className="flex-1 text-center font-black text-gray-900 text-[14px]">{qty}</span>
-                <button onClick={() => setQty((q) => Math.min(100, q + 1))} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                  <Plus className="w-3 h-3 text-gray-600" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Toggles */}
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={showPrice} onChange={(e) => setShowPrice(e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-[12px] font-bold text-gray-600">Show Price</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={showStoreName} onChange={(e) => setShowStoreName(e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-[12px] font-bold text-gray-600">Show Store Name</span>
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-2 pt-1">
-            {/* Primary Print Button */}
-            <button onClick={handlePrint}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-black transition-colors shadow-md active:scale-95">
-              <Printer className="w-4 h-4" />
-              Print Barcode Labels {qty > 1 ? `(${qty} labels)` : "(1 label)"}
-            </button>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => handleDownloadImage("png")}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[12px] font-black transition-colors border border-blue-200">
-                <ImageIcon className="w-3.5 h-3.5" /> PNG Image
-              </button>
-              <button onClick={() => handleDownloadImage("jpeg")}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-[12px] font-black transition-colors border border-purple-200">
-                <ImageIcon className="w-3.5 h-3.5" /> JPEG Image
-              </button>
-              <button onClick={handleDownloadHTML}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-black transition-colors border border-gray-200">
-                <FileText className="w-3.5 h-3.5" /> HTML File
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
