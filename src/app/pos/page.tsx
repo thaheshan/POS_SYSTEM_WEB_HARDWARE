@@ -18,6 +18,7 @@ import AddCategoryModal from '@/components/pos/AddCategoryModal';
 import ManageCategoriesModal from '@/components/inventory/ManageCategoriesModal';
 import CustomerSearch, { CustomerMin } from '@/components/pos/CustomerSearch';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
+import AddProductModal from '@/components/inventory/AddProductModal';
 import { useBarcodeScanner, openCashDrawer } from '@/utils/hardwareIntegration';
 import { matchAndScoreProduct } from '@/utils/searchUtils';
 
@@ -55,6 +56,7 @@ type Product = {
   sku: string;
   barcode?: string;
   price: number;
+  purchasePrice?: number;
   stock: number;
   status: string;
   category: string;
@@ -264,7 +266,8 @@ function QtyPopup({
     customStock?: number,
     customDiscountValue?: number,
     customDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT',
-    customMaxDiscount?: number
+    customMaxDiscount?: number,
+    customCostPrice?: number
   ) => void;
   onClose: () => void;
 }) {
@@ -273,6 +276,7 @@ function QtyPopup({
   const [productName, setProductName] = useState<string>(product.name);
   const [measurementUnit, setMeasurementUnit] = useState<string>(shortUnit);
   const [unitPrice, setUnitPrice] = useState<number | string>(product.price);
+  const [costPrice, setCostPrice] = useState<number | string>(product.purchasePrice ?? '');
   const [stockCount, setStockCount] = useState<number | string>(product.stock);
 
   // Discount Selection States & Max Discount Limit Editing State
@@ -378,6 +382,7 @@ function QtyPopup({
   const handleConfirm = () => {
     const finalQty = Math.max(isLoose ? 0.01 : 1, parsedQty);
     const parsedStock = typeof stockCount === 'number' ? stockCount : (parseFloat(String(stockCount)) >= 0 ? parseFloat(String(stockCount)) : product.stock);
+    const parsedCostPrice = costPrice === '' ? undefined : (typeof costPrice === 'number' ? costPrice : (parseFloat(String(costPrice)) >= 0 ? parseFloat(String(costPrice)) : undefined));
     if (finalQty > parsedStock) {
       setShowError(true);
       return;
@@ -390,7 +395,8 @@ function QtyPopup({
       parsedStock, 
       hasDiscountApproval ? parsedDiscountVal : undefined,
       hasDiscountApproval ? selectedDiscountType : undefined,
-      maxAllowedDiscount
+      maxAllowedDiscount,
+      parsedCostPrice
     );
   };
 
@@ -626,6 +632,37 @@ function QtyPopup({
                       step="any"
                       value={unitPrice}
                       onChange={(e) => setUnitPrice(e.target.value)}
+                      onKeyDown={handleKey}
+                      className="w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-right font-black text-[15px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Editable Cost / Purchase Price */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      Cost Price (Rs.)
+                    </p>
+                    {costPrice !== '' && Number(costPrice) !== (product.purchasePrice ?? '') && (
+                      <button
+                        type="button"
+                        onClick={() => setCostPrice(product.purchasePrice ?? '')}
+                        className="text-[9px] font-bold text-gray-500 hover:text-gray-800 underline ml-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm font-black text-gray-400">Rs.</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value)}
                       onKeyDown={handleKey}
                       className="w-full pl-10 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-right font-black text-[15px] text-gray-900 outline-none focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/10 transition-all font-mono"
                       placeholder="0.00"
@@ -942,6 +979,7 @@ export default function POSPage() {
 
   const [categoriesData, setCategoriesData] = useState<{ id: string; name: string; subcategories?: { id: string; name: string; brands?: { id: string; name: string }[] }[]; brands?: { id: string; name: string }[] }[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [selectedParentIdForModal, setSelectedParentIdForModal] = useState<string | undefined>(undefined);
   const [openBrandInputDirectly, setOpenBrandInputDirectly] = useState(false);
 
@@ -1085,6 +1123,7 @@ export default function POSPage() {
           name: name,
           sku: item.product?.sku || item.sku || 'N/A',
           price: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
+          purchasePrice: Number(item.product?.purchase_price || item.product?.purchasePrice || originalProduct?.purchasePrice || originalProduct?.purchase_price || 0) || undefined,
           stock: qty,
           status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
           category: item.product?.category?.name || item.category_name || 'All',
@@ -1119,6 +1158,7 @@ export default function POSPage() {
             sku: p.sku || 'N/A',
             barcode: p.barcode || undefined,
             price: Number(p.sellingPrice || 0),
+            purchasePrice: Number(p.purchasePrice || p.purchase_price || 0) || undefined,
             stock: 0,
             status: 'Out of Stock',
             category: p.category?.name || 'All',
@@ -1293,7 +1333,8 @@ export default function POSPage() {
     customStock?: number,
     customDiscountValue?: number,
     customDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT',
-    customMaxDiscount?: number
+    customMaxDiscount?: number,
+    customCostPrice?: number
   ) => {
     if (!product || !product.id) {
       toast.error('Invalid product. Cannot add to cart.');
@@ -1306,28 +1347,102 @@ export default function POSPage() {
     const finalUnit = customUnit && customUnit.trim() ? customUnit.trim() : (product.measurementUnit || 'pcs');
     const finalStock = customStock !== undefined && !isNaN(customStock) && customStock >= 0 ? customStock : product.stock;
     const finalMaxDiscount = customMaxDiscount !== undefined && !isNaN(customMaxDiscount) && customMaxDiscount >= 0 ? customMaxDiscount : Number(product.maxAllowedDiscount || 0);
+    const finalCostPrice = customCostPrice !== undefined && !isNaN(customCostPrice) && customCostPrice >= 0 ? customCostPrice : product.purchasePrice;
 
     const isNameChanged = finalName !== product.name;
     const isPriceChanged = finalPrice !== product.price;
     const isUnitChanged = finalUnit !== (product.measurementUnit || 'pcs');
     const isStockChanged = finalStock !== product.stock;
     const isMaxDiscountChanged = customMaxDiscount !== undefined && customMaxDiscount !== Number(product.maxAllowedDiscount || 0);
+    const isCostPriceChanged = customCostPrice !== undefined && customCostPrice !== (product.purchasePrice ?? undefined);
 
     // Permanently update product details in database and POS inventory list if changed
-    if (isNameChanged || isPriceChanged || isUnitChanged || isStockChanged || isMaxDiscountChanged) {
+    if (isNameChanged || isPriceChanged || isUnitChanged || isStockChanged || isMaxDiscountChanged || isCostPriceChanged) {
       const updatePayload: Record<string, any> = {};
       if (isNameChanged) updatePayload.name = finalName;
       if (isPriceChanged) updatePayload.sellingPrice = finalPrice;
       if (isUnitChanged) updatePayload.measurementUnit = finalUnit;
-      if (isStockChanged) {
-        updatePayload.stock = finalStock;
-        updatePayload.quantity = finalStock;
-      }
+      if (isCostPriceChanged && finalCostPrice !== undefined) updatePayload.purchasePrice = finalCostPrice;
       if (isMaxDiscountChanged) {
         updatePayload.maxAllowedDiscount = finalMaxDiscount;
       }
 
-      api.patch(`/products/${product.id}`, updatePayload).then(() => {
+      // Update product fields (name, price, unit, costPrice, discount) — NOT stock (handled separately below)
+      const hasProductFieldChanges = isNameChanged || isPriceChanged || isUnitChanged || isMaxDiscountChanged || isCostPriceChanged;
+      const productPatchPromise = hasProductFieldChanges
+        ? api.patch(`/products/${product.id}`, updatePayload)
+        : Promise.resolve();
+
+      // Stock must be updated via the stock API (add/deduct delta) to keep quantity + availableQuantity in sync
+      if (isStockChanged) {
+        const delta = finalStock - product.stock;
+        if (delta !== 0) {
+          // Resolve warehouse/branch — fetch from API if missing (e.g. product had no prior stock record)
+          const resolveWarehouseAndUpdate = async () => {
+            let warehouseId = product.warehouseId;
+            let branchId = product.branchId;
+
+            if (!warehouseId || !branchId) {
+              try {
+                const stockRes = await api.get(`/stock/product/${product.id}`);
+                const stockData = stockRes.data?.data?.[0] || stockRes.data?.[0];
+                if (stockData) {
+                  warehouseId = stockData.warehouseId || stockData.warehouse_id || warehouseId;
+                  branchId = stockData.branchId || stockData.branch_id || branchId;
+                }
+              } catch {
+                // Fall through — /stock/add will auto-create if warehouse found via tenant
+              }
+            }
+
+            if (!warehouseId) {
+              // Last resort: fetch warehouses list and use the first active one
+              try {
+                const whRes = await api.get('/warehouses');
+                const wh = whRes.data?.data?.[0] || whRes.data?.[0];
+                if (wh) { warehouseId = wh.id; branchId = wh.branchId || wh.branch_id; }
+              } catch { /* ignore */ }
+            }
+
+            if (!warehouseId) {
+              console.error('Cannot update stock: no warehouse found for product', product.id);
+              return;
+            }
+
+            if (delta > 0) {
+              await api.post('/stock/add', {
+                product_id: product.id,
+                warehouse_id: warehouseId,
+                branch_id: branchId,
+                add_quantity: delta,
+                reason: 'Manual adjustment from POS edit',
+              });
+            } else {
+              await api.post('/stock/deduct', {
+                product_id: product.id,
+                warehouse_id: warehouseId,
+                branch_id: branchId,
+                deduct_quantity: Math.abs(delta),
+                reason: 'Manual adjustment from POS edit',
+              });
+            }
+
+            // Update local product with resolved warehouse IDs so future edits work instantly
+            setProductsList((prev) =>
+              prev.map((p) => p.id === product.id
+                ? { ...p, warehouseId: warehouseId!, branchId: branchId! }
+                : p
+              )
+            );
+          };
+
+          resolveWarehouseAndUpdate().catch((err) =>
+            console.error('Failed to update stock quantity in DB:', err)
+          );
+        }
+      }
+
+      productPatchPromise.then(() => {
         toast.success(`Product permanently updated in Inventory! (${finalName}, Stock: ${finalStock} ${finalUnit}, Rs. ${finalPrice.toLocaleString()})`);
       }).catch((err) => {
         console.error("Failed to permanently update product details in database:", err);
@@ -1351,8 +1466,10 @@ export default function POSPage() {
           ...p, 
           name: finalName, 
           price: finalPrice, 
+          purchasePrice: finalCostPrice,
           measurementUnit: finalUnit, 
           stock: finalStock,
+          status: finalStock > 10 ? 'In Stock' : (finalStock > 0 ? 'Low Stock' : 'Out of Stock'),
           maxAllowedDiscount: finalMaxDiscount,
         } : p))
       );
@@ -1558,6 +1675,12 @@ export default function POSPage() {
           setIsCategoryModalOpen(false);
           return;
         }
+        if (isAddProductModalOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsAddProductModalOpen(false);
+          return;
+        }
         if (isLabourModalOpen) {
           e.preventDefault();
           e.stopPropagation();
@@ -1579,7 +1702,7 @@ export default function POSPage() {
       }
 
       // Up & Down Arrow Key Scrolling for POS Product Grid (disabled when modal is open)
-      const isAnyModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isLabourModalOpen);
+      const isAnyModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isAddProductModalOpen || isLabourModalOpen);
       const isTextareaOrSelect =
         activeEl &&
         (activeEl.tagName === "TEXTAREA" ||
@@ -1623,7 +1746,7 @@ export default function POSPage() {
     };
     window.addEventListener('keydown', handleGlobalKey);
     return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [activeTab, viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen]);
+  }, [activeTab, viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isAddProductModalOpen, isLabourModalOpen]);
 
   // Hardware Barcode Scanner Listener
   useBarcodeScanner({
@@ -1673,7 +1796,7 @@ export default function POSPage() {
   useEffect(() => {
     if (viewState !== 'pos') return;
 
-    if (!pendingProduct && !isCustomerModalOpen && !isCategoryModalOpen && !isLabourModalOpen) {
+    if (!pendingProduct && !isCustomerModalOpen && !isCategoryModalOpen && !isAddProductModalOpen && !isLabourModalOpen) {
       focusSearchInput();
     }
 
@@ -1696,11 +1819,11 @@ export default function POSPage() {
 
     document.addEventListener('mouseup', handleGlobalMouseUp);
     return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
-  }, [viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen]);
+  }, [viewState, pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isAddProductModalOpen, isLabourModalOpen]);
 
   // Lock background product grid and body scrolling whenever any modal is open
   useEffect(() => {
-    const isModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isLabourModalOpen || stockErrorMsg);
+    const isModalOpen = Boolean(pendingProduct || isCustomerModalOpen || isCategoryModalOpen || isAddProductModalOpen || isLabourModalOpen || stockErrorMsg);
     if (isModalOpen) {
       const originalBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -1718,7 +1841,7 @@ export default function POSPage() {
         }
       };
     }
-  }, [pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isLabourModalOpen, stockErrorMsg]);
+  }, [pendingProduct, isCustomerModalOpen, isCategoryModalOpen, isAddProductModalOpen, isLabourModalOpen, stockErrorMsg]);
 
   // Smooth scroll highlighted card into view when navigating grid with arrow keys
   useEffect(() => {
@@ -1771,6 +1894,39 @@ export default function POSPage() {
               });
             }
           }} 
+        />
+      )}
+
+      {/* Quick Add Product Modal */}
+      {isAddProductModalOpen && (
+        <AddProductModal
+          isOpen={isAddProductModalOpen}
+          onClose={() => setIsAddProductModalOpen(false)}
+          onSuccess={(newProduct) => {
+            fetchProducts();
+            setIsAddProductModalOpen(false);
+            if (newProduct) {
+              toast.success(`Product "${newProduct.name || 'New Product'}" added to Inventory successfully!`);
+              // Automatically select the new product for adding to cart if it has valid ID
+              const createdId = newProduct.id || newProduct.productId;
+              if (createdId) {
+                const prodItem: Product = {
+                  id: createdId,
+                  name: newProduct.name,
+                  sku: newProduct.sku || '',
+                  barcode: newProduct.barcode || '',
+                  price: Number(newProduct.sellingPrice || newProduct.price || 0),
+                  stock: Number(newProduct.quantity || newProduct.stock || 1),
+                  status: 'IN_STOCK',
+                  category: newProduct.category?.name || newProduct.category || 'General',
+                  img: newProduct.imageUrl || '/placeholder.png',
+                  sellType: newProduct.sellType === 'loose' ? 'loose' : 'fixed',
+                  measurementUnit: newProduct.measurementUnit || newProduct.unit || 'pcs',
+                };
+                setPendingProduct(prodItem);
+              }
+            }
+          }}
         />
       )}
 
@@ -1895,13 +2051,24 @@ export default function POSPage() {
                       className="w-full bg-white border border-gray-200 rounded-lg py-3.5 pl-12 pr-4 text-[14px] font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
                     />
                   </div>
-                  <Link
-                    href="/pos/select"
-                    className="bg-white border border-gray-200 text-gray-700 px-5 py-3.5 rounded-lg font-bold text-[14px] flex items-center gap-2 shadow-sm hover:bg-gray-50 transition-all active:scale-95 whitespace-nowrap"
-                  >
-                    <LayoutGrid className="w-4 h-4 text-[#059669]" />
-                    Switch Method
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddProductModalOpen(true)}
+                      className="bg-[#059669] hover:bg-[#047857] text-white px-4 py-3.5 rounded-lg font-bold text-[14px] flex items-center gap-2 shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                      title="Quick Add Product to Inventory"
+                    >
+                      <Plus className="w-4 h-4 text-white" strokeWidth={3} />
+                      Add Product
+                    </button>
+                    <Link
+                      href="/pos/select"
+                      className="bg-white border border-gray-200 text-gray-700 px-4 py-3.5 rounded-lg font-bold text-[14px] flex items-center gap-2 shadow-sm hover:bg-gray-50 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                      <LayoutGrid className="w-4 h-4 text-[#059669]" />
+                      Switch Method
+                    </Link>
+                  </div>
                 </div>
               </div>
 
