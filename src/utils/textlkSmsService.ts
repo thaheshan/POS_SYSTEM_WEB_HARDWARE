@@ -28,7 +28,23 @@ export function getShopName(): string {
       }
     } catch {}
   }
-  return "Futura Hardware";
+  return "Trinco Hardware & Electricals";
+}
+
+export function getShopAddress(): string {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("shop_address") || localStorage.getItem("store_address");
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return "Anuradapura Junction, Trincomalee, Sri Lanka";
+}
+
+export function getShopPhone(): string {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("shop_phone") || localStorage.getItem("store_phone");
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return "+94763539351";
 }
 
 export function getTEXTLKSenderID(): string {
@@ -119,6 +135,8 @@ export interface CreditPurchaseSMSPayload {
  */
 export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload): string {
   const shopName = data.shopName || getShopName();
+  const shopAddr = getShopAddress();
+  const shopPhone = getShopPhone();
   const itemsList =
     data.items && data.items.length > 0
       ? data.items.map((i) => `• ${i.name}`).join("\n")
@@ -142,7 +160,10 @@ export function formatCreditPurchaseSMSTemplate(data: CreditPurchaseSMSPayload):
     ``,
     `Total Outstanding Credit: Rs. ${data.totalOutstandingCreditBalance.toLocaleString()}`,
     `--------------------------------`,
-    `Thank you for purchasing with ${shopName}!`,
+    `${shopName}`,
+    `${shopAddr}`,
+    `Tel: ${shopPhone}`,
+    `Thank you for your business!`,
   ].join("\n");
 }
 
@@ -158,6 +179,8 @@ export function formatMonthlyCreditReminderSMSTemplate(
   shopNameOverride?: string
 ): string {
   const shopName = shopNameOverride || getShopName();
+  const shopAddr = getShopAddress();
+  const shopPhone = getShopPhone();
 
   const lines = [
     `[${shopName}]`,
@@ -180,7 +203,9 @@ export function formatMonthlyCreditReminderSMSTemplate(
     `Current Total Outstanding Balance:`,
     `Rs. ${totalOutstandingCreditBalance.toLocaleString()}`,
     ``,
-    `Please visit our shop or contact us to settle your outstanding balance at your earliest convenience.`,
+    `Please visit our shop or contact us to settle your balance:`,
+    `${shopAddr}`,
+    `Tel: ${shopPhone}`,
     `--------------------------------`,
     `Thank you for purchasing with ${shopName}!`
   );
@@ -199,6 +224,8 @@ export function formatCreditSettlementSMSTemplate(
   shopNameOverride?: string
 ): string {
   const shopName = shopNameOverride || getShopName();
+  const shopAddr = getShopAddress();
+  const shopPhone = getShopPhone();
 
   return [
     `[${shopName}]`,
@@ -211,7 +238,10 @@ export function formatCreditSettlementSMSTemplate(
     ``,
     `Remaining Outstanding Balance: Rs. ${remainingBalance.toLocaleString()}`,
     `--------------------------------`,
-    `Thank you for purchasing with ${shopName}!`,
+    `${shopName}`,
+    `${shopAddr}`,
+    `Tel: ${shopPhone}`,
+    `Thank you for your payment!`,
   ].join("\n");
 }
 
