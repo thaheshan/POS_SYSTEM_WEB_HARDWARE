@@ -13,7 +13,9 @@ import { HardwarePrintReceiptPayload } from "./hardwareIntegration";
 export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthChars = 40): string {
   const line = "-".repeat(widthChars);
   const doubleLine = "=".repeat(widthChars);
-  const storeNameText = data.storeName || "Futura Hardware";
+  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
+  const storeAddressText = data.storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka";
+  const storePhoneText = data.storePhone || "+94763539351";
 
   const center = (text: string) => {
     const pad = Math.max(0, Math.floor((widthChars - text.length) / 2));
@@ -30,8 +32,8 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   // Header
   lines.push(center(storeNameText.toUpperCase()));
   lines.push(center("Hardware & Building Materials"));
-  if (data.storeAddress) lines.push(center(data.storeAddress));
-  if (data.storePhone) lines.push(center(`Tel: ${data.storePhone}`));
+  if (storeAddressText) lines.push(center(storeAddressText));
+  if (storePhoneText) lines.push(center(`Tel: ${storePhoneText}`));
   lines.push(line);
 
   // Meta
@@ -80,7 +82,8 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   // Footer
   lines.push(line);
   lines.push(center(`Thank you for shopping!`));
-  lines.push(center("futurahardware.com"));
+  if (storeAddressText) lines.push(center(storeAddressText));
+  if (storePhoneText) lines.push(center(`Tel: ${storePhoneText}`));
   lines.push("\n\n\n"); // Feed for paper cut
 
   return lines.join("\n");
@@ -91,7 +94,9 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
  * Triggered when printing to thermal receipt printer via OS print driver dialog.
  */
 export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
-  const storeNameText = data.storeName || "Futura Hardware";
+  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
+  const storeAddressText = data.storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka";
+  const storePhoneText = data.storePhone || "+94763539351";
 
   const itemRows = data.items
     .map(
@@ -251,7 +256,8 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <!-- Footer -->
   <div class="text-center footer">
     <div>Thank you for shopping at ${storeNameText}!</div>
-    <div>futurahardware.com</div>
+    ${storeAddressText ? `<div>${storeAddressText}</div>` : ""}
+    ${storePhoneText ? `<div>Tel: ${storePhoneText}</div>` : ""}
   </div>
 
 </body>

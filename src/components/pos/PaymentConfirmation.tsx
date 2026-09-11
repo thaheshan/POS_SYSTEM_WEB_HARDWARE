@@ -67,6 +67,8 @@ type PaymentConfirmationProps = {
 // ── PDF Invoice Generator ─────────────────────────────────────────────────────
 function downloadInvoicePDF({
   storeName,
+  storeAddress,
+  storePhone,
   items,
   customerName,
   customerPhone,
@@ -82,6 +84,8 @@ function downloadInvoicePDF({
   notes,
 }: {
   storeName?: string;
+  storeAddress?: string;
+  storePhone?: string;
   items: PaymentConfirmationProps["items"];
   customerName?: string;
   customerPhone?: string;
@@ -306,8 +310,8 @@ function downloadInvoicePDF({
   }
 
   <div class="footer">
-    <p class="thank-you">Thank you for shopping at ${storeName || "Futura Hardware"}!</p>
-    <p>Please retain this invoice for your records &bull; futurahardware.com</p>
+    <p class="thank-you">Thank you for shopping at ${storeName || "Trinco Hardware & Electricals"}!</p>
+    <p>${storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka"} &bull; Tel: ${storePhone || "+94763539351"}</p>
     <p style="margin-top:8px;font-size:10px;color:#d1d5db;">Generated on ${dateStr} at ${timeStr} &bull; ${invoiceNo}</p>
   </div>
 </div>
