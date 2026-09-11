@@ -306,11 +306,24 @@ function generateChartBuckets(days: number, backendItems: any[], salesList: any[
           if (realized > 0) {
             salesCount += 1;
             revenueTotal += Math.round(realized);
+
+            let invCogs = 0;
+            if (Array.isArray(tx.items) && tx.items.length > 0) {
+              for (const item of tx.items) {
+                const qty = Number(item.quantity || 0);
+                const unitCost = Number(
+                  item.costPrice ?? item.product?.purchasePrice ?? item.purchasePrice ?? 0
+                );
+                invCogs += qty * unitCost;
+              }
+            } else {
+              invCogs = Math.round(realized * (2 / 3));
+            }
+            costTotal += Math.round(invCogs);
           }
         }
       });
 
-      costTotal = Math.round(revenueTotal * 0.45);
       const profitTotal = revenueTotal - costTotal;
 
       buckets.push({

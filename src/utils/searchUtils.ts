@@ -163,6 +163,32 @@ export function matchAndScoreProduct<T extends SearchableProduct>(
 
   const combinedText = `${name} ${sku} ${barcode} ${brand} ${category} ${subcategory} ${size} ${color} ${customAliases}`.toLowerCase();
 
+  // ── ALL WORDS MUST MATCH (prevents false positives) ───────────────────────
+  // e.g. "electric mixer 1050w" must not match every Electrical & Lighting
+  // product just because the category name contains "electric".
+  // For multi-word queries every raw word the user typed must have at least
+  // one hit (exact or fuzzy) somewhere in the product's combined text.
+  const rawBaseTokens = rawQuery
+    .toLowerCase()
+    .replace(/[""]/g, 'inch')
+    .split(/[\s,/-]+/)
+    .filter(Boolean);
+
+  if (rawBaseTokens.length > 1) {
+    for (const rawToken of rawBaseTokens) {
+      const forms: string[] = [rawToken];
+      if (HARDWARE_SYNONYM_MAP[rawToken]) forms.push(HARDWARE_SYNONYM_MAP[rawToken]);
+      const mmM = rawToken.match(/^(\d+)mm$/);          if (mmM) forms.push(mmM[1]);
+      const cmM = rawToken.match(/^(\d+)cm$/);          if (cmM) forms.push(cmM[1]);
+      const inM = rawToken.match(/^(\d+)(inch|in)$/);   if (inM) forms.push(inM[1]);
+      const anyHit = forms.some(
+        f => combinedText.includes(f) || isFuzzyTokenMatch(f, combinedText)
+      );
+      if (!anyHit) return { matches: false, score: 0 };
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   let totalScore = 0;
   let matchedTokens = 0;
 

@@ -71,6 +71,9 @@ export function useSalesData(dateRange: DateRange | undefined) {
       let creditSettlementCount = 0;
       let currentDay = '';
       let runningTotal = 0;
+      let totalSalesAcc = 0;
+      let totalCogsAcc = 0;
+      let realizedCogsAcc = 0;
 
       for (const inv of sorted) {
         const invDay = new Date(inv.createdAt).toISOString().split('T')[0];
@@ -104,6 +107,23 @@ export function useSalesData(dateRange: DateRange | undefined) {
         // Skip negative-amount non-settlement entries (e.g. returns recorded without RET- prefix)
         if (amt < 0) continue;
 
+        totalSalesAcc += amt;
+
+        // Calculate COGS for this invoice (matching chart calculation)
+        let invCogs = 0;
+        if (Array.isArray(inv.items) && inv.items.length > 0) {
+          for (const item of inv.items) {
+            const qty = Number(item.quantity || 0);
+            const unitCost = Number(
+              item.costPrice ?? item.product?.purchasePrice ?? item.purchasePrice ?? 0
+            );
+            invCogs += qty * unitCost;
+          }
+        } else {
+          invCogs = Math.round(amt * 0.45);
+        }
+        totalCogsAcc += invCogs;
+
         const st = (inv.status || inv.paymentStatus || inv.payment_status || '').toString().toUpperCase();
         const isUnpaid = st === 'UNPAID' || st === 'PENDING';
 
@@ -132,6 +152,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
             paidUpfront = Math.max(0, amt - uncollected);
           }
         }
+
+        // Proportional COGS for realized cash collected
+        const realizedRatio = amt > 0 ? Math.min(1, Math.max(0, paidUpfront / amt)) : 1;
+        realizedCogsAcc += invCogs * realizedRatio;
 
         const uncollectedCredit = Math.max(0, amt - paidUpfront);
 
@@ -276,6 +300,10 @@ export function useSalesData(dateRange: DateRange | undefined) {
         0
       );
 
+      // Realized profit calculation (strictly cash sales, excluding unpaid credit)
+      const computedGrossProfit = Math.max(0, runningTotal - realizedCogsAcc);
+      const computedNetProfit = computedGrossProfit - catCTotal;
+
       setData({
         catA: {
           core: catACore,
@@ -327,10 +355,12 @@ export function useSalesData(dateRange: DateRange | undefined) {
           totalOutstandingCredit,
         },
         summary: {
-          totalSales: runningTotal,
+          totalSales: runningTotal, // Realized revenue (cash collected)
           totalPurchases: summaryRaw?.totalPurchases || 0,
           totalExpenses: catCTotal,
-          netProfit: runningTotal - catCTotal,
+          cogs: realizedCogsAcc,
+          grossProfit: computedGrossProfit,
+          netProfit: computedNetProfit,
         },
       });
     } catch (error: any) {
