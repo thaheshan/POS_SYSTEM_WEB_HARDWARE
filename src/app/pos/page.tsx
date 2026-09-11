@@ -455,6 +455,11 @@ function QtyPopup({
               <p className="text-[11px] font-bold text-gray-500 mt-0.5">
                 Price: Rs. {(parsedUnitPrice || 0).toLocaleString()} / <span className="text-emerald-700 font-extrabold">{activeUnit}</span>
               </p>
+              {(costPrice !== '' && Number(costPrice) > 0) && (
+                <p className="text-[10px] font-bold text-blue-600 mt-0.5">
+                  Cost: Rs. {Number(costPrice).toLocaleString()} / <span className="font-extrabold">{activeUnit}</span>
+                </p>
+              )}
               <p className="text-[10px] font-bold text-amber-600">Stock: {product.stock} {shortUnit}</p>
             </div>
             

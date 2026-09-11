@@ -145,11 +145,12 @@ export default function ReportsPage() {
     const vatAmt       = data.catA?.vat      || 0;
     const catANet      = catATotal - vatAmt;           // Net ex-VAT
     const totalRevenue = (data.summary?.totalSales || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
-    const grossProfit  = (data.summary?.netProfit  || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+    const profitVal    = data.summary?.grossProfit !== undefined ? data.summary.grossProfit : (data.summary?.netProfit || 0);
+    const grossProfit  = profitVal.toLocaleString('en-LK', { minimumFractionDigits: 2 });
     const vatCollected = vatAmt.toLocaleString('en-LK', { minimumFractionDigits: 2 });
     const txnCount     = (data.catA?.txns || 0) + (data.catB?.txns || 0);
     const margin       = data.summary?.totalSales > 0
-      ? Math.round(((data.summary?.netProfit || 0) / data.summary.totalSales) * 100)
+      ? Math.round((profitVal / data.summary.totalSales) * 100)
       : 0;
 
     const rowsHtml = rows.length === 0 ? `
@@ -633,10 +634,10 @@ export default function ReportsPage() {
           />
           <ReportStatCard 
              title="Gross Profit"
-             value={loading ? '...' : `Rs. ${(data.summary.netProfit || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
+             value={loading ? '...' : `Rs. ${((data.summary?.grossProfit !== undefined ? data.summary.grossProfit : data.summary?.netProfit) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`}
              icon={<div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><BarChart2 className="w-5 h-5 text-white" /></div>}
              variant="green"
-             marginText={`${data.summary.totalSales > 0 ? Math.round(((data.summary.netProfit || 0) / data.summary.totalSales) * 100) : 0}% margin`}
+             marginText={`${data.summary.totalSales > 0 ? Math.round((((data.summary?.grossProfit !== undefined ? data.summary.grossProfit : data.summary?.netProfit) || 0) / data.summary.totalSales) * 100) : 0}% margin`}
           />
           <ReportStatCard 
              title="Credit Sales"
