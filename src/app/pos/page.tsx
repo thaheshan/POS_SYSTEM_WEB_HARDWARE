@@ -383,10 +383,26 @@ function QtyPopup({
     const finalQty = Math.max(isLoose ? 0.01 : 1, parsedQty);
     const parsedStock = typeof stockCount === 'number' ? stockCount : (parseFloat(String(stockCount)) >= 0 ? parseFloat(String(stockCount)) : product.stock);
     const parsedCostPrice = costPrice === '' ? undefined : (typeof costPrice === 'number' ? costPrice : (parseFloat(String(costPrice)) >= 0 ? parseFloat(String(costPrice)) : undefined));
+    
     if (finalQty > parsedStock) {
+      // If editing product details, save the edits to DB first even if requested cart qty exceeds stock
+      if (isEditing) {
+        onConfirm(
+          0, // 0 qty added to cart
+          parsedUnitPrice, 
+          productName, 
+          activeUnit, 
+          parsedStock, 
+          hasDiscountApproval ? parsedDiscountVal : undefined,
+          hasDiscountApproval ? selectedDiscountType : undefined,
+          maxAllowedDiscount,
+          parsedCostPrice
+        );
+      }
       setShowError(true);
       return;
     }
+
     onConfirm(
       finalQty, 
       parsedUnitPrice, 
@@ -1454,16 +1470,10 @@ export default function POSPage() {
       });
 
       if (isMaxDiscountChanged) {
-        api.patch(`/products/${product.id}/discount-config`, {
-          isDiscountEnabled: true,
-          discountType: customDiscountType || product.discountType || 'PERCENTAGE',
-          maxAllowedDiscount: finalMaxDiscount,
-          defaultDiscountValue: customDiscountValue ?? product.defaultDiscountValue ?? 0,
-        }).then(() => {
-          toast.success(`Max Discount Limit permanently set to ${finalMaxDiscount}${customDiscountType === 'FIXED_AMOUNT' ? ' Rs.' : '%'} in database!`);
-        }).catch((err) => {
-          console.error("Failed to update discount-config endpoint:", err);
-        });
+        updatePayload.maxAllowedDiscount = finalMaxDiscount;
+        updatePayload.isDiscountEnabled = true;
+        updatePayload.discountType = customDiscountType || product.discountType || 'PERCENTAGE';
+        updatePayload.defaultDiscountValue = customDiscountValue ?? product.defaultDiscountValue ?? 0;
       }
 
       setProductsList((prev) =>
@@ -1478,6 +1488,16 @@ export default function POSPage() {
           maxAllowedDiscount: finalMaxDiscount,
         } : p))
       );
+    }
+
+    if (qty <= 0) {
+      // Save-only path: update pendingProduct snapshot so popup re-opens with fresh values
+      setPendingProduct((prev) =>
+        prev && prev.id === product.id
+          ? { ...prev, purchasePrice: finalCostPrice, price: finalPrice, name: finalName, measurementUnit: finalUnit, stock: finalStock }
+          : prev
+      );
+      return;
     }
 
     // Determine applied discount from popup selection or product defaults
@@ -1941,8 +1961,8 @@ export default function POSPage() {
           product={pendingProduct}
           currentQty={cart.find(c => c.id === pendingProduct.id)?.qty ?? 0}
           initialEditMode={pendingProductEditMode}
-          onConfirm={(qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount) =>
-            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount)
+          onConfirm={(qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount, customCostPrice) =>
+            addToCartWithQty(pendingProduct, qty, customPrice, customName, customUnit, customStock, customDiscountValue, customDiscountType, customMaxDiscount, customCostPrice)
           }
           onClose={() => {
             setPendingProduct(null);
