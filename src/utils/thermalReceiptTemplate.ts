@@ -50,8 +50,12 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 
   data.items.forEach((item) => {
     lines.push(item.name);
-    const priceFormatted = item.price ? `Rs. ${item.price.toLocaleString()}` : '';
-    const qtyStr = `  ${item.qty} x ${priceFormatted}`.trimEnd();
+    const discLabel = item.discountPercentage && item.discountPercentage > 0
+      ? ` (${item.discountPercentage}% OFF)`
+      : item.discountAmount && item.discountAmount > 0
+      ? ` (-Rs. ${(item.discountAmount * item.qty).toLocaleString()})`
+      : "";
+    const qtyStr = `  ${item.qty} x${discLabel}`;
     const totalStr = `Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}`;
     lines.push(leftRight(qtyStr, totalStr));
   });
@@ -97,15 +101,23 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
 
   const itemRows = data.items
     .map(
-      (item) => `
+      (item) => {
+        const discBadge = item.discountPercentage && item.discountPercentage > 0
+          ? ` <span style="font-size:9px; font-weight:800; color:#000;">(${item.discountPercentage}% OFF)</span>`
+          : item.discountAmount && item.discountAmount > 0
+          ? ` <span style="font-size:9px; font-weight:800; color:#000;">(-Rs. ${(item.discountAmount * item.qty).toLocaleString()})</span>`
+          : "";
+
+        return `
     <tr>
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x ${item.price ? `Rs. ${item.price.toLocaleString()}` : ''}</td>
+      <td class="qty">${item.qty} x${discBadge}</td>
       <td class="wh">${item.warehouseName || ""}</td>
       <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
-    </tr>`
+    </tr>`;
+      }
     )
     .join("");
 
@@ -340,7 +352,7 @@ export interface ReturnReceiptPayload {
 }
 
 export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
-  const storeNameText = data.storeName || "Futura Hardware";
+  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
   const reasonText = (data.reason || "RETURN").replace(/_/g, " ").toUpperCase();
 
   const itemRows = data.items
@@ -350,8 +362,9 @@ export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty" colspan="2">${item.qty} x</td>
+      <td class="qty">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -398,9 +411,9 @@ export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
     td { vertical-align: top; padding: 1px 0; }
     .item-name { font-weight: 800; font-size: 11px; padding-top: 3px; word-break: break-word; }
     .item-calc { font-size: 10.5px; border-bottom: 1px dotted #bbb; padding-bottom: 3px; }
-    .qty { width: 55%; font-weight: 700; }
+    .qty { width: 50%; font-weight: 700; }
     .wh { width: 15%; font-size: 8px; color: #444; text-align: center; }
-    .line-total { width: 30%; text-align: right; font-weight: 900; }
+    .line-total { width: 35%; text-align: right; font-weight: 900; }
     .grand-total-box {
       font-size: 13.5px;
       font-weight: 900;
@@ -555,8 +568,9 @@ export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty" colspan="2">${item.qty} x</td>
+      <td class="qty">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -568,8 +582,9 @@ export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty" colspan="2">${item.qty} x</td>
+      <td class="qty">${item.qty} x</td>
       <td class="wh">${item.sku || ""}</td>
+      <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
     </tr>`
     )
     .join("");
