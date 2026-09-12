@@ -772,19 +772,30 @@ export default function TransactionDetailsModal({
   const customer = data?.customerName || data?.customer?.name || "Walk-in";
   const phone = data?.customerPhone || data?.customer?.phone || "—";
   const txnType = data?.paymentMethod || data?.saleType || "CASH";
-  const cashier = data?.user?.name || data?.cashierName || "System";
+  const rawCashier = data?.user?.name || data?.cashierName || "System";
+  const cashier =
+    rawCashier && rawCashier !== "System"
+      ? rawCashier.toLowerCase().startsWith("cashier")
+        ? rawCashier
+        : "Cashier 1"
+      : "Cashier 1";
 
   const returnedViewItems: any[] = data?._normalizedReturnedItems || [];
+
+  const resolvedStoreName =
+    shopProfile?.name && !shopProfile.name.toLowerCase().includes("futura")
+      ? shopProfile.name
+      : "Trinco Hardware & Electricals";
 
   const handleThermalPrint = async () => {
     if (returnedViewItems.length > 0 || invNum.startsWith("EXC-")) {
       printExchangeThermalHTMLReceipt({
-        storeName: shopProfile?.name || "Futura Hardware",
+        storeName: resolvedStoreName,
         storeAddress:
           [shopProfile?.address, shopProfile?.city, shopProfile?.district]
             .filter(Boolean)
-            .join(", ") || "Sri Lanka",
-        storePhone: shopProfile?.phone || "",
+            .join(", ") || "Anuradapura Junction, Trincomalee, Sri Lanka",
+        storePhone: shopProfile?.phone || "+94763539351",
         exchangeNo: invNum,
         originalInvoiceNo: data?.originalInvoiceNo || data?.original_invoice_no || "N/A",
         date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
@@ -812,7 +823,7 @@ export default function TransactionDetailsModal({
     }
 
     const payload = {
-      storeName: shopProfile?.name || "Futura Hardware POS",
+      storeName: resolvedStoreName,
       storeAddress:
         [shopProfile?.address, shopProfile?.city, shopProfile?.district]
           .filter(Boolean)

@@ -502,7 +502,8 @@ export default function BarcodeLabelModal({
         format === "png" ? "image/png" : "image/jpeg",
         0.95
       );
-      a.download = `barcode_${skuCode}.${format}`;
+      const safeProductName = product.name.replace(/[^a-zA-Z0-9\u00C0-\u024F\s-]/g, "").replace(/\s+/g, "_").slice(0, 60);
+      a.download = `${safeProductName}_barcode_${skuCode}.${format}`;
       a.click();
     };
     img.src = svgBlob;
