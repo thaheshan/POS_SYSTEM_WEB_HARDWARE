@@ -26,6 +26,9 @@ export interface HardwarePrintReceiptPayload {
     price: number;
     lineTotal: number;
     warehouseName?: string;
+    discountAmount?: number;
+    discountPercentage?: number;
+    originalPrice?: number;
   }[];
   subtotal: number;
   discount: number;
