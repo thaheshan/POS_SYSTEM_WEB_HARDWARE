@@ -31,7 +31,6 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 
   // Header
   lines.push(center(storeNameText.toUpperCase()));
-  lines.push(center("Hardware & Building Materials"));
   if (storeAddressText) lines.push(center(storeAddressText));
   if (storePhoneText) lines.push(center(`Tel: ${storePhoneText}`));
   lines.push(line);
@@ -41,20 +40,20 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(leftRight(`Cashier: ${data.cashier}`, `Type: ${data.customerType || "Walk-In"}`));
   if (data.customerName && data.customerName !== "Walk-in Customer") {
     lines.push(`Cust: ${data.customerName}`);
-    if (data.customerPhone) lines.push(`Tel: ${data.customerPhone}`);
   }
   lines.push(leftRight(`Pay: ${data.paymentMethod}`, `Status: ${data.creditLeftover && data.creditLeftover > 0 ? "CREDIT" : "PAID"}`));
   lines.push(line);
 
   // Item Table
-  lines.push(leftRight("ITEM", "QTY"));
+  lines.push(leftRight("ITEM", "TOTAL"));
   lines.push(line);
 
   data.items.forEach((item) => {
-    const maxNameLength = widthChars - 8;
-    const nameStr = item.name.length > maxNameLength ? item.name.slice(0, maxNameLength - 2) + ".." : item.name;
-    const rightStr = `${item.qty}x`;
-    lines.push(leftRight(nameStr, rightStr));
+    lines.push(item.name);
+    const priceFormatted = item.price ? `Rs. ${item.price.toLocaleString()}` : '';
+    const qtyStr = `  ${item.qty} x ${priceFormatted}`.trimEnd();
+    const totalStr = `Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}`;
+    lines.push(leftRight(qtyStr, totalStr));
   });
 
   lines.push(line);
@@ -81,9 +80,7 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 
   // Footer
   lines.push(line);
-  lines.push(center(`Thank you for shopping!`));
-  if (storeAddressText) lines.push(center(storeAddressText));
-  if (storePhoneText) lines.push(center(`Tel: ${storePhoneText}`));
+  lines.push(center(`Thank you for shopping at ${storeNameText}!`));
   lines.push("\n\n\n"); // Feed for paper cut
 
   return lines.join("\n");
@@ -105,8 +102,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty" colspan="2">${item.qty} x</td>
+      <td class="qty">${item.qty} x ${item.price ? `Rs. ${item.price.toLocaleString()}` : ''}</td>
       <td class="wh">${item.warehouseName || ""}</td>
+      <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
     </tr>`
     )
     .join("");
@@ -153,9 +151,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     td { vertical-align: top; padding: 1px 0; }
     .item-name { font-weight: 800; font-size: 11px; padding-top: 3px; word-break: break-word; }
     .item-calc { font-size: 10.5px; border-bottom: 1px dotted #bbb; padding-bottom: 3px; }
-    .qty { width: 55%; font-weight: 700; }
+    .qty { width: 50%; font-weight: 700; }
     .wh { width: 15%; font-size: 8px; color: #444; text-align: center; }
-    .line-total { width: 30%; text-align: right; font-weight: 900; }
+    .line-total { width: 35%; text-align: right; font-weight: 900; }
     .grand-total-box {
       font-size: 14px;
       font-weight: 900;
@@ -168,9 +166,8 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <!-- Thermal Header -->
   <div class="text-center">
     <div class="title">${storeNameText}</div>
-    <div class="subtitle">Hardware &amp; Building Materials</div>
-    ${data.storeAddress ? `<div style="font-size:9.5px; font-weight:600;">${data.storeAddress}</div>` : ""}
-    ${data.storePhone ? `<div style="font-size:9.5px; font-weight:700;">Tel: ${data.storePhone}</div>` : ""}
+    ${storeAddressText ? `<div style="font-size:9.5px; font-weight:600;">${storeAddressText}</div>` : ""}
+    ${storePhoneText ? `<div style="font-size:9.5px; font-weight:700;">Tel: ${storePhoneText}</div>` : ""}
   </div>
 
   <div class="divider"></div>
@@ -187,7 +184,7 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     </tr>
     ${
       data.customerName && data.customerName !== "Walk-in Customer"
-        ? `<tr><td colspan="2">Cust: ${data.customerName} ${data.customerPhone ? `(${data.customerPhone})` : ""}</td></tr>`
+        ? `<tr><td colspan="2">Cust: ${data.customerName}</td></tr>`
         : ""
     }
     <tr>
@@ -256,8 +253,6 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <!-- Footer -->
   <div class="text-center footer">
     <div>Thank you for shopping at ${storeNameText}!</div>
-    ${storeAddressText ? `<div>${storeAddressText}</div>` : ""}
-    ${storePhoneText ? `<div>Tel: ${storePhoneText}</div>` : ""}
   </div>
 
 </body>

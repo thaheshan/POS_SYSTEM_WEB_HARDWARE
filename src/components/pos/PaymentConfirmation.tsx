@@ -221,7 +221,7 @@ function downloadInvoicePDF({
     <div class="meta-box">
       <div class="meta-label">Customer</div>
       <div class="meta-value">${customerName || "Walk-in Customer"}</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${customerPhone || customerType}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${customerType || "Walk-In"}</div>
     </div>
     <div class="meta-box">
       <div class="meta-label">Payment Method</div>
@@ -311,8 +311,7 @@ function downloadInvoicePDF({
 
   <div class="footer">
     <p class="thank-you">Thank you for shopping at ${storeName || "Trinco Hardware & Electricals"}!</p>
-    <p>${storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka"} &bull; Tel: ${storePhone || "+94763539351"}</p>
-    <p style="margin-top:8px;font-size:10px;color:#d1d5db;">Generated on ${dateStr} at ${timeStr} &bull; ${invoiceNo}</p>
+    <p style="margin-top:6px;font-size:10px;color:#9ca3af;">Generated on ${dateStr} at ${timeStr} &bull; ${invoiceNo}</p>
   </div>
 </div>
 <script>window.onload = () => { window.print(); }</script>
@@ -375,20 +374,39 @@ export default function PaymentConfirmation({
       .catch(() => {});
   }, []);
 
-  const cashierName =
-    authUser?.name ||
-    authUser?.fullName ||
-    authUser?.username ||
-    authUser?.email ||
-    "Cashier";
+  const formatCashierLabel = (user: any): string => {
+    if (!user) return "Cashier 1";
+    if (user.cashierNo || user.cashier_no || user.cashierNumber) {
+      return `Cashier ${user.cashierNo || user.cashier_no || user.cashierNumber}`;
+    }
+    if (typeof user.cashierIndex === "number") {
+      return `Cashier ${user.cashierIndex + 1}`;
+    }
+    const rawId = String(user.id || user.user_id || "");
+    const match = rawId.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > 0 && num < 100) return `Cashier ${num}`;
+    }
+    return "Cashier 1";
+  };
 
-  const storeName =
+  const cashierName = formatCashierLabel(authUser);
+
+  const rawStoreName =
     shopProfile?.name ||
     authUser?.shop?.name ||
     authUser?.shopName ||
     authUser?.shop_name ||
-    authUser?.tenantName ||
-    "Futura Hardware & Building Materials";
+    authUser?.tenantName;
+
+  const storeName =
+    rawStoreName && !rawStoreName.toLowerCase().includes("futura")
+      ? rawStoreName
+      : "Trinco Hardware & Electricals";
+
+  const storeAddress = shopProfile?.address || "Anuradapura Junction, Trincomalee, Sri Lanka";
+  const storePhone = shopProfile?.phone || "+94763539351";
 
 
   // Fetch customer account details if customerId is provided
@@ -461,6 +479,8 @@ export default function PaymentConfirmation({
     toastInfo("Printing receipt to thermal printer...");
     const payload: HardwarePrintReceiptPayload = {
       storeName: storeName,
+      storeAddress: storeAddress,
+      storePhone: storePhone,
       invoiceNo: invoiceRef,
       date: new Date().toLocaleString("en-GB"),
       cashier: cashierName,
@@ -493,6 +513,8 @@ export default function PaymentConfirmation({
       // Fallback to browser HTML PDF invoice
       downloadInvoicePDF({
         storeName,
+        storeAddress,
+        storePhone,
         items,
         customerName,
         customerPhone,
