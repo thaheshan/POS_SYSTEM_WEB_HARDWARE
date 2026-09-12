@@ -514,10 +514,22 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         setSuppliers(mappedSup);
       }
 
-      // Auto-generate SKU & Barcode based on existing products
-      const nextSku = generateNextSku(productsList);
-      const nextBarcode = generateNextBarcode(productsList);
-      setForm((prev) => ({ ...prev, sku: nextSku, barcode: nextBarcode }));
+      // Auto-generate SKU & Barcode from backend (checks all products including soft-deleted)
+      try {
+        const skuRes = await api.get("/products/next-sku");
+        const nextData = skuRes.data?.data || skuRes.data;
+        if (nextData && nextData.nextSku) {
+          setForm((prev) => ({ ...prev, sku: nextData.nextSku, barcode: nextData.nextBarcode }));
+        } else {
+          const nextSku = generateNextSku(productsList);
+          const nextBarcode = generateNextBarcode(productsList);
+          setForm((prev) => ({ ...prev, sku: nextSku, barcode: nextBarcode }));
+        }
+      } catch {
+        const nextSku = generateNextSku(productsList);
+        const nextBarcode = generateNextBarcode(productsList);
+        setForm((prev) => ({ ...prev, sku: nextSku, barcode: nextBarcode }));
+      }
     } catch {
       // non-fatal — dropdowns will be empty
     } finally {
