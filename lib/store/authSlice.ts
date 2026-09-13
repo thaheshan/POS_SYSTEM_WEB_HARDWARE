@@ -131,6 +131,14 @@ const clearPersistedToken = (): void => {
 const clearPersistedAuth = (): void => {
   clearPersistedToken();
   persistUser(null);
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("pos_shop_profile");
+    localStorage.removeItem("pos_draft_cart");
+    localStorage.removeItem("pos_draft_customer");
+    localStorage.removeItem("pos_draft_discount_type");
+    localStorage.removeItem("pos_draft_discount_value");
+    localStorage.removeItem("pos_draft_notes");
+  }
 };
 
 // --- INITIAL STATE ---

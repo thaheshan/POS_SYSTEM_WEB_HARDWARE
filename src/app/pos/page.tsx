@@ -48,6 +48,7 @@ type CartItem = {
   secondaryDiscountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
   secondaryDiscountValue?: number;
   secondaryDiscountAmount?: number;
+  comparePrice?: number;
 };
 
 type Product = {
@@ -57,6 +58,7 @@ type Product = {
   barcode?: string;
   price: number;
   purchasePrice?: number;
+  comparePrice?: number;
   stock: number;
   status: string;
   category: string;
@@ -292,7 +294,7 @@ function QtyPopup({
   );
 
   const activeUnit = measurementUnit.trim() || shortUnit;
-  const isLoose = product.sellType === 'loose' || activeUnit === 'm' || activeUnit === 'kg' || activeUnit === 'L' || activeUnit === 'ft' || activeUnit === 'in' || activeUnit === 'yd' || activeUnit === 'g' || activeUnit === 'mm' || activeUnit === 'litre';
+  const isLoose = product.sellType === 'loose';
 
   const [qty, setQtyLocal] = useState<number | string>(currentQty > 0 ? currentQty : (isLoose ? '' : 1));
   const [showError, setShowError] = useState(false);
@@ -468,8 +470,13 @@ function QtyPopup({
             <div className="flex-1 min-w-0 pr-24">
               <p className="text-[10px] font-black text-[#059669] uppercase tracking-widest mb-0.5">{product.category}</p>
               <h3 className="text-[14px] font-black text-gray-900 leading-snug line-clamp-1">{productName}</h3>
-              <p className="text-[11px] font-bold text-gray-500 mt-0.5">
-                Price: Rs. {(parsedUnitPrice || 0).toLocaleString()} / <span className="text-emerald-700 font-extrabold">{activeUnit}</span>
+              <p className="text-[11px] font-bold text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span>Price: Rs. {(parsedUnitPrice || 0).toLocaleString()} / <span className="text-emerald-700 font-extrabold">{activeUnit}</span></span>
+                {product.comparePrice && product.comparePrice > 0 && (
+                  <span className="text-[10px] font-bold text-gray-400 line-through">
+                    (MSRP: Rs. {product.comparePrice.toLocaleString()})
+                  </span>
+                )}
               </p>
               {(costPrice !== '' && Number(costPrice) > 0) && (
                 <p className="text-[10px] font-bold text-blue-600 mt-0.5">
@@ -548,6 +555,17 @@ function QtyPopup({
             onWheel={(e) => e.stopPropagation()}
             onTouchMove={(e) => e.stopPropagation()}
           >
+            {/* Compare at Price / MSRP Notice Banner — Always visible when product.comparePrice exists */}
+            {product.comparePrice && product.comparePrice > 0 && (
+              <div className="flex items-center justify-between text-xs bg-amber-50/90 border border-amber-200/80 rounded-2xl px-4 py-2.5 shadow-sm">
+                <span className="font-black text-[11px] text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Tag className="w-4 h-4 text-amber-600" /> Compare at Price (MSRP):
+                </span>
+                <span className="font-black text-[13px] text-gray-400 line-through font-mono">
+                  Rs. {product.comparePrice.toLocaleString()}
+                </span>
+              </div>
+            )}
 
             {/* Editable sections only visible if isEditing is true */}
             {isEditing && (
@@ -628,6 +646,16 @@ function QtyPopup({
                     ))}
                   </div>
                 </div>
+
+                {/* Compare at Price / MSRP Notice */}
+                {product.comparePrice ? (
+                  <div className="flex items-center justify-between text-xs bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                    <span className="font-bold text-[11px] text-slate-600">Compare at Price (MSRP):</span>
+                    <span className="font-black text-[12px] text-gray-400 line-through font-mono">
+                      Rs. {product.comparePrice.toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
 
                 {/* Editable Unit Selling Price */}
                 <div className="space-y-1">
@@ -1139,12 +1167,16 @@ export default function POSPage() {
         const { sellType, measurementUnit } = extractProductSellTypeAndUnit(item, originalProduct);
         const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
 
+        const rawComp = item.comparePrice ?? item.compare_price ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.product?.minimumSellingPrice ?? item.product?.minimum_selling_price ?? originalProduct?.minimumSellingPrice ?? originalProduct?.comparePrice ?? 0;
+        const comparePrice = Number(rawComp) > 0 ? Number(rawComp) : undefined;
+
         return {
           id: prodId,
           name: name,
           sku: item.product?.sku || item.sku || 'N/A',
           price: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
           purchasePrice: Number(item.product?.purchase_price || item.product?.purchasePrice || originalProduct?.purchasePrice || originalProduct?.purchase_price || 0) || undefined,
+          comparePrice,
           stock: qty,
           status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
           category: item.product?.category?.name || item.category_name || 'All',
@@ -1172,6 +1204,8 @@ export default function POSPage() {
         .map((p: any) => {
           const name = p.name || 'Unknown';
           const { sellType, measurementUnit } = extractProductSellTypeAndUnit(p, p);
+          const rawComp = p.minimumSellingPrice ?? p.minimum_selling_price ?? p.comparePrice ?? p.compare_price ?? 0;
+          const comparePrice = Number(rawComp) > 0 ? Number(rawComp) : undefined;
 
           return {
             id: String(p.id),
@@ -1180,6 +1214,7 @@ export default function POSPage() {
             barcode: p.barcode || undefined,
             price: Number(p.sellingPrice || 0),
             purchasePrice: Number(p.purchasePrice || p.purchase_price || 0) || undefined,
+            comparePrice,
             stock: 0,
             status: 'Out of Stock',
             category: p.category?.name || 'All',
@@ -1538,6 +1573,7 @@ export default function POSPage() {
         id: product.id,
         name: finalName,
         price: finalPrice,
+        comparePrice: product.comparePrice,
         qty,
         img: product.img,
         warehouseId: product.warehouseId,
@@ -2333,10 +2369,19 @@ export default function POSPage() {
 
                             <div className="mt-3 pt-3 flex items-end justify-between border-t border-gray-100 min-w-0 gap-1">
                               <div className="min-w-0">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 block">Price</span>
-                                <span className="text-[16px] xl:text-[17px] font-black text-gray-900 tracking-tight whitespace-nowrap">
-                                  Rs. {product.price.toLocaleString()}
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 block">
+                                  {product.comparePrice && product.comparePrice > 0 ? "Compare / MSRP" : "Price"}
                                 </span>
+                                <div className="flex flex-col">
+                                  {product.comparePrice && product.comparePrice > 0 && (
+                                    <span className="text-[10.5px] font-bold text-gray-400 line-through leading-none mb-0.5">
+                                      Rs. {product.comparePrice.toLocaleString()}
+                                    </span>
+                                  )}
+                                  <span className="text-[16px] xl:text-[17px] font-black text-gray-900 tracking-tight whitespace-nowrap">
+                                    Rs. {product.price.toLocaleString()}
+                                  </span>
+                                </div>
                               </div>
                               {displayUnit && (
                                 <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md mb-0.5 shrink-0 max-w-[70px] truncate">
@@ -2454,7 +2499,12 @@ export default function POSPage() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between mt-1 gap-1">
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {item.comparePrice && item.comparePrice > 0 && (
+                                  <span className="text-[10px] font-bold text-gray-400 line-through">
+                                    Rs. {item.comparePrice.toLocaleString()}
+                                  </span>
+                                )}
                                 {item.discountAmount && item.discountAmount > 0 ? (
                                   <span className="text-[10px] font-black text-emerald-600">
                                     Rs. {(item.price - item.discountAmount).toLocaleString()}

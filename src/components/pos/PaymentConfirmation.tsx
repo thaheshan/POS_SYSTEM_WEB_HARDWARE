@@ -403,10 +403,10 @@ export default function PaymentConfirmation({
   const storeName =
     rawStoreName && !rawStoreName.toLowerCase().includes("futura")
       ? rawStoreName
-      : "Trinco Hardware & Electricals";
+      : (authUser?.name ? `${authUser.name}'s Store` : "Hardware Store");
 
-  const storeAddress = shopProfile?.address || "Anuradapura Junction, Trincomalee, Sri Lanka";
-  const storePhone = shopProfile?.phone || "+94763539351";
+  const storeAddress = shopProfile?.address || "";
+  const storePhone = shopProfile?.phone || "";
 
 
   // Fetch customer account details if customerId is provided

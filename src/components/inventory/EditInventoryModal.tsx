@@ -201,7 +201,8 @@ export default function EditInventoryModal({
 
     setUnitCost(item.sellingPrice || item.price || item.unitCost || 0);
     setCostPrice(item.purchasePrice || item.costPrice || item.cost || 0);
-    setComparePrice(item.comparePrice || item.compare_price || "");
+    const compVal = item.comparePrice ?? item.compare_price ?? item.minimumSellingPrice ?? item.minimum_selling_price;
+    setComparePrice(compVal !== undefined && compVal !== null && compVal !== "" && Number(compVal) !== 0 ? Number(compVal) : "");
     setTaxInclusive(item.taxInclusive || false);
     setTaxRate(String(item.taxRate || "18"));
 
@@ -213,11 +214,11 @@ export default function EditInventoryModal({
     setStatus(item.status || "In Stock");
     setAutoReorder(item.autoReorder || false);
 
-    setCategoryId(item.categoryId || "");
-    setSubCategoryId(item.subCategoryId || "");
-    setBrandId(item.brandId || "");
-    setWarehouseId(item.warehouseId || "");
-    setSupplierId(item.supplierId || "");
+    setCategoryId(item.categoryId || item.category_id || item.product?.categoryId || item.category?.id || "");
+    setSubCategoryId(item.subCategoryId || item.subcategoryId || item.subcategory_id || item.subCategory_id || item.product?.subcategoryId || item.product?.subCategory?.id || item.subcategory?.id || "");
+    setBrandId(item.brandId || item.brand_id || item.product?.brandId || item.product?.brand?.id || item.brand?.id || "");
+    setWarehouseId(item.warehouseId || item.warehouse_id || item.product?.warehouseId || "");
+    setSupplierId(item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || "");
 
     setPreviewUrl(item.image || item.imageUrl || item.image_url || null);
     setImageFile(null);
@@ -282,6 +283,17 @@ export default function EditInventoryModal({
           ? supRes.value.data
           : supRes.value.data?.data || supRes.value.data?.suppliers || [];
         setSuppliers(supArr);
+
+        const initialSupId = item?.supplierId || item?.supplier_id || item?.product?.supplierProducts?.[0]?.supplierId;
+        const initialSupName = item?.supplier || item?.supplier_name || item?.product?.supplierProducts?.[0]?.supplier?.name;
+        if (initialSupId) {
+          setSupplierId((prev) => prev || String(initialSupId));
+        } else if (initialSupName && initialSupName !== "—") {
+          const matchingSup = supArr.find(
+            (s: any) => s.name?.toLowerCase() === String(initialSupName).toLowerCase()
+          );
+          if (matchingSup) setSupplierId((prev) => prev || String(matchingSup.id));
+        }
       }
 
       // Pre-select Category matching
@@ -495,6 +507,7 @@ export default function EditInventoryModal({
         purchasePrice: Number(costPrice) || 0,
         sellingPrice: Number(unitCost) || 0,
         comparePrice: Number(comparePrice) || 0,
+        minimumSellingPrice: Number(comparePrice) || 0,
         taxInclusive,
         taxRate: Number(taxRate) || 18,
         trackInventory,
@@ -503,18 +516,22 @@ export default function EditInventoryModal({
         minimumStockLevel: Number(minLevel),
         maximumStockLevel: Number(maxLevel),
         continueOOS,
-        categoryId,
-        subCategoryId,
-        subcategoryId: subCategoryId,
-        brandId,
-        warehouseId,
-        supplierId,
+        categoryId: categoryId || item?.categoryId || item?.category_id || item?.product?.categoryId || undefined,
+        subCategoryId: subCategoryId || item?.subCategoryId || item?.subcategoryId || item?.subcategory_id || item?.product?.subcategoryId || undefined,
+        subcategoryId: subCategoryId || item?.subCategoryId || item?.subcategoryId || item?.subcategory_id || item?.product?.subcategoryId || undefined,
+        brandId: brandId || item?.brandId || item?.brand_id || item?.product?.brandId || undefined,
+        warehouseId: warehouseId || item?.warehouseId || item?.warehouse_id || undefined,
+        supplierId: supplierId || item?.supplierId || item?.supplier_id || undefined,
         status,
         autoReorder,
         isDiscountEnabled,
         discountType,
         maxAllowedDiscount: isDiscountEnabled ? parseFloat(String(maxAllowedDiscount)) || 0 : 0,
         defaultDiscountValue: isDiscountEnabled && defaultDiscountValue !== "" ? parseFloat(String(defaultDiscountValue)) || 0 : 0,
+        hasSecondaryDiscount,
+        secondaryDiscountType,
+        maxSecondaryDiscount: hasSecondaryDiscount ? parseFloat(String(maxSecondaryDiscount)) || 0 : 0,
+        defaultSecondaryDiscount: hasSecondaryDiscount && defaultSecondaryDiscount !== "" ? parseFloat(String(defaultSecondaryDiscount)) || 0 : 0,
         imageFile,
       };
 
@@ -529,7 +546,9 @@ export default function EditInventoryModal({
 
   const sellP = Number(unitCost) || 0;
   const costP = Number(costPrice) || 0;
+  const compP = Number(comparePrice) || 0;
   const profitMargin = sellP > 0 && costP > 0 ? Math.round(((sellP - costP) / costP) * 100) : 0;
+  const compareDiscountPct = compP > sellP && sellP > 0 ? Math.round(((compP - sellP) / compP) * 100) : 0;
 
 
   return (
@@ -777,17 +796,36 @@ export default function EditInventoryModal({
               </div>
             </div>
 
-            {/* Profit Margin Banner */}
-            {sellP > 0 && costP > 0 && (
-              <div
-                className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
-                  sellP >= costP
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-red-50 text-red-700 border-red-200"
-                }`}
-              >
-                <span>Estimated Profit: Rs. {(sellP - costP).toLocaleString()}</span>
-                <span>Margin: {profitMargin}% profit</span>
+            {/* Profit & Compare Price Calculation Banner */}
+            {((sellP > 0 && costP > 0) || compP > 0) && (
+              <div className="space-y-2">
+                {sellP > 0 && costP > 0 && (
+                  <div
+                    className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
+                      sellP >= costP
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                    }`}
+                  >
+                    <span>Estimated Profit: Rs. {(sellP - costP).toLocaleString()}</span>
+                    <span>Margin: {profitMargin}% profit</span>
+                  </div>
+                )}
+
+                {compP > 0 && (
+                  <div className="p-3 rounded-xl text-xs font-bold flex items-center justify-between border bg-blue-50 text-blue-700 border-blue-200">
+                    <span>
+                      {compP > sellP && sellP > 0
+                        ? `List Price Savings: Rs. ${(compP - sellP).toLocaleString()}`
+                        : `Compare at Price (MSRP): Rs. ${compP.toLocaleString()}`}
+                    </span>
+                    {compP > sellP && sellP > 0 && (
+                      <span className="bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
+                        {compareDiscountPct}% OFF
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

@@ -13,9 +13,9 @@ import { HardwarePrintReceiptPayload } from "./hardwareIntegration";
 export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthChars = 40): string {
   const line = "-".repeat(widthChars);
   const doubleLine = "=".repeat(widthChars);
-  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
-  const storeAddressText = data.storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka";
-  const storePhoneText = data.storePhone || "+94763539351";
+  const storeNameText = data.storeName || "Hardware Store";
+  const storeAddressText = data.storeAddress || "";
+  const storePhoneText = data.storePhone || "";
 
   const center = (text: string) => {
     const pad = Math.max(0, Math.floor((widthChars - text.length) / 2));
@@ -95,9 +95,9 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
  * Triggered when printing to thermal receipt printer via OS print driver dialog.
  */
 export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
-  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
-  const storeAddressText = data.storeAddress || "Anuradapura Junction, Trincomalee, Sri Lanka";
-  const storePhoneText = data.storePhone || "+94763539351";
+  const storeNameText = data.storeName || "Hardware Store";
+  const storeAddressText = data.storeAddress || "";
+  const storePhoneText = data.storePhone || "";
 
   const itemRows = data.items
     .map(
@@ -352,7 +352,7 @@ export interface ReturnReceiptPayload {
 }
 
 export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
-  const storeNameText = data.storeName || "Trinco Hardware & Electricals";
+  const storeNameText = data.storeName || "Hardware Store";
   const reasonText = (data.reason || "RETURN").replace(/_/g, " ").toUpperCase();
 
   const itemRows = data.items

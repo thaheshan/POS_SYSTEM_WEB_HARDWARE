@@ -241,11 +241,18 @@ export default function InventoryTable({
                       {item.subCategory || '—'}
                     </span>
                   </td>
-                  {/* Brand Column */}
+                  {/* Brand & Supplier Column */}
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-purple-50 text-purple-700 border border-purple-100/80">
-                      {item.brand || '—'}
-                    </span>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-purple-50 text-purple-700 border border-purple-100/80">
+                        {item.brand || '—'}
+                      </span>
+                      {item.supplier && item.supplier !== '—' && item.supplier !== '' && (
+                        <span className="text-[10px] font-bold text-gray-400 mt-0.5 truncate max-w-[120px]" title={`Supplier: ${item.supplier}`}>
+                          Supp: {item.supplier}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <div className="flex flex-col items-end gap-1">

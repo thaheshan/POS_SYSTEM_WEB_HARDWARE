@@ -665,6 +665,10 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         "purchasePrice",
         (parseFloat(form.costPrice) || 0).toString(),
       );
+      if (form.comparePrice) {
+        formData.append("minimumSellingPrice", (parseFloat(form.comparePrice) || 0).toString());
+        formData.append("comparePrice", (parseFloat(form.comparePrice) || 0).toString());
+      }
       formData.append(
         "minimumStockLevel",
         (parseInt(form.minimumStock) || 10).toString(),

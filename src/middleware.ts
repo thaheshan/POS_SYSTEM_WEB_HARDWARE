@@ -87,14 +87,18 @@ export function middleware(request: NextRequest) {
   // 1. Unauthenticated users
   if (!token) {
     // Allow root (/), login, register, forgot-password, approval-waiting, request-successful, request-rejected without authentication
-    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/approval-waiting") || pathname.startsWith("/auth/request-successful") || pathname.startsWith("/auth/request-rejected") || pathname.startsWith("/payment") || pathname.startsWith("/receipt");
+    const isPublicRoute = isLoginRoute || pathname === "/" || pathname.startsWith("/auth/register") || pathname.startsWith("/auth/forgot-password") || pathname.startsWith("/auth/approval-waiting") || pathname.startsWith("/auth/request-successful") || pathname.startsWith("/auth/request-rejected") || pathname.startsWith("/payment") || pathname.startsWith("/receipt") || pathname.startsWith("/unauthorized");
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
   // 2. Authenticated users
   const payload = decodeJwtPayload(token);
-  const role = payload?.role?.toLowerCase();
+  let role = payload?.role?.toLowerCase() || "";
+
+  if (role === "shop_owner" || role === "shopowner") role = "owner";
+  if (role === "superadmin") role = "super_admin";
+  if (role === "user" || role === "cashier_user") role = "cashier";
 
   if (!role) {
     const response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));
@@ -102,20 +106,26 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  if (pathname.startsWith("/unauthorized")) {
+    return NextResponse.next();
+  }
+
+  const home = ROLE_HOME_MAP[role] || "/dashboard";
+
   // 3. Prevent logged-in users from seeing login page
   if (isLoginRoute) {
-    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    if (pathname === home) return NextResponse.next();
     return NextResponse.redirect(new URL(home, request.url));
   }
 
   // 4. Role Isolation
   // Root path handling
   if (pathname === "/") {
-    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    if (pathname === home) return NextResponse.next();
     return NextResponse.redirect(new URL(home, request.url));
   }
 
-  const allowedPaths = ROLE_ACCESS_MAP[role] ?? [];
+  const allowedPaths = ROLE_ACCESS_MAP[role] ?? ["/dashboard"];
   const isAllowed = allowedPaths.some((path) => pathname.startsWith(path));
 
   // 4a. Specific Isolation for Sales Categories
@@ -129,13 +139,12 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/reports/inventory");
 
   if (isSensitiveSalesRoute && role !== "admin" && role !== "owner") {
-    const home = ROLE_HOME_MAP[role] || "/dashboard";
+    if (pathname === home) return NextResponse.next();
     return NextResponse.redirect(new URL(home, request.url));
   }
 
   if (!isAllowed) {
-    // If not allowed, redirect to their home page or unauthorized
-    const home = ROLE_HOME_MAP[role] || "/unauthorized";
+    if (pathname === home) return NextResponse.next();
     return NextResponse.redirect(new URL(home, request.url));
   }
 

@@ -28,16 +28,29 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('pos_shop_profile');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed?.name) setShopProfile(parsed);
+        } catch {}
+      }
+    }
+
     if (isAuthenticated) {
       shopApi.getProfile()
         .then((data) => {
-          if (data) setShopProfile(data);
+          if (data && data.name) {
+            setShopProfile(data);
+            localStorage.setItem('pos_shop_profile', JSON.stringify(data));
+          }
         })
         .catch(() => {});
     }
   }, [isAuthenticated]);
 
-  const shopName = shopProfile?.name || 'Trinco Hardware & Electricals';
+  const shopName = shopProfile?.name || (user?.name ? `${user.name}'s Shop` : 'Loading Shop...');
   const logoUrl = (shopProfile?.logo_url || user?.logoUrl) ?? undefined;
 
   return (

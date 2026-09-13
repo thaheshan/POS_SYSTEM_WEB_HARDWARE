@@ -159,7 +159,7 @@ export default function SalesReportsPage() {
 
   // KPIs
   const totalRevenue = sales.reduce((s, r) => s + r.amount, 0);
-  const totalItems   = sales.reduce((s, r) => s + (r.items?.length || 1), 0);
+  const totalItems   = sales.reduce((s, r) => s + (Array.isArray(r.items) && r.items.length > 0 ? r.items.reduce((iq: number, it: any) => iq + Math.max(1, Number(it.quantity ?? it.qty ?? it.count ?? 1)), 0) : 1), 0);
   const avgTicket    = sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0;
 
   const dateLabel = dateRange?.from
