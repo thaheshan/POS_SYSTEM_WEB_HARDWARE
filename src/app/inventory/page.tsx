@@ -381,9 +381,24 @@ export default function InventoryPage() {
           purchasePrice:
             item.product?.purchasePrice ?? item.purchase_price ?? 0,
           sellingPrice: item.product?.sellingPrice ?? item.selling_price ?? 0,
+          comparePrice: Number(item.product?.minimumSellingPrice ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.comparePrice ?? item.compare_price ?? 0),
+          minimumSellingPrice: Number(item.product?.minimumSellingPrice ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? 0),
+          description: item.product?.description ?? item.description ?? "",
+          shortDescription: item.product?.shortDescription ?? item.shortDescription ?? "",
+          barcode: item.product?.barcode ?? item.barcode ?? "",
+          productType: item.product?.sellType ?? item.sellType ?? item.productType ?? "FIX",
+          sellType: item.product?.sellType ?? item.sellType ?? "FIX",
+          unit: item.product?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
+          measurementUnit: item.product?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
+          minStock: Number(item.product?.minimumStockLevel ?? item.minimum_stock_level ?? item.minStock ?? 10),
+          minimumStockLevel: Number(item.product?.minimumStockLevel ?? item.minimum_stock_level ?? 10),
+          maxLevel: Number(item.product?.maximumStockLevel ?? item.maximum_stock_level ?? item.maxLevel ?? 200),
+          maximumStockLevel: Number(item.product?.maximumStockLevel ?? item.maximum_stock_level ?? 200),
           categoryId: item.category_id || item.product?.categoryId || item.product?.category?.id,
           subCategoryId: item.subcategory_id || item.product?.subcategoryId || item.product?.subCategory?.id,
           brandId: item.brand_id || item.product?.brandId || item.product?.brand?.id,
+          supplierId: item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || "",
+          supplier: item.supplierName || item.supplier_name || item.product?.supplierProducts?.[0]?.supplier?.name || "",
           warehouseId: item.warehouse_id,
           productId: item.product_id,
           isDiscountEnabled: item.isDiscountEnabled || item.product?.isDiscountEnabled || false,
@@ -391,6 +406,10 @@ export default function InventoryPage() {
           discountType: item.discountType || item.product?.discountType || "PERCENTAGE",
           maxAllowedDiscount: Number(item.maxAllowedDiscount || item.product?.maxAllowedDiscount || 0),
           defaultDiscountValue: Number(item.defaultDiscountValue || item.product?.defaultDiscountValue || 0),
+          hasSecondaryDiscount: item.hasSecondaryDiscount || item.product?.hasSecondaryDiscount || false,
+          secondaryDiscountType: item.secondaryDiscountType || item.product?.secondaryDiscountType || "PERCENTAGE",
+          maxSecondaryDiscount: Number(item.maxSecondaryDiscount || item.product?.maxSecondaryDiscount || 0),
+          defaultSecondaryDiscount: Number(item.defaultSecondaryDiscount || item.product?.defaultSecondaryDiscount || 0),
         };
       });
 
@@ -410,12 +429,14 @@ export default function InventoryPage() {
             categoryId: p.categoryId || p.category?.id,
             subCategoryId: p.subcategoryId || p.subCategory?.id,
             brandId: p.brandId || p.brand?.id,
+            supplierId: p.supplierProducts?.[0]?.supplierId || "",
+            supplier: p.supplierProducts?.[0]?.supplier?.name || "",
             warehouse: "—",
             image: p.images?.[0]?.imageUrl || null,
             qty: 0,
-            maxLevel: Number(p.minimumStockLevel) || 1,
-            minStock: Number(p.minimumStockLevel) || 0,
-            unit: "units",
+            maxLevel: Number(p.maximumStockLevel) || 200,
+            minStock: Number(p.minimumStockLevel) || 10,
+            unit: p.measurementUnit || "Pieces (pcs)",
             status: "Out of Stock",
             unitCost: `Rs. ${cost.toLocaleString()}`,
             totalValue: "Rs. 0",
@@ -425,7 +446,17 @@ export default function InventoryPage() {
             price: cost,
             cost,
             purchasePrice: Number(p.purchasePrice) || 0,
-            sellingPrice: cost,
+            sellingPrice: Number(p.sellingPrice) || cost,
+            comparePrice: Number(p.minimumSellingPrice ?? p.minimum_selling_price ?? p.comparePrice ?? p.compare_price ?? 0),
+            minimumSellingPrice: Number(p.minimumSellingPrice ?? p.minimum_selling_price ?? 0),
+            description: p.description || "",
+            shortDescription: p.shortDescription || "",
+            barcode: p.barcode || "",
+            productType: p.sellType || p.productType || "FIX",
+            sellType: p.sellType || "FIX",
+            measurementUnit: p.measurementUnit || "Pieces (pcs)",
+            minimumStockLevel: Number(p.minimumStockLevel) || 10,
+            maximumStockLevel: Number(p.maximumStockLevel) || 200,
             warehouseId: null,
             productId: p.id,
             isDiscountEnabled: p.isDiscountEnabled || false,
@@ -433,6 +464,10 @@ export default function InventoryPage() {
             discountType: p.discountType || "PERCENTAGE",
             maxAllowedDiscount: Number(p.maxAllowedDiscount || 0),
             defaultDiscountValue: Number(p.defaultDiscountValue || 0),
+            hasSecondaryDiscount: p.hasSecondaryDiscount || false,
+            secondaryDiscountType: p.secondaryDiscountType || "PERCENTAGE",
+            maxSecondaryDiscount: Number(p.maxSecondaryDiscount || 0),
+            defaultSecondaryDiscount: Number(p.defaultSecondaryDiscount || 0),
           };
         });
 
@@ -654,6 +689,8 @@ export default function InventoryPage() {
     try {
       if (!selectedItem) return;
 
+      const targetProdId = selectedItem.productId || selectedItem.product_id || selectedItem.id;
+
       const {
         isDiscountEnabled,
         discountType,
@@ -663,21 +700,30 @@ export default function InventoryPage() {
         ...coreData
       } = updatedData;
 
+      // Clean empty strings for relation fields so PATCH requests do not erase existing subcategory or brand
+      const cleanCoreData: any = { ...coreData };
+      if (cleanCoreData.subCategoryId === "" || cleanCoreData.subCategoryId === undefined) delete cleanCoreData.subCategoryId;
+      if (cleanCoreData.subcategoryId === "" || cleanCoreData.subcategoryId === undefined) delete cleanCoreData.subcategoryId;
+      if (cleanCoreData.brandId === "" || cleanCoreData.brandId === undefined) delete cleanCoreData.brandId;
+      if (cleanCoreData.categoryId === "" || cleanCoreData.categoryId === undefined) delete cleanCoreData.categoryId;
+      if (cleanCoreData.supplierId === "" || cleanCoreData.supplierId === undefined) delete cleanCoreData.supplierId;
+      if (cleanCoreData.warehouseId === "" || cleanCoreData.warehouseId === undefined) delete cleanCoreData.warehouseId;
+
       if (imageFile instanceof File) {
         const formData = new FormData();
-        Object.entries(coreData).forEach(([key, val]) => {
+        Object.entries(cleanCoreData).forEach(([key, val]) => {
           if (val !== undefined && val !== null) {
             formData.append(key, String(val));
           }
         });
         formData.append("imageFile", imageFile);
-        await api.patch(`/products/${selectedItem.id}`, formData);
+        await api.patch(`/products/${targetProdId}`, formData);
       } else {
-        await api.patch(`/products/${selectedItem.id}`, coreData);
+        await api.patch(`/products/${targetProdId}`, cleanCoreData);
       }
 
       // 2. Update discount configuration
-      await api.patch(`/products/${selectedItem.id}/discount-config`, {
+      await api.patch(`/products/${targetProdId}/discount-config`, {
         isDiscountEnabled,
         discountType,
         maxAllowedDiscount: Number(maxAllowedDiscount || 0),

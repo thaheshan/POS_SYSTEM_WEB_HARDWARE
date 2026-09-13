@@ -71,6 +71,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
       let creditSettlementCount = 0;
       let currentDay = '';
       let runningTotal = 0;
+      let totalRealizedRevenueAcc = 0;
       let totalSalesAcc = 0;
       let totalCogsAcc = 0;
       let realizedCogsAcc = 0;
@@ -189,21 +190,33 @@ export function useSalesData(dateRange: DateRange | undefined) {
         // Realized cash revenue from this transaction today
         const revenueAmt = paidUpfront;
 
+        totalRealizedRevenueAcc += revenueAmt;
         const prevRunning = runningTotal;
         runningTotal += revenueAmt;
+
+        // Calculate total units sold in this invoice by summing item quantities
+        let invItemCount = 0;
+        if (Array.isArray(inv.items) && inv.items.length > 0) {
+          invItemCount = inv.items.reduce(
+            (sum: number, item: any) => sum + Math.max(1, Number(item.quantity ?? item.qty ?? item.count ?? 1)),
+            0
+          );
+        } else {
+          invItemCount = 1;
+        }
 
         if (prevRunning >= threshold) {
           // Entire invoice is overflow / Cat B
           catBOverflow += revenueAmt;
           catBTxns += 1;
-          catBItemCount += inv.items?.length || 1;
+          catBItemCount += invItemCount;
           const txnObj = { id: invNum, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Overflow', status };
           allCatBTxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else if (prevRunning + revenueAmt <= threshold) {
           // Entire invoice fits within Cat A threshold
           catACore += revenueAmt;
           catATxns += 1;
-          catAItemCount += inv.items?.length || 1;
+          catAItemCount += invItemCount;
           const txnObj = { id: invNum, rawId, date, time, customerName, amount: amt.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
           allCatATxns.push({ ...txnObj, rawAmount: amt, timestamp: new Date(inv.createdAt).getTime() });
         } else {
@@ -214,8 +227,8 @@ export function useSalesData(dateRange: DateRange | undefined) {
           catBOverflow += catBPortion;
           catATxns += 1;
           catBTxns += 1;
-          catAItemCount += inv.items?.length || 1;
-          catBItemCount += inv.items?.length || 1;
+          catAItemCount += invItemCount;
+          catBItemCount += invItemCount;
 
           const txnObjA = { id: invNum, rawId, date, time, customerName, amount: catAPortion.toLocaleString(), mode, type: typeLabel || 'Taxable', status };
           allCatATxns.push({ ...txnObjA, rawAmount: catAPortion, timestamp: new Date(inv.createdAt).getTime() });
@@ -301,9 +314,9 @@ export function useSalesData(dateRange: DateRange | undefined) {
       );
 
       // Realized profit calculation (strictly cash sales, excluding unpaid credit)
-      const computedGrossProfit = Math.max(0, runningTotal - realizedCogsAcc);
+      const computedGrossProfit = Math.max(0, totalRealizedRevenueAcc - realizedCogsAcc);
       const computedNetProfit = computedGrossProfit - catCTotal;
-
+      
       setData({
         catA: {
           core: catACore,
@@ -355,7 +368,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
           totalOutstandingCredit,
         },
         summary: {
-          totalSales: runningTotal, // Realized revenue (cash collected)
+          totalSales: totalRealizedRevenueAcc, // Realized revenue (cash collected across all dates)
           totalPurchases: summaryRaw?.totalPurchases || 0,
           totalExpenses: catCTotal,
           cogs: realizedCogsAcc,

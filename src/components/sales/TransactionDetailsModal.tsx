@@ -23,6 +23,7 @@ import { shopApi } from "@/api/shop";
 import { printThermalReceipt } from "@/utils/hardwareIntegration";
 import { printExchangeThermalHTMLReceipt } from "@/utils/thermalReceiptTemplate";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 // ── PDF Invoice Generator ──────────────────────────────────────────────────────
 async function downloadInvoicePDF({
@@ -492,6 +493,7 @@ export default function TransactionDetailsModal({
   invoiceId,
   initialMode = "view",
 }: Props) {
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState<"view" | "edit" | "receipt">(
     initialMode,
   );
@@ -785,7 +787,7 @@ export default function TransactionDetailsModal({
   const resolvedStoreName =
     shopProfile?.name && !shopProfile.name.toLowerCase().includes("futura")
       ? shopProfile.name
-      : "Trinco Hardware & Electricals";
+      : (authUser?.name ? `${authUser.name}'s Store` : "Hardware Store");
 
   const handleThermalPrint = async () => {
     if (returnedViewItems.length > 0 || invNum.startsWith("EXC-")) {
@@ -794,8 +796,8 @@ export default function TransactionDetailsModal({
         storeAddress:
           [shopProfile?.address, shopProfile?.city, shopProfile?.district]
             .filter(Boolean)
-            .join(", ") || "Anuradapura Junction, Trincomalee, Sri Lanka",
-        storePhone: shopProfile?.phone || "+94763539351",
+            .join(", ") || "",
+        storePhone: shopProfile?.phone || "",
         exchangeNo: invNum,
         originalInvoiceNo: data?.originalInvoiceNo || data?.original_invoice_no || "N/A",
         date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
