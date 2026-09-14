@@ -24,6 +24,7 @@ import { printThermalReceipt } from "@/utils/hardwareIntegration";
 import { printExchangeThermalHTMLReceipt } from "@/utils/thermalReceiptTemplate";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { logActivity } from "@/utils/activityLogger";
 
 // ── PDF Invoice Generator ──────────────────────────────────────────────────────
 async function downloadInvoicePDF({
@@ -680,6 +681,13 @@ export default function TransactionDetailsModal({
         })),
       };
       await api.put(`/sales/${invoiceId}`, payload);
+      logActivity({
+        action: "UPDATE_SALE",
+        details: `Updated invoice specifications for "${invNum}" (Customer: ${editData.customerName || 'Walk-in'})`,
+        amount: Number(data?.totalAmount || data?.amount || 0),
+        httpMethod: "PUT",
+        endpoint: `/sales/${invoiceId}`,
+      });
       // Reflect edits locally
       setData((prev: any) => ({
         ...prev,
@@ -715,6 +723,13 @@ export default function TransactionDetailsModal({
       // Always prefer the real UUID so DELETE /sales/:uuid works reliably
       const realId = data?.id || data?._id || invoiceId;
       await api.delete(`/sales/${realId}`);
+      logActivity({
+        action: "DELETE_SALE",
+        details: `Deleted invoice record "${invNum}" (Amount: Rs. ${Number(data?.totalAmount || 0).toLocaleString()})`,
+        amount: Number(data?.totalAmount || 0),
+        httpMethod: "DELETE",
+        endpoint: `/sales/${realId}`,
+      });
       setShowDeleteConfirm(false);
       onClose();
       // Force reload to ensure the list reflects the deletion immediately

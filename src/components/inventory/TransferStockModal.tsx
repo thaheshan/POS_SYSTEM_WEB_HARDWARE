@@ -4,6 +4,7 @@ import { X, ArrowLeftRight, Search, CheckCircle2, Package } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
 import { toast } from 'sonner';
+import { logActivity } from '@/utils/activityLogger';
 
 interface TransferStockModalProps {
   isOpen: boolean;
@@ -121,6 +122,13 @@ export default function TransferStockModal({ isOpen, onClose, onSuccess, initial
         destinationWarehouseId: toWarehouseId,
         quantity: qty,
         reason: notes || `Transfer from ${warehouses.find(w => w.id === fromWarehouseId)?.name} to ${warehouses.find(w => w.id === toWarehouseId)?.name}`,
+      });
+      logActivity({
+        action: 'TRANSFER_STOCK',
+        details: `Transferred ${qty} unit(s) of product "${selectedStockItem?.name || 'Item'}" (SKU: ${selectedStockItem?.sku || 'N/A'}) between warehouses`,
+        amount: qty,
+        httpMethod: 'POST',
+        endpoint: '/stock/transfer',
       });
 
       toast.success(`${qty} unit(s) transferred successfully.`);

@@ -7,20 +7,63 @@ import api from '@/api/axiosInstance';
 import {
   ClipboardList, Search, RefreshCw, Calendar,
   ShoppingCart, RotateCcw, ArrowLeftRight, Package,
-  Wrench, User, Filter, ChevronDown,
+  Wrench, User, Filter, ChevronDown, Edit2, Trash2,
+  ShieldCheck, Boxes, Tag, CreditCard, Coins, UserCheck,
+  UserPlus, UserMinus, Truck, FileText, CheckCircle, Key, Users
 } from 'lucide-react';
 
-// ── Action badge helpers ─────────────────────────────────────────────────────
+// ── Action badge metadata mapping for ALL system workflows ─────────────────────
 const ACTION_META: Record<string, { label: string; color: string; Icon: any }> = {
-  CREATE_SALE:    { label: 'Sale',      color: 'bg-emerald-100 text-emerald-800 border-emerald-200',  Icon: ShoppingCart },
-  RETURN_SALE:    { label: 'Return',    color: 'bg-rose-100 text-rose-800 border-rose-200',            Icon: RotateCcw },
-  EXCHANGE_SALE:  { label: 'Exchange',  color: 'bg-blue-100 text-blue-800 border-blue-200',            Icon: ArrowLeftRight },
-  ADD_EXPENSE:    { label: 'Expense',   color: 'bg-amber-100 text-amber-800 border-amber-200',         Icon: Wrench },
-  ADD_STOCK:      { label: 'Stock',     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',       Icon: Package },
+  // Sales & Orders
+  CREATE_SALE:            { label: 'Sale',              color: 'bg-emerald-100 text-emerald-800 border-emerald-200',  Icon: ShoppingCart },
+  UPDATE_SALE:            { label: 'Sale Updated',      color: 'bg-teal-100 text-teal-800 border-teal-200',            Icon: Edit2 },
+  DELETE_SALE:            { label: 'Invoice Deleted',   color: 'bg-red-100 text-red-800 border-red-200',               Icon: Trash2 },
+  RETURN_SALE:            { label: 'Return',            color: 'bg-rose-100 text-rose-800 border-rose-200',            Icon: RotateCcw },
+  EXCHANGE_SALE:          { label: 'Exchange',          color: 'bg-blue-100 text-blue-800 border-blue-200',            Icon: ArrowLeftRight },
+  DISCOUNT_APPROVE:       { label: 'Discount Approved', color: 'bg-indigo-100 text-indigo-800 border-indigo-200',    Icon: ShieldCheck },
+
+  // Inventory & Stock
+  CREATE_PRODUCT:         { label: 'Product Created',   color: 'bg-emerald-100 text-emerald-800 border-emerald-200',  Icon: Package },
+  UPDATE_PRODUCT:         { label: 'Product Updated',   color: 'bg-sky-100 text-sky-800 border-sky-200',               Icon: Edit2 },
+  DELETE_PRODUCT:         { label: 'Product Deleted',   color: 'bg-red-100 text-red-800 border-red-200',               Icon: Trash2 },
+  ADD_STOCK:              { label: 'Stock Adjust',      color: 'bg-indigo-100 text-indigo-800 border-indigo-200',       Icon: Boxes },
+  TRANSFER_STOCK:         { label: 'Stock Transfer',    color: 'bg-violet-100 text-violet-800 border-violet-200',    Icon: ArrowLeftRight },
+  CREATE_CATEGORY:        { label: 'Category Added',    color: 'bg-purple-100 text-purple-800 border-purple-200',    Icon: Tag },
+  CREATE_SUBCATEGORY:     { label: 'Subcat Added',      color: 'bg-purple-100 text-purple-800 border-purple-200',    Icon: Tag },
+  CREATE_BRAND:           { label: 'Brand Added',       color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200', Icon: Tag },
+
+  // Credit & Customers
+  CREDIT_SALE:            { label: 'Credit Sale',       color: 'bg-amber-100 text-amber-800 border-amber-200',         Icon: CreditCard },
+  CREDIT_SETTLEMENT:      { label: 'Credit Payment',    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',  Icon: Coins },
+  CUSTOMER_CREDIT_UPDATE: { label: 'Credit Updated',    color: 'bg-amber-100 text-amber-800 border-amber-200',         Icon: UserCheck },
+  CREATE_CUSTOMER:        { label: 'Customer Added',    color: 'bg-blue-100 text-blue-800 border-blue-200',            Icon: UserPlus },
+  UPDATE_CUSTOMER:        { label: 'Customer Updated',  color: 'bg-sky-100 text-sky-800 border-sky-200',               Icon: User },
+  DELETE_CUSTOMER:        { label: 'Customer Deleted',  color: 'bg-red-100 text-red-800 border-red-200',               Icon: UserMinus },
+
+  // Suppliers & Purchasing
+  CREATE_SUPPLIER:        { label: 'Supplier Added',    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',            Icon: Truck },
+  UPDATE_SUPPLIER:        { label: 'Supplier Updated',  color: 'bg-cyan-100 text-cyan-800 border-cyan-200',            Icon: Truck },
+  DELETE_SUPPLIER:        { label: 'Supplier Deleted',  color: 'bg-red-100 text-red-800 border-red-200',               Icon: Trash2 },
+  CREATE_PURCHASE_ORDER:  { label: 'PO Created',        color: 'bg-orange-100 text-orange-800 border-orange-200',    Icon: FileText },
+  RECEIVE_PURCHASE_ORDER: { label: 'PO Restocked',      color: 'bg-emerald-100 text-emerald-800 border-emerald-200',  Icon: CheckCircle },
+
+  // Expenses & Labour
+  ADD_EXPENSE:            { label: 'Expense / Labour',  color: 'bg-amber-100 text-amber-800 border-amber-200',         Icon: Wrench },
+  DELETE_EXPENSE:         { label: 'Expense Deleted',   color: 'bg-rose-100 text-rose-800 border-rose-200',            Icon: Trash2 },
+
+  // System & Staff Audit
+  USER_LOGIN:             { label: 'Staff Login',       color: 'bg-slate-100 text-slate-800 border-slate-200',         Icon: Key },
+  USER_LOGOUT:            { label: 'Staff Logout',      color: 'bg-slate-100 text-slate-600 border-slate-200',         Icon: Key },
+  UPDATE_STAFF:           { label: 'Staff Updated',     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',       Icon: Users },
 };
 
 function ActionBadge({ action }: { action: string }) {
-  const meta = ACTION_META[action] ?? { label: action, color: 'bg-gray-100 text-gray-700 border-gray-200', Icon: ClipboardList };
+  const normalizedAction = (action || '').toUpperCase();
+  const meta = ACTION_META[normalizedAction] ?? {
+    label: action ? action.replace(/_/g, ' ') : 'Action',
+    color: 'bg-gray-100 text-gray-700 border-gray-200',
+    Icon: ClipboardList
+  };
   const { label, color, Icon } = meta;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${color}`}>
@@ -86,7 +129,7 @@ export default function ActivityLogPage() {
   }, [fetchLogs]);
 
   const filteredLogs = actionFilter
-    ? logs.filter(l => l.action === actionFilter)
+    ? logs.filter(l => (l.action || '').toUpperCase() === actionFilter.toUpperCase())
     : logs;
 
   const formatDate = (iso: string) => {
@@ -114,7 +157,7 @@ export default function ActivityLogPage() {
                 Activity Log
               </h1>
               <p className="text-gray-500 mt-1 text-sm font-medium">
-                Real-time audit trail of all system actions — sales, returns, exchanges, expenses and stock updates.
+                Real-time audit trail of all system actions — sales, returns, exchanges, inventory, credit, suppliers, customers, and HTTP API methods.
               </p>
             </div>
             <button
@@ -168,7 +211,7 @@ export default function ActivityLogPage() {
                 />
               </div>
 
-              {/* Action filter */}
+              {/* Action filter with optgroups */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <select
@@ -176,12 +219,42 @@ export default function ActivityLogPage() {
                   onChange={e => setActionFilter(e.target.value)}
                   className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 transition-all appearance-none bg-white"
                 >
-                  <option value="">All Actions</option>
-                  <option value="CREATE_SALE">Sales</option>
-                  <option value="RETURN_SALE">Returns</option>
-                  <option value="EXCHANGE_SALE">Exchanges</option>
-                  <option value="ADD_EXPENSE">Expenses / Labour</option>
-                  <option value="ADD_STOCK">Stock Updates</option>
+                  <option value="">All Actions & Workflow Logs</option>
+                  <optgroup label="🛒 Sales & Orders">
+                    <option value="CREATE_SALE">Sales (New Checkout)</option>
+                    <option value="UPDATE_SALE">Invoice Edits</option>
+                    <option value="DELETE_SALE">Invoice Deletions</option>
+                    <option value="RETURN_SALE">Returns / Refunds</option>
+                    <option value="EXCHANGE_SALE">Product Exchanges</option>
+                    <option value="DISCOUNT_APPROVE">Discount Approvals</option>
+                  </optgroup>
+                  <optgroup label="📦 Inventory & Stock">
+                    <option value="CREATE_PRODUCT">Product Creation</option>
+                    <option value="UPDATE_PRODUCT">Product Specifications</option>
+                    <option value="DELETE_PRODUCT">Product Deletions</option>
+                    <option value="ADD_STOCK">Stock Quantity Adjustments</option>
+                    <option value="TRANSFER_STOCK">Stock Transfers</option>
+                    <option value="CREATE_CATEGORY">Categories & Subcategories</option>
+                    <option value="CREATE_BRAND">Brands</option>
+                  </optgroup>
+                  <optgroup label="💳 Credit & Customers">
+                    <option value="CREDIT_SALE">Credit Sales</option>
+                    <option value="CREDIT_SETTLEMENT">Credit Payments & Settlements</option>
+                    <option value="CUSTOMER_CREDIT_UPDATE">Customer Credit Limit Updates</option>
+                    <option value="CREATE_CUSTOMER">Customer Management</option>
+                  </optgroup>
+                  <optgroup label="🚚 Suppliers & Purchasing">
+                    <option value="CREATE_SUPPLIER">Supplier Management</option>
+                    <option value="CREATE_PURCHASE_ORDER">Purchase Orders</option>
+                    <option value="RECEIVE_PURCHASE_ORDER">PO Stock Restocks</option>
+                  </optgroup>
+                  <optgroup label="🔧 Expenses & Labour">
+                    <option value="ADD_EXPENSE">Expenses & Labour Jobs</option>
+                  </optgroup>
+                  <optgroup label="🔒 System & Staff Audit">
+                    <option value="USER_LOGIN">Staff Logins</option>
+                    <option value="UPDATE_STAFF">Staff Management & Permissions</option>
+                  </optgroup>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
@@ -262,8 +335,19 @@ export default function ActivityLogPage() {
                         </td>
 
                         {/* Details */}
-                        <td className="px-5 py-4 max-w-xs">
-                          <p className="text-gray-600 text-[13px] leading-relaxed">{log.details}</p>
+                        <td className="px-5 py-4 max-w-sm">
+                          <div className="flex flex-col gap-1">
+                            {log.httpMethod && (
+                              <span className={`inline-self-start px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider w-fit ${
+                                log.httpMethod === 'POST' ? 'bg-emerald-100 text-emerald-800' :
+                                log.httpMethod === 'PATCH' || log.httpMethod === 'PUT' ? 'bg-sky-100 text-sky-800' :
+                                log.httpMethod === 'DELETE' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                HTTP {log.httpMethod} {log.endpoint ? `• ${log.endpoint}` : ''}
+                              </span>
+                            )}
+                            <p className="text-gray-600 text-[13px] leading-relaxed">{log.details}</p>
+                          </div>
                         </td>
 
                         {/* Amount */}

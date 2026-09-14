@@ -22,6 +22,7 @@ import {
 import api from "@/api/axiosInstance";
 import { toast } from "sonner";
 import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
+import { formatImageUrl } from "@/utils/formatters";
 
 export const ALL_MEASUREMENT_UNITS = [
   {
@@ -220,7 +221,8 @@ export default function EditInventoryModal({
     setWarehouseId(item.warehouseId || item.warehouse_id || item.product?.warehouseId || "");
     setSupplierId(item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || "");
 
-    setPreviewUrl(item.image || item.imageUrl || item.image_url || null);
+    const rawInitialImage = item.image || item.imageUrl || item.image_url || item.product?.images?.[0]?.imageUrl || item.images?.[0]?.imageUrl || item.product?.image_url;
+    setPreviewUrl(formatImageUrl(rawInitialImage));
     setImageFile(null);
 
     setIsDiscountEnabled(item.isDiscountEnabled || false);
@@ -314,24 +316,32 @@ export default function EditInventoryModal({
 
   // Auto-load subcategories when categoryId changes
   useEffect(() => {
-    if (!categoryId) {
-      setSubCategories([]);
-      setBrands([]);
-      return;
-    }
+    if (!categoryId) return;
     const cat = categories.find((c) => c.id === categoryId);
     let subList: any[] = [];
     if (cat?.subcategories && cat.subcategories.length > 0) {
       subList = cat.subcategories;
-      setSubCategories(subList);
+      setSubCategories((prev) => {
+        const merged = [...prev];
+        subList.forEach((s: any) => {
+          if (!merged.some((m) => m.id === s.id)) merged.push(s);
+        });
+        return merged;
+      });
     }
     api.get(`/products/categories/${categoryId}/subcategories`)
       .then((res) => {
         const data = res.data?.data || res.data || [];
         const arr = Array.isArray(data) ? data : [];
         if (arr.length > 0) {
+          setSubCategories((prev) => {
+            const merged = [...prev];
+            arr.forEach((s: any) => {
+              if (!merged.some((m) => m.id === s.id)) merged.push(s);
+            });
+            return merged;
+          });
           subList = arr;
-          setSubCategories(arr);
         }
         // Auto-match subcategory by name if subCategoryId not set
         if (item?.subCategory && item.subCategory !== "—" && !subCategoryId) {
@@ -342,46 +352,38 @@ export default function EditInventoryModal({
         }
       })
       .catch(() => {
-        if (subList.length > 0) setSubCategories(subList);
+        /* non-blocking catch */
       });
   }, [categoryId, categories]);
 
-  // Auto-load brands when subCategoryId changes
+  // Auto-load brands when subCategoryId changes or on mount
   useEffect(() => {
-    if (!subCategoryId) {
-      setBrands([]);
-      return;
-    }
-    const sub = subCategories.find((s) => s.id === subCategoryId);
-    let brandList: any[] = [];
-    if (sub?.brands && sub.brands.length > 0) {
-      brandList = sub.brands;
-      const sorted = [...brandList].sort((a: any, b: any) =>
-        (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
-      );
-      setBrands(sorted);
-    }
-    api.get(`/products/brands`, { params: { subcategoryId: subCategoryId } })
+    // Always load all brands first so dropdown has options
+    api.get(`/products/brands`, { params: subCategoryId ? { subcategoryId: subCategoryId } : {} })
       .then((res) => {
         const data = res.data?.data || res.data || [];
         const arr = Array.isArray(data) ? data : [];
-        if (arr.length > 0 || brandList.length === 0) {
-          brandList = arr;
-          const sorted = [...arr].sort((a: any, b: any) =>
-            (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
-          );
-          setBrands(sorted);
-        }
-        // Auto-match brand by name if brandId not set
-        if (item?.brand && item.brand !== "—" && !brandId) {
-          const match = brandList.find(
-            (b: any) => b.name?.toLowerCase() === item.brand?.toLowerCase()
-          );
-          if (match) setBrandId(match.id);
+        if (arr.length > 0) {
+          setBrands((prev) => {
+            const merged = [...prev];
+            arr.forEach((b: any) => {
+              if (!merged.some((m) => m.id === b.id)) merged.push(b);
+            });
+            return merged.sort((a: any, b: any) =>
+              (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base", numeric: true })
+            );
+          });
+          // Auto-match brand by name if brandId not set
+          if (item?.brand && item.brand !== "—" && !brandId) {
+            const match = arr.find(
+              (b: any) => b.name?.toLowerCase() === item.brand?.toLowerCase()
+            );
+            if (match) setBrandId(match.id);
+          }
         }
       })
-      .catch(() => {/* fallback to cache */});
-  }, [subCategoryId, subCategories]);
+      .catch(() => {/* fallback */});
+  }, [subCategoryId]);
 
   // Inline Category / Subcategory / Brand Creation
   const handleCreateCategory = async () => {
@@ -441,7 +443,11 @@ export default function EditInventoryModal({
   // Image Upload handler
   const handleImageFile = (file: File) => {
     setImageFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Keyboard shortcuts — must be declared BEFORE any early return to satisfy Rules of Hooks
@@ -533,6 +539,7 @@ export default function EditInventoryModal({
         maxSecondaryDiscount: hasSecondaryDiscount ? parseFloat(String(maxSecondaryDiscount)) || 0 : 0,
         defaultSecondaryDiscount: hasSecondaryDiscount && defaultSecondaryDiscount !== "" ? parseFloat(String(defaultSecondaryDiscount)) || 0 : 0,
         imageFile,
+        base64Image: previewUrl && previewUrl.startsWith("data:") ? previewUrl : undefined,
       };
 
       await onSave(payload);
@@ -1018,7 +1025,14 @@ export default function EditInventoryModal({
                   <div className="relative">
                     <select
                       value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCategoryId(val);
+                        if (val !== categoryId) {
+                          setSubCategoryId("");
+                          setBrandId("");
+                        }
+                      }}
                       className="w-full appearance-none px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer"
                     >
                       <option value="">Select Category</option>
@@ -1069,11 +1083,20 @@ export default function EditInventoryModal({
                   <div className="relative">
                     <select
                       value={subCategoryId}
-                      onChange={(e) => setSubCategoryId(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSubCategoryId(val);
+                        if (val !== subCategoryId) setBrandId("");
+                      }}
                       disabled={!categoryId}
                       className="w-full appearance-none px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer disabled:opacity-50"
                     >
                       <option value="">Select Subcategory</option>
+                      {subCategoryId && !subCategories.some((s) => s.id === subCategoryId) && (
+                        <option value={subCategoryId}>
+                          {item?.subCategory && item.subCategory !== "—" ? item.subCategory : "Selected Subcategory"}
+                        </option>
+                      )}
                       {subCategories.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -1126,6 +1149,11 @@ export default function EditInventoryModal({
                       className="w-full appearance-none px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer disabled:opacity-50"
                     >
                       <option value="">Select Brand</option>
+                      {brandId && !brands.some((b) => b.id === brandId) && (
+                        <option value={brandId}>
+                          {item?.brand && item.brand !== "—" ? item.brand : "Selected Brand"}
+                        </option>
+                      )}
                       {brands.map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.name}

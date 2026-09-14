@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowUpDown, Edit, Edit2, Check, Trash2, CheckCircle2, AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, X, Barcode } from 'lucide-react';
 import Image from 'next/image';
+import { formatImageUrl } from '@/utils/formatters';
 
 interface InventoryTableProps {
   data: any[];
@@ -216,11 +217,31 @@ export default function InventoryTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 min-w-[200px]">
                       <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 bg-gray-300 rounded"></div>
-                        )}
+                        {(() => {
+                          const rawImg = item.image || item.imageUrl || item.image_url || item.product?.images?.[0]?.imageUrl || item.images?.[0]?.imageUrl || item.product?.image_url;
+                          const formattedSrc = formatImageUrl(rawImg);
+                          return formattedSrc ? (
+                            <img
+                              src={formattedSrc}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                                const parent = e.currentTarget.parentElement;
+                                if (parent && !parent.querySelector('.fallback-avatar')) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'fallback-avatar w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs font-bold uppercase';
+                                  fallback.innerText = item.name ? item.name.substring(0, 2) : 'PR';
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs font-bold uppercase">
+                              {item.name ? item.name.substring(0, 2) : 'PR'}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div>
                         <div className="font-bold text-gray-900">{item.name}</div>

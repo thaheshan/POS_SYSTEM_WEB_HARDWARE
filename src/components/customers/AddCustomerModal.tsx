@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { logActivity } from '@/utils/activityLogger';
 
 export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (customer?: any) => void }) {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', customerType: 'Individual', outstandingBalance: '0' });
@@ -40,6 +41,14 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
         }
       }
       
+      logActivity({
+        action: 'CREATE_CUSTOMER',
+        details: `Created new customer record for "${form.name.trim()}" (Phone: ${form.phone.trim()})`,
+        amount: initialCredit,
+        httpMethod: 'POST',
+        endpoint: '/customers',
+      });
+
       toastSuccess('Customer added successfully.');
       onSuccess(createdCustomer);
       onClose();

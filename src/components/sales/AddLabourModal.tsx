@@ -3,6 +3,7 @@
 import { X, User, Phone, Briefcase, Wrench, Settings, ChevronDown, CheckCircle, Save, Loader2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
+import { logActivity } from '@/utils/activityLogger';
 
 type ModalProps = {
   isOpen: boolean;
@@ -60,6 +61,13 @@ export default function AddLabourModal({ isOpen, onClose }: ModalProps) {
         amount: Number(amount),
         labourerName: labourerName || undefined,
         labourerPhone: labourerPhone || undefined,
+      });
+      logActivity({
+        action: 'ADD_EXPENSE',
+        details: `Recorded ${entryType} expense entry for "${labourerName || 'Staff'}" (${description.trim() || 'No description'})`,
+        amount: Number(amount),
+        httpMethod: 'POST',
+        endpoint: '/expenses',
       });
       // Reset fields
       setEntryType('LABOUR');
