@@ -2,6 +2,7 @@ import { X, ArrowUpDown, Search, Check, Package, RotateCcw, ChevronDown } from '
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { logActivity } from '@/utils/activityLogger';
 
 interface AdjustStockModalProps {
   isOpen: boolean;
@@ -176,6 +177,13 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
         branch_id: branchId,
         [qtyKey]: Number(formData.quantity),
         reason: formData.reason || 'Manual adjustment',
+      });
+      logActivity({
+        action: "ADD_STOCK",
+        details: `${formData.adjustmentType === 'add' ? 'Added' : 'Deducted'} ${formData.quantity} units for product "${item?.name || 'Item'}" (SKU: ${item?.sku || 'N/A'}) — ${formData.reason || 'Manual adjustment'}`,
+        amount: Number(formData.quantity),
+        httpMethod: "POST",
+        endpoint,
       });
       toastSuccess('Stock levels updated successfully.');
       onSuccess();

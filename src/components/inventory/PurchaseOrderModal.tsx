@@ -4,6 +4,7 @@ import { X, FileText, Search, Plus, Trash2, CheckCircle2, Package } from 'lucide
 import React, { useState, useEffect } from 'react';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { logActivity } from '@/utils/activityLogger';
 
 interface PurchaseOrderModalProps {
   isOpen: boolean;
@@ -153,6 +154,13 @@ export default function PurchaseOrderModal({ isOpen, onClose, onSuccess, prefill
         });
         receiveCount++;
       }
+      logActivity({
+        action: 'CREATE_PURCHASE_ORDER',
+        details: `Received purchase order GRN from supplier "${supplierName}" (${validLines.length} product line(s), Total: Rs. ${totalValue.toLocaleString()})`,
+        amount: totalValue,
+        httpMethod: 'POST',
+        endpoint: '/stock/add',
+      });
       toastSuccess(`Purchase order received successfully. ${receiveCount} ${receiveCount === 1 ? 'item was' : 'items were'} added to stock.`);
       setDone(true);
       onSuccess();

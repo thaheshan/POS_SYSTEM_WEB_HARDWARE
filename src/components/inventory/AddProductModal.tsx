@@ -24,6 +24,7 @@ import CameraCaptureModal from "./CameraCaptureModal";
 import AddSupplierModal from "@/components/suppliers/AddSupplierModal";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { printBarcodeLabels } from "@/utils/barcodePrintUtility";
+import { logActivity } from "@/utils/activityLogger";
 
 interface Product {
   sku?: string;
@@ -652,11 +653,31 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
       formData.append("name", form.name.trim());
       formData.append("sku", form.sku.trim());
       formData.append("categoryId", form.categoryId);
+      formData.append("category_id", form.categoryId);
+
       if (form.subCategoryId) {
         formData.append("subcategoryId", form.subCategoryId);
         formData.append("subCategoryId", form.subCategoryId);
+        formData.append("subcategory_id", form.subCategoryId);
       }
-      if (form.brandId) formData.append("brandId", form.brandId);
+      if (form.brandId) {
+        formData.append("brandId", form.brandId);
+        formData.append("brand_id", form.brandId);
+      }
+      if (form.supplierId) {
+        formData.append("supplierId", form.supplierId);
+        formData.append("supplier_id", form.supplierId);
+      }
+      if (form.warehouseId) {
+        formData.append("warehouseId", form.warehouseId);
+        formData.append("warehouse_id", form.warehouseId);
+      }
+      if (form.imageFile) {
+        formData.append("imageFile", form.imageFile);
+        formData.append("image", form.imageFile);
+        formData.append("file", form.imageFile);
+      }
+
       formData.append(
         "sellingPrice",
         (parseFloat(form.sellingPrice) || 0).toString(),
@@ -682,20 +703,49 @@ const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
       if (form.description?.trim())
         formData.append("description", form.description.trim());
-      if (form.imageFile) formData.append("imageFile", form.imageFile);
       if (form.barcode?.trim()) {
         formData.append("barcode", form.barcode.trim());
-      }
-
-      // Backend will create the initial stock entry in this warehouse
-      if (form.warehouseId) {
-        formData.append("warehouseId", form.warehouseId);
       }
 
       const res = await api.post("/products", formData);
       const newProduct = res.data?.data || res.data;
 
+      logActivity({
+        action: "CREATE_PRODUCT",
+        details: `Created new inventory product "${form.name.trim()}" (SKU: ${form.sku.trim()})`,
+        amount: parseFloat(form.sellingPrice) || 0,
+        httpMethod: "POST",
+        endpoint: "/products",
+      });
+
       if (newProduct?.id) {
+        // Fallback image patch if main POST file interceptor required separate upload
+        if (form.imageFile) {
+          try {
+            const imgForm = new FormData();
+            imgForm.append("imageFile", form.imageFile);
+            imgForm.append("image", form.imageFile);
+            imgForm.append("file", form.imageFile);
+            await api.patch(`/products/${newProduct.id}`, imgForm);
+          } catch {
+            /* secondary image patch fallback */
+          }
+        }
+
+        // Fallback relation patch to guarantee supplier, subcategory & brand linkage
+        try {
+          await api.patch(`/products/${newProduct.id}`, {
+            categoryId: form.categoryId,
+            subCategoryId: form.subCategoryId || undefined,
+            subcategoryId: form.subCategoryId || undefined,
+            brandId: form.brandId || undefined,
+            supplierId: form.supplierId || undefined,
+            supplier_id: form.supplierId || undefined,
+          });
+        } catch {
+          /* secondary relation patch fallback */
+        }
+
         // Update discount configuration (always update this if provided)
         await api.patch(`/products/${newProduct.id}/discount-config`, {
           isDiscountEnabled: form.isDiscountEnabled,

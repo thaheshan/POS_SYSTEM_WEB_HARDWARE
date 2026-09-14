@@ -23,6 +23,8 @@ import { useBarcodeScanner } from "@/utils/hardwareIntegration";
 import { matchAndScoreProduct } from "@/utils/searchUtils";
 import { exportInventoryToExcel } from "@/utils/inventoryExport";
 import { toast } from "sonner";
+import { logActivity } from "@/utils/activityLogger";
+import { formatImageUrl } from "@/utils/formatters";
 import InventoryKPICards from "@/components/inventory/InventoryKPICards";
 import InventoryActionRow from "@/components/inventory/InventoryActionRow";
 import InventoryFilters from "@/components/inventory/InventoryFilters";
@@ -151,8 +153,9 @@ export default function InventoryPage() {
 
   const handleToggleApproval = async (product: any) => {
     const nextApprovalState = !product.isDiscountApproved;
+    const targetProdId = product.productId || product.product_id || product.id;
     try {
-      await api.patch(`/products/${product.id}/discount-approval`, {
+      await api.patch(`/products/${targetProdId}/discount-approval`, {
         isDiscountApproved: nextApprovalState,
       });
 
@@ -225,7 +228,8 @@ export default function InventoryPage() {
     }
 
     try {
-      await api.patch(`/products/${editingApproval.id}/discount-config`, {
+      const targetProdId = editingApproval.productId || editingApproval.product_id || editingApproval.id;
+      await api.patch(`/products/${targetProdId}/discount-config`, {
         isDiscountEnabled: true,
         discountType: editType,
         maxAllowedDiscount: maxVal,
@@ -341,9 +345,13 @@ export default function InventoryPage() {
         const totalVal = qty * cost;
         const status =
           qty <= 0 ? "Out of Stock" : item.low_stock ? "Low Stock" : "In Stock";
+        const actualProdId = item.product_id || item.productId || item.product?.id || item.product?.productId || item.id;
 
         return {
-          id: item.product_id || item.id,
+          id: actualProdId,
+          productId: actualProdId,
+          product_id: actualProdId,
+          stockId: item.id || item.stock_id,
           name: item.product_name || item.product?.name || "Unknown",
           sku: item.sku || item.product?.sku || "N/A",
           skuInfo: item.sku || item.product?.sku || "N/A",
@@ -364,8 +372,19 @@ export default function InventoryPage() {
             (typeof item.product?.brand === "string" ? item.product?.brand : "—"),
           warehouse:
             item.warehouse_name || item.warehouse?.name || "Main Warehouse",
-          image:
-            item.image_url || item.product?.image_url || item.image || null,
+          product: item.product || item,
+          image: formatImageUrl(
+            item.product?.images?.[0]?.imageUrl ||
+            item.product?.images?.[0]?.url ||
+            item.images?.[0]?.imageUrl ||
+            item.images?.[0]?.url ||
+            item.product?.image ||
+            item.product?.imageUrl ||
+            item.product?.image_url ||
+            item.image_url ||
+            item.imageUrl ||
+            item.image
+          ),
           qty,
           maxLevel: Math.max(minStock, qty, 1),
           minStock,
@@ -400,7 +419,8 @@ export default function InventoryPage() {
           supplierId: item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || "",
           supplier: item.supplierName || item.supplier_name || item.product?.supplierProducts?.[0]?.supplier?.name || "",
           warehouseId: item.warehouse_id,
-          productId: item.product_id,
+          productId: actualProdId,
+          product_id: actualProdId,
           isDiscountEnabled: item.isDiscountEnabled || item.product?.isDiscountEnabled || false,
           isDiscountApproved: item.isDiscountApproved || item.product?.isDiscountApproved || false,
           discountType: item.discountType || item.product?.discountType || "PERCENTAGE",
@@ -432,7 +452,15 @@ export default function InventoryPage() {
             supplierId: p.supplierProducts?.[0]?.supplierId || "",
             supplier: p.supplierProducts?.[0]?.supplier?.name || "",
             warehouse: "—",
-            image: p.images?.[0]?.imageUrl || null,
+            product: p,
+            image: formatImageUrl(
+              p.images?.[0]?.imageUrl ||
+              p.images?.[0]?.url ||
+              p.image ||
+              p.imageUrl ||
+              p.image_url ||
+              p.photo
+            ),
             qty: 0,
             maxLevel: Number(p.maximumStockLevel) || 200,
             minStock: Number(p.minimumStockLevel) || 10,
@@ -697,29 +725,150 @@ export default function InventoryPage() {
         maxAllowedDiscount,
         defaultDiscountValue,
         imageFile,
+        base64Image,
         ...coreData
       } = updatedData;
 
-      // Clean empty strings for relation fields so PATCH requests do not erase existing subcategory or brand
-      const cleanCoreData: any = { ...coreData };
-      if (cleanCoreData.subCategoryId === "" || cleanCoreData.subCategoryId === undefined) delete cleanCoreData.subCategoryId;
-      if (cleanCoreData.subcategoryId === "" || cleanCoreData.subcategoryId === undefined) delete cleanCoreData.subcategoryId;
-      if (cleanCoreData.brandId === "" || cleanCoreData.brandId === undefined) delete cleanCoreData.brandId;
-      if (cleanCoreData.categoryId === "" || cleanCoreData.categoryId === undefined) delete cleanCoreData.categoryId;
-      if (cleanCoreData.supplierId === "" || cleanCoreData.supplierId === undefined) delete cleanCoreData.supplierId;
-      if (cleanCoreData.warehouseId === "" || cleanCoreData.warehouseId === undefined) delete cleanCoreData.warehouseId;
+      const isValidUuid = (val: any) =>
+        typeof val === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
 
-      if (imageFile instanceof File) {
-        const formData = new FormData();
-        Object.entries(cleanCoreData).forEach(([key, val]) => {
-          if (val !== undefined && val !== null) {
-            formData.append(key, String(val));
+      // Clean non-UUID strings for relation fields so PATCH requests do not send invalid syntax strings like "—"
+      const cleanCoreData: any = { ...coreData };
+      [
+        "subCategoryId",
+        "subcategoryId",
+        "subcategory_id",
+        "brandId",
+        "brand_id",
+        "categoryId",
+        "category_id",
+        "supplierId",
+        "supplier_id",
+        "warehouseId",
+        "warehouse_id",
+      ].forEach((key) => {
+        if (cleanCoreData[key] && !isValidUuid(cleanCoreData[key])) {
+          delete cleanCoreData[key];
+        }
+      });
+
+      // Ensure relation field key variations are mapped for NestJS/Prisma ORMs
+      if (isValidUuid(cleanCoreData.subCategoryId)) {
+        cleanCoreData.subcategoryId = cleanCoreData.subCategoryId;
+        cleanCoreData.subcategory_id = cleanCoreData.subCategoryId;
+      }
+      if (isValidUuid(cleanCoreData.brandId)) {
+        cleanCoreData.brand_id = cleanCoreData.brandId;
+      }
+      if (isValidUuid(cleanCoreData.supplierId)) {
+        cleanCoreData.supplier_id = cleanCoreData.supplierId;
+      }
+      if (isValidUuid(cleanCoreData.categoryId)) {
+        cleanCoreData.category_id = cleanCoreData.categoryId;
+      }
+
+      // Step 1: Always update core product details via JSON PATCH (guarantees core attributes, SKU, prices, subcategory & brand relations save cleanly)
+      await api.patch(`/products/${targetProdId}`, cleanCoreData);
+
+      // Step 2: Upload photo if a file object or base64 is present
+      const hasFile = Boolean(
+        imageFile &&
+          (imageFile instanceof File ||
+            imageFile instanceof Blob ||
+            (typeof imageFile === "object" && "name" in (imageFile as any)))
+      );
+      let uploadedUrl: string | null = base64Image || null;
+
+      if (hasFile || base64Image) {
+        let base64Data: string | null = base64Image || null;
+        if (!base64Data && hasFile) {
+          base64Data = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(imageFile);
+          });
+        }
+
+        if (hasFile) {
+          // 2a. Build FormData appending all common image field names for NestJS FileInterceptors
+          const imgForm = new FormData();
+          imgForm.append("imageFile", imageFile);
+          imgForm.append("image", imageFile);
+          imgForm.append("file", imageFile);
+          imgForm.append("photo", imageFile);
+          imgForm.append("image_file", imageFile);
+
+          const endpoints = [
+            { method: "patch", url: `/products/${targetProdId}` },
+            { method: "post", url: `/inventory/products/${targetProdId}/image` },
+            { method: "post", url: `/products/${targetProdId}/image` },
+            { method: "patch", url: `/products/${targetProdId}/image` },
+            { method: "post", url: `/products/${targetProdId}/upload` },
+            { method: "put", url: `/products/${targetProdId}` },
+          ];
+
+          let uploadSuccess = false;
+          for (const ep of endpoints) {
+            try {
+              let res;
+              if (ep.method === "patch") {
+                res = await api.patch(ep.url, imgForm, {
+                  headers: { "Content-Type": "multipart/form-data" },
+                });
+              } else if (ep.method === "post") {
+                res = await api.post(ep.url, imgForm, {
+                  headers: { "Content-Type": "multipart/form-data" },
+                });
+              } else if (ep.method === "put") {
+                res = await api.put(ep.url, imgForm, {
+                  headers: { "Content-Type": "multipart/form-data" },
+                });
+              }
+              const resData = res?.data?.data || res?.data;
+              if (resData?.imageUrl || resData?.image || resData?.url || resData?.image_url) {
+                uploadedUrl = resData?.imageUrl || resData?.image || resData?.url || resData?.image_url;
+              }
+              uploadSuccess = true;
+              break;
+            } catch {
+              /* try next candidate endpoint */
+            }
           }
-        });
-        formData.append("imageFile", imageFile);
-        await api.patch(`/products/${targetProdId}`, formData);
-      } else {
-        await api.patch(`/products/${targetProdId}`, cleanCoreData);
+
+          // 2b. Base64 JSON fallback if multipart endpoints failed or backend expects JSON string payload
+          if (!uploadSuccess || !uploadedUrl) {
+            if (base64Data) {
+              try {
+                await api.patch(`/products/${targetProdId}`, {
+                  image: base64Data,
+                  imageUrl: base64Data,
+                  image_url: base64Data,
+                });
+                uploadedUrl = base64Data;
+              } catch {
+                /* secondary fallback */
+              }
+            }
+          }
+        }
+
+        const finalImg = uploadedUrl || base64Data;
+        if (finalImg) {
+          setInventoryData((prev) =>
+            prev.map((i) => {
+              if (i.id === selectedItem.id || i.productId === targetProdId) {
+                return {
+                  ...i,
+                  image: finalImg,
+                  imageUrl: finalImg,
+                  image_url: finalImg,
+                };
+              }
+              return i;
+            })
+          );
+        }
       }
 
       // 2. Update discount configuration
@@ -733,11 +882,20 @@ export default function InventoryPage() {
       // 3. Handle Auto-Approval for Shop Owner role
       const isOwner = user?.role === "owner";
       if (isDiscountEnabled && isOwner) {
-        await api.patch(`/products/${selectedItem.id}/discount-approval`, {
+        await api.patch(`/products/${targetProdId}/discount-approval`, {
           isDiscountApproved: true,
         });
       }
 
+      logActivity({
+        action: "UPDATE_PRODUCT",
+        details: `Updated product specifications for "${updatedData.name || selectedItem.name}" (SKU: ${updatedData.sku || selectedItem.sku})`,
+        amount: Number(updatedData.sellingPrice || selectedItem.sellingPrice || 0),
+        httpMethod: "PATCH",
+        endpoint: `/products/${targetProdId}`,
+      });
+
+      toast.success("Product updated successfully!");
       setIsEditModalOpen(false);
       setSelectedItem(null);
       fetchInventory(); // Refresh inventory data list
@@ -752,7 +910,15 @@ export default function InventoryPage() {
 
   const handleUpdatePrice = async (item: any, newPrice: number) => {
     try {
-      await api.patch(`/products/${item.id}`, { sellingPrice: newPrice });
+      const targetProdId = item.productId || item.product_id || item.id;
+      await api.patch(`/products/${targetProdId}`, { sellingPrice: newPrice });
+      logActivity({
+        action: "UPDATE_PRODUCT",
+        details: `Updated unit price for "${item.name}" (SKU: ${item.sku}) to Rs. ${newPrice.toLocaleString()}`,
+        amount: newPrice,
+        httpMethod: "PATCH",
+        endpoint: `/products/${targetProdId}`,
+      });
       toast.success(`Unit price for "${item.name}" permanently updated to Rs. ${newPrice.toLocaleString()}`);
       fetchInventory();
     } catch (error: any) {
@@ -767,7 +933,14 @@ export default function InventoryPage() {
     if (!selectedItem || isDeleting) return;
     try {
       setIsDeleting(true);
-      await api.delete(`/products/${selectedItem.id}`);
+      const targetProdId = selectedItem.productId || selectedItem.product_id || selectedItem.id;
+      await api.delete(`/products/${targetProdId}`);
+      logActivity({
+        action: "DELETE_PRODUCT",
+        details: `Deleted product "${selectedItem.name}" (SKU: ${selectedItem.sku || 'N/A'}) from inventory`,
+        httpMethod: "DELETE",
+        endpoint: `/products/${targetProdId}`,
+      });
       setIsDeleteModalOpen(false);
       setSelectedItem(null);
       fetchInventory(); // Refresh from server

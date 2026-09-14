@@ -63,9 +63,25 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(line);
 
   // Totals
-  lines.push(leftRight("Subtotal:", `Rs. ${data.subtotal.toLocaleString()}`));
-  if (data.discount > 0) {
-    lines.push(leftRight("Discount:", `-Rs. ${data.discount.toLocaleString()}`));
+  const totalItemDiscounts = data.items.reduce(
+    (sum, item) => sum + (Number(item.discountAmount) || 0) * item.qty,
+    0
+  );
+  const totalOrderDiscount = Number(data.discount) || 0;
+  const totalAllDiscounts = totalItemDiscounts + totalOrderDiscount;
+  const grossSubtotal = data.subtotal + totalItemDiscounts;
+
+  if (totalAllDiscounts > 0) {
+    lines.push(leftRight("Subtotal (Gross):", `Rs. ${grossSubtotal.toLocaleString()}`));
+    if (totalItemDiscounts > 0) {
+      lines.push(leftRight("Item Discounts:", `-Rs. ${totalItemDiscounts.toLocaleString()}`));
+    }
+    if (totalOrderDiscount > 0) {
+      lines.push(leftRight("Order Discount:", `-Rs. ${totalOrderDiscount.toLocaleString()}`));
+    }
+    lines.push(leftRight("TOTAL SAVINGS:", `-Rs. ${totalAllDiscounts.toLocaleString()}`));
+  } else {
+    lines.push(leftRight("Subtotal:", `Rs. ${data.subtotal.toLocaleString()}`));
   }
   lines.push(doubleLine);
   lines.push(leftRight("GRAND TOTAL:", `Rs. ${data.total.toLocaleString()}`));
@@ -217,13 +233,38 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <div class="divider"></div>
 
   <!-- Totals -->
+  ${(() => {
+    const totalItemDiscountsHtml = data.items.reduce(
+      (sum, item) => sum + (Number(item.discountAmount) || 0) * item.qty,
+      0
+    );
+    const totalOrderDiscountHtml = Number(data.discount) || 0;
+    const totalAllDiscountsHtml = totalItemDiscountsHtml + totalOrderDiscountHtml;
+    const grossSubtotalHtml = data.subtotal + totalItemDiscountsHtml;
+
+    if (totalAllDiscountsHtml > 0) {
+      return `
+  <table style="width:100%; font-size:11px; font-weight:700;">
+    <tr>
+      <td>Subtotal (Gross):</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${grossSubtotalHtml.toLocaleString()}</td>
+    </tr>
+    ${totalItemDiscountsHtml > 0 ? `<tr><td>Item Discounts:</td><td style="text-align:right; font-weight:900;">-Rs. ${totalItemDiscountsHtml.toLocaleString()}</td></tr>` : ""}
+    ${totalOrderDiscountHtml > 0 ? `<tr><td>Order Discount:</td><td style="text-align:right; font-weight:900;">-Rs. ${totalOrderDiscountHtml.toLocaleString()}</td></tr>` : ""}
+    <tr style="font-weight:900;">
+      <td>Total Discount Saved:</td>
+      <td style="text-align:right; font-weight:900;">-Rs. ${totalAllDiscountsHtml.toLocaleString()}</td>
+    </tr>
+  </table>`;
+    }
+    return `
   <table style="width:100%; font-size:11px; font-weight:700;">
     <tr>
       <td>Subtotal:</td>
       <td style="text-align:right; font-weight:900;">Rs. ${data.subtotal.toLocaleString()}</td>
     </tr>
-    ${data.discount > 0 ? `<tr><td>Discount:</td><td style="text-align:right; font-weight:900;">-Rs. ${data.discount.toLocaleString()}</td></tr>` : ""}
-  </table>
+  </table>`;
+  })()}
 
   <div class="double-divider"></div>
 

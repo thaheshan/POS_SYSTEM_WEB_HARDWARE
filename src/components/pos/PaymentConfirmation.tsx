@@ -611,6 +611,12 @@ export default function PaymentConfirmation({
 
       const freshTotalOutstanding = freshExistingBalance + creditLeftover;
 
+      const isValidUuid = (val: any) =>
+        typeof val === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+
+      const validCustomerId = isValidUuid(customerId) ? customerId.trim() : undefined;
+
       const payload = {
         invoiceNumber: invoiceRef,
         items: items.map((item) => ({
@@ -627,7 +633,7 @@ export default function PaymentConfirmation({
         change: isCreditSale ? 0 : change,
         paymentMethod: selectedMethod.toUpperCase(),
         notes,
-        customerId,
+        customerId: validCustomerId,
         creditAmountAdded: creditLeftover,
         newTotalOutstanding: freshTotalOutstanding,
       };

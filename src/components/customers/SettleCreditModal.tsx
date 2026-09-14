@@ -5,6 +5,7 @@ import { X, CreditCard, Search, Check, RotateCcw, DollarSign, Wallet, ArrowDownR
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { sendCreditSettlementSMS } from '@/utils/textlkSmsService';
+import { logActivity } from '@/utils/activityLogger';
 
 interface Customer {
   id: string;
@@ -165,6 +166,14 @@ export default function SettleCreditModal({
           });
         } catch {}
       }
+
+      logActivity({
+        action: 'CREDIT_SETTLEMENT',
+        details: `Received credit settlement payment of Rs. ${settlingNum.toLocaleString()} from customer "${selectedCustomer.name}" (Method: ${paymentMethod})`,
+        amount: settlingNum,
+        httpMethod: 'POST',
+        endpoint: '/sales/credit',
+      });
 
       // 3. Send text.lk SMS payment receipt to customer
       if (selectedCustomer.phone && selectedCustomer.phone !== 'N/A') {

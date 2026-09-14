@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import { useSalesData } from '@/hooks/useSales';
 import { shopApi } from '@/api/shop';
+import { logActivity } from '@/utils/activityLogger';
 
 // Modals from previous implementation
 import CategoryAReportModal from '@/components/sales/CategoryAReportModal';
@@ -111,6 +112,12 @@ export default function ReportsPage() {
     a.download = `reports-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    logActivity({
+      action: 'EXPORT_REPORT',
+      details: `Exported financial & business report ledger as CSV (${dateLabel})`,
+      httpMethod: 'GET',
+      endpoint: '/reports/export-csv',
+    });
     setExportOpen(false);
   };
 
@@ -501,6 +508,12 @@ export default function ReportsPage() {
     win.document.write(html);
     win.document.close();
     setTimeout(() => { win.print(); }, 400);
+    logActivity({
+      action: 'EXPORT_REPORT',
+      details: `Generated and printed full Business Analytics & Financial PDF report (${dateLabel})`,
+      httpMethod: 'GET',
+      endpoint: '/reports/export-pdf',
+    });
     setExportOpen(false);
   };
 

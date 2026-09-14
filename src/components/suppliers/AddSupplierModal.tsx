@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/api/axiosInstance";
 import { toast } from "react-hot-toast";
+import { logActivity } from "@/utils/activityLogger";
 
 interface Props {
   isOpen: boolean;
@@ -127,11 +128,23 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
       if (supplier && supplier.id) {
         const res = await api.put(`/suppliers/${supplier.id}`, payload);
         const updated = res.data?.data || res.data?.supplier || res.data;
+        logActivity({
+          action: "UPDATE_SUPPLIER",
+          details: `Updated supplier details for "${name.trim()}" (Company: ${companyName.trim() || 'N/A'})`,
+          httpMethod: "PUT",
+          endpoint: `/suppliers/${supplier.id}`,
+        });
         toast.success("Supplier updated successfully");
         onClose(true, updated);
       } else {
         const res = await api.post("/suppliers", payload);
         const created = res.data?.data || res.data?.supplier || res.data;
+        logActivity({
+          action: "CREATE_SUPPLIER",
+          details: `Registered new supplier "${name.trim()}" (Company: ${companyName.trim() || 'N/A'})`,
+          httpMethod: "POST",
+          endpoint: "/suppliers",
+        });
         toast.success("Supplier created successfully");
         onClose(true, created);
       }
