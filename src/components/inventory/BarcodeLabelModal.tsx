@@ -77,15 +77,15 @@ export interface LabelAlignmentSettings {
 const DEFAULT_SETTINGS: LabelAlignmentSettings = {
   preset: "zd230_2up",
   unit: "mm",
-  labelWidth: 50,
+  labelWidth: 48,
   labelHeight: 25,
   labelsAcross: 2,
-  horizontalGap: 0,
+  horizontalGap: 2,
   topOffset: 0,
-  leftOffset: 0,
+  leftOffset: 1,
   speed: 6,
   darkness: 15,
-  fontSizeScale: 100,
+  fontSizeScale: 95,
   barcodeHeight: 10,
   barWidth: "2mm",
   showPrice: false,
@@ -107,7 +107,7 @@ function generateZPLCode(
   const labelW = Math.round(settings.labelWidth * MM_TO_DOTS);
   const labelH = Math.round(settings.labelHeight * MM_TO_DOTS);
   const gapDots = Math.round(settings.horizontalGap * MM_TO_DOTS);
-  const totalPaperW = (labelW + gapDots) * settings.labelsAcross - gapDots;
+  const totalPaperW = Math.round(100 * MM_TO_DOTS);
 
   const topOffsetDots = Math.round(settings.topOffset * MM_TO_DOTS);
   const leftOffsetDots = Math.round(settings.leftOffset * MM_TO_DOTS);
@@ -125,12 +125,12 @@ function generateZPLCode(
   const priceY = skuY + fontSkuSize + 8;
 
   const truncName =
-    productName.length > 24 ? productName.slice(0, 23) + "~" : productName;
+    productName.length > 22 ? productName.slice(0, 21) + "~" : productName;
   const truncSku = skuCode.length > 18 ? skuCode.slice(0, 18) : skuCode;
 
   const buildSingleLabelZPL = (labelIndex: number) => {
     const xBase =
-      leftOffsetDots + labelIndex * (labelW + gapDots) + Math.round(2 * MM_TO_DOTS);
+      leftOffsetDots + labelIndex * (labelW + gapDots) + Math.round(1.5 * MM_TO_DOTS);
 
     const lines = [
       `^FO${xBase},${nameY}^A0N,${fontNameSize},${fontNameSize}^FD${truncName}^FS`,
@@ -258,12 +258,12 @@ export default function BarcodeLabelModal({
       setSettings((prev) => ({
         ...prev,
         preset: "zd230_2up",
-        labelWidth: 50,
+        labelWidth: 48,
         labelHeight: 25,
         labelsAcross: 2,
-        horizontalGap: 0,
+        horizontalGap: 2,
         topOffset: 0,
-        leftOffset: 0,
+        leftOffset: 1,
         speed: 6,
         darkness: 15,
       }));
@@ -287,27 +287,19 @@ export default function BarcodeLabelModal({
 
   // ─── HTML Printable Document Generator (Browser Thermal Print) ──────────────
   const getThermalHTML = (svgContent: string, copiesCount: number) => {
-    const labelW_px = Math.round(settings.labelWidth * 3.78); // 1mm ≈ 3.78px at 96dpi
-    const labelH_px = Math.round(settings.labelHeight * 3.78);
-    const paperW_mm =
-      (settings.labelWidth + settings.horizontalGap) * settings.labelsAcross -
-      settings.horizontalGap;
-
     const oneLabelHTML = `
       <div style="
         width: ${settings.labelWidth}mm;
         height: ${settings.labelHeight}mm;
         box-sizing: border-box;
-        padding: 1.5mm 2mm;
+        padding: 1.5mm 3mm;
         margin-top: ${settings.topOffset}mm;
-        margin-left: ${settings.leftOffset}mm;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: space-between;
         font-family: 'Segoe UI', Arial, sans-serif;
         background: #ffffff;
-        border: 0.2mm solid #e5e7eb;
         overflow: hidden;
         flex-shrink: 0;
       ">
@@ -319,7 +311,7 @@ export default function BarcodeLabelModal({
             : ""
         }
         <div style="
-          font-size: ${Math.round(8.5 * (settings.fontSizeScale / 100))}pt;
+          font-size: ${Math.round(8 * (settings.fontSizeScale / 100))}pt;
           font-weight: 900;
           color: #000000;
           width: 100%;
@@ -328,23 +320,25 @@ export default function BarcodeLabelModal({
           overflow: hidden;
           text-overflow: ellipsis;
           line-height: 1.1;
+          padding: 0 1mm;
         ">${product.name}</div>
         
-        <div style="width:100%;display:flex;justify-content:center;align-items:center;height:${settings.barcodeHeight}mm;margin:0.5mm 0;">
+        <div style="width:100%;max-width:100%;display:flex;justify-content:center;align-items:center;height:${settings.barcodeHeight}mm;margin:0.5mm 0;overflow:hidden;">
           ${svgContent}
         </div>
 
         <div style="
-          font-size: ${Math.round(7.5 * (settings.fontSizeScale / 100))}pt;
+          font-size: ${Math.round(7 * (settings.fontSizeScale / 100))}pt;
           font-weight: 800;
           color: #111827;
           letter-spacing: 0.5px;
+          text-align: center;
         ">${skuCode}</div>
 
         ${
           settings.showPrice && price
             ? `<div style="font-size:${Math.round(
-                9 * (settings.fontSizeScale / 100)
+                8.5 * (settings.fontSizeScale / 100)
               )}pt;font-weight:900;color:#059669;">Rs. ${parseFloat(
                 price
               ).toLocaleString()}</div>`
@@ -369,7 +363,7 @@ export default function BarcodeLabelModal({
         }
       }
       labelRows.push(
-        `<div style="display:flex;gap:${settings.horizontalGap}mm;width:${paperW_mm}mm;page-break-inside:avoid;margin:0;padding:0;">${rowLabels.join(
+        `<div style="display:flex;gap:${settings.horizontalGap}mm;width:100%;page-break-inside:avoid;margin:0;padding-left:${settings.leftOffset}mm;">${rowLabels.join(
           ""
         )}</div>`
       );
@@ -383,13 +377,14 @@ export default function BarcodeLabelModal({
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { margin:0; padding:0; background:#ffffff; -webkit-print-color-adjust:exact; }
+    svg { max-width: 100% !important; height: auto !important; }
     @media print {
       @page {
-        size: ${paperW_mm}mm ${settings.labelHeight}mm;
+        size: 100mm ${settings.labelHeight}mm;
         margin: 0;
       }
       html, body {
-        width: ${paperW_mm}mm;
+        width: 100mm;
         height: ${settings.labelHeight}mm;
         margin: 0;
         padding: 0;
@@ -413,6 +408,8 @@ export default function BarcodeLabelModal({
     if (!svgRef.current) return;
     const svgEl = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svgEl.removeAttribute("width");
+    svgEl.style.maxWidth = "100%";
     svgEl.style.width = "100%";
     svgEl.style.height = `${settings.barcodeHeight * 3.78}px`;
 

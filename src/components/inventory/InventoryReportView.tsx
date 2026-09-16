@@ -26,16 +26,16 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
 
   const totalValue = data.reduce((acc, item) => {
     let val = 0;
-    if (typeof item.totalValue === 'number') {
+    if (typeof item.totalValue === 'number' && item.totalValue > 0) {
       val = item.totalValue;
     } else if (typeof item.totalValue === 'string') {
       val = parseFloat(item.totalValue.replace(/[^0-9.]/g, '')) || 0;
-    } else {
-      const unit =
-        parseFloat(
-          String(item.unitCost ?? item.sellingPrice ?? item.price ?? 0).replace(/[^0-9.]/g, '')
-        ) || 0;
-      val = unit * (Number(item.qty) || 0);
+    }
+    if (!val || val === 0) {
+      const pCost = parseFloat(String(item.purchasePrice ?? item.cost ?? item.unitCost ?? 0).replace(/[^0-9.]/g, '')) || 0;
+      const sPrice = parseFloat(String(item.sellingPrice ?? item.price ?? 0).replace(/[^0-9.]/g, '')) || 0;
+      const effectiveUnit = pCost > 1 ? pCost : (sPrice > 0 ? sPrice : pCost);
+      val = effectiveUnit * (Number(item.qty) || 0);
     }
     return acc + (isNaN(val) ? 0 : val);
   }, 0);
@@ -266,21 +266,19 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
               </thead>
               <tbody>
                 {items.map((item, idx) => {
-                  /* compute item total if missing */
-                  let itemTotal: number | null = null;
-                  if (typeof item.totalValue === 'number') itemTotal = item.totalValue;
-                  else if (typeof item.totalValue === 'string') {
-                    const p = parseFloat(item.totalValue.replace(/[^0-9.]/g, ''));
-                    if (!isNaN(p)) itemTotal = p;
-                  }
-                  if (itemTotal === null) {
-                    const u = parseFloat(String(item.unitCost ?? item.sellingPrice ?? 0).replace(/[^0-9.]/g, '')) || 0;
-                    itemTotal = u * (Number(item.qty) || 0);
-                  }
+                  const pCost = parseFloat(String(item.purchasePrice ?? item.cost ?? item.unitCost ?? 0).replace(/[^0-9.]/g, '')) || 0;
+                  const sPrice = parseFloat(String(item.sellingPrice ?? item.price ?? 0).replace(/[^0-9.]/g, '')) || 0;
+                  const unitCostNum = pCost > 1 ? pCost : (sPrice > 0 ? sPrice : pCost);
 
-                  const unitCostNum = typeof item.unitCost === 'number'
-                    ? item.unitCost
-                    : parseFloat(String(item.unitCost ?? '').replace(/[^0-9.]/g, '')) || null;
+                  let itemTotal: number | null = null;
+                  if (typeof item.totalValue === 'number' && item.totalValue > 0) itemTotal = item.totalValue;
+                  else if (typeof item.totalValue === 'string') {
+                    const parsed = parseFloat(item.totalValue.replace(/[^0-9.]/g, ''));
+                    if (!isNaN(parsed) && parsed > 0) itemTotal = parsed;
+                  }
+                  if (!itemTotal || itemTotal === 0) {
+                    itemTotal = unitCostNum * (Number(item.qty) || 0);
+                  }
 
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
@@ -301,7 +299,7 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
                         {item.qty}
                       </td>
                       <td style={{ padding: '5pt 6pt', textAlign: 'right', fontWeight: 600, color: '#475569' }}>
-                        {unitCostNum !== null ? fmtRs(unitCostNum) : (item.unitCost || '—')}
+                        {unitCostNum > 0 ? fmtRs(unitCostNum) : (item.unitCost || '—')}
                       </td>
                       <td style={{ padding: '5pt 6pt', textAlign: 'right', fontWeight: 900, color: '#1e3a8a' }}>
                         {fmtRs(itemTotal)}
@@ -326,10 +324,12 @@ export default function InventoryReportView({ dateRange, data }: InventoryReport
                   <td style={{ padding: '5pt 6pt' }} />
                   <td style={{ padding: '5pt 6pt', textAlign: 'right', fontWeight: 900, color: '#1e3a8a' }}>
                     {fmtRs(items.reduce((s, i) => {
-                      let v = typeof i.totalValue === 'number' ? i.totalValue
+                      let v = typeof i.totalValue === 'number' && i.totalValue > 0 ? i.totalValue
                         : parseFloat(String(i.totalValue ?? '').replace(/[^0-9.]/g, '')) || 0;
-                      if (!v) {
-                        const u = parseFloat(String(i.unitCost ?? i.sellingPrice ?? 0).replace(/[^0-9.]/g, '')) || 0;
+                      if (!v || v === 0) {
+                        const pC = parseFloat(String(i.purchasePrice ?? i.cost ?? i.unitCost ?? 0).replace(/[^0-9.]/g, '')) || 0;
+                        const sP = parseFloat(String(i.sellingPrice ?? i.price ?? 0).replace(/[^0-9.]/g, '')) || 0;
+                        const u = pC > 1 ? pC : (sP > 0 ? sP : pC);
                         v = u * (Number(i.qty) || 0);
                       }
                       return s + (isNaN(v) ? 0 : v);
