@@ -54,6 +54,28 @@ function loadJsBarcode(): Promise<void> {
   });
 }
 
+// ─── Alphabet Price Code Encoder (1-0 mapped to B-K) ───────────────────────────
+// Digits: 1=B, 2=C, 3=D, 4=E, 5=F, 6=G, 7=H, 8=I, 9=J, 0=K (e.g. 3750 -> DHFK)
+export function encodePriceToCode(val: number | string): string {
+  const raw = typeof val === "number" ? val : parseFloat(String(val).replace(/[^\d.]/g, "")) || 0;
+  const num = Math.round(raw);
+  if (num <= 0) return "";
+  const str = Math.abs(num).toString();
+  const digitMap: Record<string, string> = {
+    "1": "B",
+    "2": "C",
+    "3": "D",
+    "4": "E",
+    "5": "F",
+    "6": "G",
+    "7": "H",
+    "8": "I",
+    "9": "J",
+    "0": "K",
+  };
+  return str.split("").map((ch) => digitMap[ch] || ch).join("");
+}
+
 // ─── Default Alignment & Printer Settings Interface ─────────────────────────
 export interface LabelAlignmentSettings {
   preset: "zd230_2up" | "thermal_1up" | "custom";
@@ -88,7 +110,7 @@ const DEFAULT_SETTINGS: LabelAlignmentSettings = {
   fontSizeScale: 95,
   barcodeHeight: 10,
   barWidth: "2mm",
-  showPrice: false,
+  showPrice: true,
   showStoreName: false,
   showCategory: false,
 };
@@ -98,7 +120,7 @@ const DEFAULT_SETTINGS: LabelAlignmentSettings = {
 function generateZPLCode(
   productName: string,
   skuCode: string,
-  price: string | undefined,
+  priceCode: string | undefined,
   settings: LabelAlignmentSettings,
   copies: number
 ): string {
@@ -117,7 +139,7 @@ function generateZPLCode(
 
   const fontNameSize = Math.round(18 * fontScale);
   const fontSkuSize = Math.round(15 * fontScale);
-  const fontPriceSize = Math.round(22 * fontScale);
+  const fontPriceSize = Math.round(20 * fontScale);
 
   const nameY = Math.max(2, 10 + topOffsetDots);
   const barcodeY = Math.max(15, nameY + fontNameSize + 8);
@@ -138,11 +160,9 @@ function generateZPLCode(
       `^FO${xBase},${skuY}^A0N,${fontSkuSize},${fontSkuSize}^FD${truncSku}^FS`,
     ];
 
-    if (settings.showPrice && price) {
+    if (settings.showPrice && priceCode) {
       lines.push(
-        `^FO${xBase},${priceY}^A0N,${fontPriceSize},${fontPriceSize}^FDRs.${parseFloat(
-          price
-        ).toLocaleString()}^FS`
+        `^FO${xBase},${priceY}^A0N,${fontPriceSize},${fontPriceSize}^FDCode: ${priceCode}^FS`
       );
     }
     return lines.join("\n");
@@ -192,10 +212,30 @@ export default function BarcodeLabelModal({
 
   const skuCode = product?.sku || product?.id?.slice(0, 12) || "NOSKU";
 
-  const price =
-    typeof product?.unitCost === "string"
-      ? product.unitCost.replace(/[^\d.]/g, "")
-      : product?.unitCost?.toString() || "";
+  const extractNumericPrice = (p: any): number => {
+    if (!p) return 0;
+    
+    let uCost = 0;
+    if (p.unitCost !== undefined && p.unitCost !== null && p.unitCost !== "") {
+      uCost = parseFloat(String(p.unitCost).replace(/[^\d.]/g, "")) || 0;
+    }
+
+    const pCost = typeof p.purchasePrice === "number" && p.purchasePrice > 0 
+      ? p.purchasePrice 
+      : (typeof p.cost === "number" && p.cost > 0 ? p.cost : uCost);
+
+    const sPrice = typeof p.sellingPrice === "number" && p.sellingPrice > 0 
+      ? p.sellingPrice 
+      : (typeof p.price === "number" && p.price > 0 ? p.price : 0);
+
+    // If cost > 1 (real purchase cost), use it; if cost <= 1 (placeholder/missing) but selling price > 1, fallback to selling price
+    if (pCost > 1) return pCost;
+    if (sPrice > 1) return sPrice;
+    return pCost > 0 ? pCost : sPrice;
+  };
+
+  const rawPriceNum = extractNumericPrice(product);
+  const priceCode = encodePriceToCode(rawPriceNum);
 
   // Save settings automatically to localStorage
   useEffect(() => {
@@ -266,6 +306,7 @@ export default function BarcodeLabelModal({
         leftOffset: 1,
         speed: 6,
         darkness: 15,
+        showPrice: true,
       }));
     } else if (preset === "thermal_1up") {
       setSettings((prev) => ({
@@ -279,6 +320,7 @@ export default function BarcodeLabelModal({
         leftOffset: 0,
         speed: 6,
         darkness: 15,
+        showPrice: true,
       }));
     } else {
       setSettings((prev) => ({ ...prev, preset: "custom" }));
@@ -336,12 +378,10 @@ export default function BarcodeLabelModal({
         ">${skuCode}</div>
 
         ${
-          settings.showPrice && price
+          settings.showPrice && priceCode
             ? `<div style="font-size:${Math.round(
                 8.5 * (settings.fontSizeScale / 100)
-              )}pt;font-weight:900;color:#059669;">Rs. ${parseFloat(
-                price
-              ).toLocaleString()}</div>`
+              )}pt;font-weight:900;color:#111827;font-family:monospace;letter-spacing:0.5px;text-align:center;">Code: ${priceCode}</div>`
             : ""
         }
         ${
@@ -422,7 +462,7 @@ export default function BarcodeLabelModal({
 
   // ─── Download ZPL Command file for Zebra ZD230 ─────────────────────────────
   const handleDownloadZPL = () => {
-    const zpl = generateZPLCode(product.name, skuCode, price, settings, qty);
+    const zpl = generateZPLCode(product.name, skuCode, priceCode, settings, qty);
     const blob = new Blob([zpl], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -487,11 +527,11 @@ export default function BarcodeLabelModal({
       ctx.fillText(skuCode, wPx / 2, y);
       y += 12;
 
-      if (settings.showPrice && price) {
-        ctx.font = `900 ${Math.round(11 * fontScale)}px "Segoe UI", sans-serif`;
-        ctx.fillStyle = "#059669";
+      if (settings.showPrice && priceCode) {
+        ctx.font = `900 ${Math.round(10 * fontScale)}px "Segoe UI", monospace`;
+        ctx.fillStyle = "#111827";
         ctx.textAlign = "center";
-        ctx.fillText(`Rs. ${parseFloat(price).toLocaleString()}`, wPx / 2, y);
+        ctx.fillText(`Code: ${priceCode}`, wPx / 2, y);
       }
 
       const a = document.createElement("a");
@@ -690,9 +730,9 @@ export default function BarcodeLabelModal({
                       <p className="font-bold text-gray-600 text-[9px] tracking-wider font-mono">
                         {skuCode}
                       </p>
-                      {settings.showPrice && price && (
-                        <p className="font-black text-emerald-600 text-[10px]">
-                          Rs. {parseFloat(price).toLocaleString()}
+                      {settings.showPrice && priceCode && (
+                        <p className="font-black text-emerald-700 font-mono text-[10px] tracking-wider">
+                          Code: {priceCode}
                         </p>
                       )}
                     </div>
