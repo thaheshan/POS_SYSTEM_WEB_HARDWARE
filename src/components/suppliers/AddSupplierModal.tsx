@@ -130,7 +130,7 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
         const updated = res.data?.data || res.data?.supplier || res.data;
         logActivity({
           action: "UPDATE_SUPPLIER",
-          details: `Updated supplier details for "${name.trim()}" (Company: ${companyName.trim() || 'N/A'})`,
+          details: `Updated supplier details for "${name.trim()}" (Category: ${effectiveCategory || 'N/A'})`,
           httpMethod: "PUT",
           endpoint: `/suppliers/${supplier.id}`,
         });
@@ -141,7 +141,7 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
         const created = res.data?.data || res.data?.supplier || res.data;
         logActivity({
           action: "CREATE_SUPPLIER",
-          details: `Registered new supplier "${name.trim()}" (Company: ${companyName.trim() || 'N/A'})`,
+          details: `Registered new supplier "${name.trim()}" (Category: ${effectiveCategory || 'N/A'})`,
           httpMethod: "POST",
           endpoint: "/suppliers",
         });
