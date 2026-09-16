@@ -615,7 +615,7 @@ export default function PaymentConfirmation({
         typeof val === "string" &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
 
-      const validCustomerId = isValidUuid(customerId) ? customerId.trim() : undefined;
+      const validCustomerId = (typeof customerId === "string" && isValidUuid(customerId)) ? customerId.trim() : undefined;
 
       const payload = {
         invoiceNumber: invoiceRef,
