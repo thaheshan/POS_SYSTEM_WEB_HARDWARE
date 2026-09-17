@@ -43,16 +43,32 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: log 401 warnings without auto-evicting working users
+// ── Response interceptor: retry transient network/timeout errors & log warnings
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error?.config;
+
+    // Retry transient GET request failures (network errors, timeouts, 502/503/504) up to 2 times
+    if (
+      config &&
+      (config.method?.toLowerCase() === "get" || !config.method) &&
+      (!config._retryCount || config._retryCount < 2) &&
+      (!error.response || [502, 503, 504, 408].includes(error.response.status) || error.code === "ECONNABORTED" || error.message?.includes("timeout"))
+    ) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      console.warn(`[API] Retrying GET request (${config._retryCount}/2):`, config.url);
+      await new Promise((res) => setTimeout(res, config._retryCount * 600));
+      return api(config);
+    }
+
     if (
       typeof window !== "undefined" &&
       error?.response?.status === 401
     ) {
       console.warn("[API] 401 Unauthorized encountered on endpoint:", error?.config?.url);
     }
+
     return Promise.reject(error);
   }
 );
