@@ -137,25 +137,21 @@ function generateZPLCode(
   const barcodeHDots = Math.round(settings.barcodeHeight * MM_TO_DOTS);
   const fontScale = settings.fontSizeScale / 100;
 
-  const fontNameSize = Math.round(18 * fontScale);
+  const fontNameSize = Math.round((productName.length > 30 ? 14 : productName.length > 20 ? 16 : 18) * fontScale);
   const fontSkuSize = Math.round(15 * fontScale);
   const fontPriceSize = Math.round(20 * fontScale);
 
-  const nameY = Math.max(2, 10 + topOffsetDots);
-  const barcodeY = Math.max(15, nameY + fontNameSize + 8);
+  const nameY = Math.max(2, 8 + topOffsetDots);
+  const barcodeY = Math.max(15, nameY + fontNameSize * 2 + 6);
   const skuY = barcodeY + barcodeHDots + 12;
   const priceY = skuY + fontSkuSize + 8;
-
-  const truncName =
-    productName.length > 22 ? productName.slice(0, 21) + "~" : productName;
-  const truncSku = skuCode.length > 18 ? skuCode.slice(0, 18) : skuCode;
 
   const buildSingleLabelZPL = (labelIndex: number) => {
     const xBase =
       leftOffsetDots + labelIndex * (labelW + gapDots) + Math.round(1.5 * MM_TO_DOTS);
 
     const lines = [
-      `^FO${xBase},${nameY}^A0N,${fontNameSize},${fontNameSize}^FD${truncName}^FS`,
+      `^FO${xBase},${nameY}^A0N,${fontNameSize},${fontNameSize}^FB${labelW},2,0,C^FD${productName}^FS`,
       `^FO${xBase},${barcodeY}^BY2,2,${barcodeHDots}^BCN,${barcodeHDots},N,N,N^FD${truncSku}^FS`,
       `^FO${xBase},${skuY}^A0N,${fontSkuSize},${fontSkuSize}^FD${truncSku}^FS`,
     ];
@@ -353,15 +349,17 @@ export default function BarcodeLabelModal({
             : ""
         }
         <div style="
-          font-size: ${Math.round(8 * (settings.fontSizeScale / 100))}pt;
+          font-size: ${Math.round((product.name.length > 35 ? 6.5 : product.name.length > 25 ? 7.2 : 8) * (settings.fontSizeScale / 100))}pt;
           font-weight: 900;
           color: #000000;
           width: 100%;
           text-align: center;
-          white-space: nowrap;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
           overflow: hidden;
-          text-overflow: ellipsis;
-          line-height: 1.1;
+          line-height: 1.05;
+          word-break: break-word;
           padding: 0 1mm;
         ">${product.name}</div>
         
@@ -718,7 +716,9 @@ export default function BarcodeLabelModal({
                           {storeName}
                         </p>
                       )}
-                      <p className="font-black text-gray-900 text-[9.5px] text-center w-full leading-tight truncate px-1">
+                      <p className={`font-black text-gray-900 text-center w-full leading-tight line-clamp-2 break-words px-1 ${
+                        product.name.length > 35 ? "text-[7.5px]" : product.name.length > 25 ? "text-[8.5px]" : "text-[9.5px]"
+                      }`}>
                         {product.name}
                       </p>
                       <div className="w-full flex items-center justify-center overflow-hidden my-0.5">
