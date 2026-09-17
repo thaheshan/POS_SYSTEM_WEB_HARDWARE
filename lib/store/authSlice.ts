@@ -110,7 +110,7 @@ const persistToken = (token: string): void => {
   const normalizedToken = token.trim();
   const encodedToken = encodeURIComponent(normalizedToken);
   localStorage.setItem(TOKEN_KEY, normalizedToken);
-  document.cookie = `${TOKEN_KEY}=${encodedToken}; Path=/; SameSite=Lax`;
+  document.cookie = `${TOKEN_KEY}=${encodedToken}; Path=/; Max-Age=31536000; SameSite=Lax`;
 };
 
 const persistUser = (user: AuthUser | null): void => {

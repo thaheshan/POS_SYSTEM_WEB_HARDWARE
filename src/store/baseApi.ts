@@ -28,12 +28,7 @@ const baseQueryWithReauth: typeof rawBaseQuery = async (
   const result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error?.status === 401) {
-    api.dispatch({ type: 'auth/logout' });
-
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.href = '/login';
-    }
+    console.warn('[RTK Query] 401 Unauthorized on endpoint:', args);
   }
 
   return result;

@@ -43,7 +43,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: handle expired / invalid token (401) or CSRF token refresh
+// ── Response interceptor: log 401 warnings without auto-evicting working users
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -51,16 +51,7 @@ api.interceptors.response.use(
       typeof window !== "undefined" &&
       error?.response?.status === 401
     ) {
-      console.warn("[API] Token expired or unauthorized — clearing session and redirecting to login.");
-      // Clear all stored auth data
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem("pos_user");
-      // Remove cookie
-      document.cookie = "pos_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      // Redirect to login only if not already there
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
-      }
+      console.warn("[API] 401 Unauthorized encountered on endpoint:", error?.config?.url);
     }
     return Promise.reject(error);
   }
