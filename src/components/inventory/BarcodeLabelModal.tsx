@@ -152,8 +152,8 @@ function generateZPLCode(
 
     const lines = [
       `^FO${xBase},${nameY}^A0N,${fontNameSize},${fontNameSize}^FB${labelW},2,0,C^FD${productName}^FS`,
-      `^FO${xBase},${barcodeY}^BY2,2,${barcodeHDots}^BCN,${barcodeHDots},N,N,N^FD${truncSku}^FS`,
-      `^FO${xBase},${skuY}^A0N,${fontSkuSize},${fontSkuSize}^FD${truncSku}^FS`,
+      `^FO${xBase},${barcodeY}^BY2,2,${barcodeHDots}^BCN,${barcodeHDots},N,N,N^FD${skuCode}^FS`,
+      `^FO${xBase},${skuY}^A0N,${fontSkuSize},${fontSkuSize}^FD${skuCode}^FS`,
     ];
 
     if (settings.showPrice && priceCode) {
