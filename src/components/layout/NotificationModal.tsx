@@ -1,10 +1,10 @@
 'use client';
 
-import { X, CheckCircle2, Trash2, AlertTriangle, Info, AlertCircle, Bell } from 'lucide-react';
+import { X, CheckCircle2, Trash2, AlertTriangle, Info, AlertCircle, Bell, Package, Receipt, Layers } from 'lucide-react';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { KeyboardEvent, MouseEvent, useEffect } from 'react';
+import { useState, KeyboardEvent, MouseEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface NotificationModalProps {
@@ -12,21 +12,68 @@ interface NotificationModalProps {
   onClose: () => void;
 }
 
+type NotificationCategory = 'ALL' | 'STOCK' | 'SALES' | 'SUBSCRIPTION';
+
 export default function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   const router = useRouter();
+  const [activeCategory, setActiveCategory] = useState<NotificationCategory>('ALL');
+
   const {
-    notifications,
+    notifications: paginatedNotifications,
     allNotifications,
     unreadCount,
     page,
     pageSize,
-    totalPages,
-    totalCount,
+    totalPages: hookTotalPages,
+    totalCount: totalCountRaw,
     setPage,
     markAllAsRead,
     clearAll,
     markAsRead,
   } = useNotifications();
+
+  // Category Filter Logic
+  const filteredNotifications = allNotifications.filter((notif) => {
+    if (activeCategory === 'ALL') return true;
+    if (activeCategory === 'STOCK') {
+      return notif.id.startsWith('stock-') || notif.title.toLowerCase().includes('stock');
+    }
+    if (activeCategory === 'SALES') {
+      return (
+        notif.id.startsWith('tx-') ||
+        notif.title.toLowerCase().includes('sale') ||
+        notif.title.toLowerCase().includes('invoice') ||
+        notif.title.toLowerCase().includes('return')
+      );
+    }
+    if (activeCategory === 'SUBSCRIPTION') {
+      return notif.id.startsWith('sub-alert-') || notif.title.toLowerCase().includes('subscription');
+    }
+    return true;
+  });
+
+  // Category counts
+  const stockCount = allNotifications.filter(
+    (n) => n.id.startsWith('stock-') || n.title.toLowerCase().includes('stock')
+  ).length;
+  const salesCount = allNotifications.filter(
+    (n) =>
+      n.id.startsWith('tx-') ||
+      n.title.toLowerCase().includes('sale') ||
+      n.title.toLowerCase().includes('invoice') ||
+      n.title.toLowerCase().includes('return')
+  ).length;
+  const subCount = allNotifications.filter(
+    (n) => n.id.startsWith('sub-alert-') || n.title.toLowerCase().includes('subscription')
+  ).length;
+
+  const currentCategoryCount = filteredNotifications.length;
+  const computedTotalPages = Math.max(1, Math.ceil(currentCategoryCount / pageSize));
+  const safePage = Math.min(Math.max(1, page), computedTotalPages);
+  const currentPageNotifications = filteredNotifications.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const getNotificationHref = (notif: Notification) => {
     if (notif.link) return notif.link;
@@ -100,13 +147,13 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
       } else if ((e.key === "ArrowRight" || e.key === "Right") && !isInput) {
         e.preventDefault();
         e.stopPropagation();
-        setPage((p) => Math.min(totalPages, p + 1));
+        setPage((p) => Math.min(hookTotalPages, p + 1));
       }
     };
 
     window.addEventListener("keydown", handleModalKey);
     return () => window.removeEventListener("keydown", handleModalKey);
-  }, [isOpen, onClose, totalPages, setPage]);
+  }, [isOpen, onClose, hookTotalPages, setPage]);
 
   if (!isOpen) return null;
 
@@ -129,8 +176,12 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
     }
   };
 
-  const startItem = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
-  const endItem = Math.min(page * pageSize, totalCount);
+  const totalCount = currentCategoryCount;
+  const totalPages = computedTotalPages;
+  const notifications = currentPageNotifications;
+
+  const startItem = totalCount > 0 ? (safePage - 1) * pageSize + 1 : 0;
+  const endItem = Math.min(safePage * pageSize, totalCount);
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -177,6 +228,61 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* Category Filter Tabs Bar */}
+        <div className="px-6 py-2.5 bg-gray-50/80 border-b border-gray-100 flex items-center gap-2 overflow-x-auto shrink-0">
+          <button
+            onClick={() => { setActiveCategory('ALL'); setPage(1); }}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0',
+              activeCategory === 'ALL'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            )}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            All Alerts ({allNotifications.length})
+          </button>
+
+          <button
+            onClick={() => { setActiveCategory('STOCK'); setPage(1); }}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0',
+              activeCategory === 'STOCK'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            )}
+          >
+            <Package className="w-3.5 h-3.5" />
+            Low Stock ({stockCount})
+          </button>
+
+          <button
+            onClick={() => { setActiveCategory('SALES'); setPage(1); }}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0',
+              activeCategory === 'SALES'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            )}
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            Sales & Returns ({salesCount})
+          </button>
+
+          <button
+            onClick={() => { setActiveCategory('SUBSCRIPTION'); setPage(1); }}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0',
+              activeCategory === 'SUBSCRIPTION'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            )}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            Subscriptions ({subCount})
+          </button>
         </div>
 
         {/* Content list */}

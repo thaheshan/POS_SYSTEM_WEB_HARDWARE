@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Settings, LogOut, CreditCard, User, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { formatImageUrl } from '@/utils/formatters';
 
 interface ProfileDropdownProps {
   logoUrl?: string;
@@ -13,9 +13,17 @@ interface ProfileDropdownProps {
 
 export default function ProfileDropdown({ logoUrl, shopName }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const { user, logout } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const rawLogo = logoUrl || user?.logoUrl;
+  const activeLogo = formatImageUrl(rawLogo) ?? undefined;
+
+  useEffect(() => {
+    setImgError(false);
+  }, [rawLogo]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,22 +47,21 @@ export default function ProfileDropdown({ logoUrl, shopName }: ProfileDropdownPr
     return name.charAt(0).toUpperCase();
   };
 
-  const activeLogo = (logoUrl || user?.logoUrl) ?? undefined;
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 transition-all active:scale-95 group"
       >
-        {activeLogo ? (
+        {activeLogo && !imgError ? (
           <img 
             src={activeLogo} 
-            alt="Shop Logo" 
-            className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl object-cover"
+            alt="" 
+            onError={() => setImgError(true)}
+            className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl object-cover border border-white/20 shadow-sm"
           />
         ) : (
-          <div className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl flex items-center justify-center bg-white/10">
+          <div className="w-[54px] h-[54px] md:w-[58px] md:h-[58px] rounded-xl flex items-center justify-center bg-white/15 border border-white/20 shadow-sm">
             <span className="text-white text-[20px] font-black">{getInitials()}</span>
           </div>
         )}

@@ -253,8 +253,11 @@ export function useRecentTransactions() {
   useEffect(() => {
     fetchTransactions();
 
-    // Auto-refresh every 30 seconds so new sales appear without manual refresh
-    const interval = setInterval(fetchTransactions, 30_000);
+    // Auto-refresh every 2 minutes (120s) with visibility check to prevent database egress leaks
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchTransactions();
+    }, 120_000);
     return () => clearInterval(interval);
   }, []);
 

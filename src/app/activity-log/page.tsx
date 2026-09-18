@@ -121,10 +121,13 @@ export default function ActivityLogPage() {
     }
   }, [startDate, endDate, search]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 2 minutes (120s) with tab visibility check
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(() => fetchLogs(true), 30000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchLogs(true);
+    }, 120_000);
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
