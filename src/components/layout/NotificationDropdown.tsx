@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCircle2, Trash2, X, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { Bell, CheckCircle2, Trash2, X, AlertTriangle, Info, AlertCircle, Package, Receipt, Layers } from 'lucide-react';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import NotificationModal from './NotificationModal';
@@ -11,7 +11,17 @@ export default function NotificationDropdown() {
   const { notifications, unreadCount, markAllAsRead, clearAll } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'STOCK' | 'SALES'>('ALL');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeFilter === 'ALL') return true;
+    if (activeFilter === 'STOCK') return n.id.startsWith('stock-') || n.title.toLowerCase().includes('stock');
+    if (activeFilter === 'SALES') return n.id.startsWith('tx-') || n.title.toLowerCase().includes('sale');
+    return true;
+  });
+
+  const visibleNotifications = filteredNotifications.slice(0, 5);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -65,8 +75,6 @@ export default function NotificationDropdown() {
     }
   };
 
-  const visibleNotifications = notifications.slice(0, 5);
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
@@ -92,8 +100,29 @@ export default function NotificationDropdown() {
             )}
           </div>
 
+          {/* Category filter tabs */}
+          <div className="flex gap-1 px-3 py-2 border-b border-gray-100 bg-gray-50/30">
+            {(['ALL', 'STOCK', 'SALES'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(f)}
+                className={cn(
+                  'text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all flex items-center gap-1',
+                  activeFilter === f
+                    ? f === 'ALL' ? 'bg-blue-600 text-white' : f === 'STOCK' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                )}
+              >
+                {f === 'ALL' && <Layers className="w-3 h-3" />}
+                {f === 'STOCK' && <Package className="w-3 h-3" />}
+                {f === 'SALES' && <Receipt className="w-3 h-3" />}
+                {f === 'ALL' ? 'All' : f === 'STOCK' ? 'Low Stock' : 'Sales'}
+              </button>
+            ))}
+          </div>
+
           <div className="max-h-[300px] overflow-y-auto">
-            {notifications.length === 0 ? (
+            {filteredNotifications.length === 0 ? (
               <div className="p-6 text-center text-gray-500 text-sm font-medium">
                 No notifications yet.
               </div>

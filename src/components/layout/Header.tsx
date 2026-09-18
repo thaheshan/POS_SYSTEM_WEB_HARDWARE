@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import NotificationDropdown from './NotificationDropdown';
 import ProfileDropdown from './ProfileDropdown';
 import { shopApi } from '@/api/shop';
+import { formatImageUrl } from '@/utils/formatters';
 
 export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, logout, isAuthenticated } = useAuth();
@@ -51,7 +52,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   }, [isAuthenticated]);
 
   const shopName = shopProfile?.name || (user?.name ? `${user.name}'s Shop` : 'Loading Shop...');
-  const logoUrl = (shopProfile?.logo_url || user?.logoUrl) ?? undefined;
+  const logoUrl = formatImageUrl(shopProfile?.logo_url || user?.logoUrl) ?? undefined;
 
   return (
     <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">

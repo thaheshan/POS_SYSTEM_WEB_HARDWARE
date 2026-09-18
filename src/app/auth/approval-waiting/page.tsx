@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/login/auth/auth-layout";
 import { authApi } from "@/api/auth";
 
-const POLL_INTERVAL_MS = 5000; // poll every 5 seconds
+const POLL_INTERVAL_MS = 30000; // poll every 30 seconds to conserve egress bandwidth
 
 export default function ApprovalWaitingPage() {
   const router = useRouter();
