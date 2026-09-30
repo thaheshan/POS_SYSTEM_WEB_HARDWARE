@@ -50,38 +50,29 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 
   data.items.forEach((item) => {
     lines.push(item.name);
-    const discLabel = item.discountPercentage && item.discountPercentage > 0
-      ? ` (${item.discountPercentage}% OFF)`
-      : item.discountAmount && item.discountAmount > 0
-      ? ` (-Rs. ${(item.discountAmount * item.qty).toLocaleString()})`
-      : "";
-    const qtyStr = `  ${item.qty} x${discLabel}`;
-    const totalStr = `Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}`;
+    const itemDiscount = Number(item.discountAmount) || 0;
+    const finalLineTotal = item.lineTotal || item.qty * (item.price || 0);
+    const qtyStr = `  ${item.qty} x`;
+    const totalStr = `Rs. ${finalLineTotal.toLocaleString()}`;
     lines.push(leftRight(qtyStr, totalStr));
+    // Show product-specific discount directly under the product line
+    if (itemDiscount > 0) {
+      const discountLabel = item.discountPercentage && item.discountPercentage > 0
+        ? `  Discount (${item.discountPercentage.toFixed(0)}%)`
+        : `  Item Discount`;
+      const discountValue = `-Rs. ${(itemDiscount * item.qty).toLocaleString()}`;
+      lines.push(leftRight(discountLabel, discountValue));
+    }
   });
 
   lines.push(line);
 
-  // Totals
-  const totalItemDiscounts = data.items.reduce(
-    (sum, item) => sum + (Number(item.discountAmount) || 0) * item.qty,
-    0
-  );
+  // Totals — item-level discounts are already shown under each product above
   const totalOrderDiscount = Number(data.discount) || 0;
-  const totalAllDiscounts = totalItemDiscounts + totalOrderDiscount;
-  const grossSubtotal = data.subtotal + totalItemDiscounts;
 
-  if (totalAllDiscounts > 0) {
-    lines.push(leftRight("Subtotal (Gross):", `Rs. ${grossSubtotal.toLocaleString()}`));
-    if (totalItemDiscounts > 0) {
-      lines.push(leftRight("Item Discounts:", `-Rs. ${totalItemDiscounts.toLocaleString()}`));
-    }
-    if (totalOrderDiscount > 0) {
-      lines.push(leftRight("Order Discount:", `-Rs. ${totalOrderDiscount.toLocaleString()}`));
-    }
-    lines.push(leftRight("TOTAL SAVINGS:", `-Rs. ${totalAllDiscounts.toLocaleString()}`));
-  } else {
-    lines.push(leftRight("Subtotal:", `Rs. ${data.subtotal.toLocaleString()}`));
+  lines.push(leftRight("Subtotal:", `Rs. ${data.subtotal.toLocaleString()}`));
+  if (totalOrderDiscount > 0) {
+    lines.push(leftRight("Order Discount:", `-Rs. ${totalOrderDiscount.toLocaleString()}`));
   }
   lines.push(doubleLine);
   lines.push(leftRight("GRAND TOTAL:", `Rs. ${data.total.toLocaleString()}`));
@@ -118,10 +109,18 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   const itemRows = data.items
     .map(
       (item) => {
-        const discBadge = item.discountPercentage && item.discountPercentage > 0
-          ? ` <span style="font-size:9px; font-weight:800; color:#000;">(${item.discountPercentage}% OFF)</span>`
-          : item.discountAmount && item.discountAmount > 0
-          ? ` <span style="font-size:9px; font-weight:800; color:#000;">(-Rs. ${(item.discountAmount * item.qty).toLocaleString()})</span>`
+        const itemDiscount = Number(item.discountAmount) || 0;
+        const finalLineTotal = item.lineTotal || item.qty * (item.price || 0);
+        const discountRow = itemDiscount > 0
+          ? `
+    <tr class="item-disc">
+      <td colspan="2" style="font-size:10px; font-weight:700; padding-left:4px; color:#000;">${
+        item.discountPercentage && item.discountPercentage > 0
+          ? `  Discount (${item.discountPercentage.toFixed(0)}%)`
+          : `  Item Discount`
+      }</td>
+      <td class="line-total" style="color:#000; font-weight:800;">-Rs. ${(itemDiscount * item.qty).toLocaleString()}</td>
+    </tr>`
           : "";
 
         return `
@@ -129,10 +128,10 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x${discBadge}</td>
+      <td class="qty">${item.qty} x</td>
       <td class="wh">${item.warehouseName || ""}</td>
-      <td class="line-total">Rs. ${(item.lineTotal || item.qty * (item.price || 0)).toLocaleString()}</td>
-    </tr>`;
+      <td class="line-total">Rs. ${finalLineTotal.toLocaleString()}</td>
+    </tr>${discountRow}`;
       }
     )
     .join("");
@@ -232,37 +231,16 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
 
   <div class="divider"></div>
 
-  <!-- Totals -->
+  <!-- Totals — item-level discounts already shown under each product above -->
   ${(() => {
-    const totalItemDiscountsHtml = data.items.reduce(
-      (sum, item) => sum + (Number(item.discountAmount) || 0) * item.qty,
-      0
-    );
     const totalOrderDiscountHtml = Number(data.discount) || 0;
-    const totalAllDiscountsHtml = totalItemDiscountsHtml + totalOrderDiscountHtml;
-    const grossSubtotalHtml = data.subtotal + totalItemDiscountsHtml;
-
-    if (totalAllDiscountsHtml > 0) {
-      return `
-  <table style="width:100%; font-size:11px; font-weight:700;">
-    <tr>
-      <td>Subtotal (Gross):</td>
-      <td style="text-align:right; font-weight:900;">Rs. ${grossSubtotalHtml.toLocaleString()}</td>
-    </tr>
-    ${totalItemDiscountsHtml > 0 ? `<tr><td>Item Discounts:</td><td style="text-align:right; font-weight:900;">-Rs. ${totalItemDiscountsHtml.toLocaleString()}</td></tr>` : ""}
-    ${totalOrderDiscountHtml > 0 ? `<tr><td>Order Discount:</td><td style="text-align:right; font-weight:900;">-Rs. ${totalOrderDiscountHtml.toLocaleString()}</td></tr>` : ""}
-    <tr style="font-weight:900;">
-      <td>Total Discount Saved:</td>
-      <td style="text-align:right; font-weight:900;">-Rs. ${totalAllDiscountsHtml.toLocaleString()}</td>
-    </tr>
-  </table>`;
-    }
     return `
   <table style="width:100%; font-size:11px; font-weight:700;">
     <tr>
       <td>Subtotal:</td>
       <td style="text-align:right; font-weight:900;">Rs. ${data.subtotal.toLocaleString()}</td>
     </tr>
+    ${totalOrderDiscountHtml > 0 ? `<tr><td>Order Discount:</td><td style="text-align:right; font-weight:900;">-Rs. ${totalOrderDiscountHtml.toLocaleString()}</td></tr>` : ""}
   </table>`;
   })()}
 
