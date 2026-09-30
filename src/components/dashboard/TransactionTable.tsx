@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useRecentTransactions } from "@/hooks/useDashboard";
 import { format } from "date-fns";
@@ -10,6 +10,18 @@ import TransactionDetailsModal from "@/components/sales/TransactionDetailsModal"
 
 export default function TransactionTable() {
   const { transactions: allTx, loading, refresh } = useRecentTransactions();
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      refresh();
+    };
+    window.addEventListener("salesUpdated", handleUpdate);
+    window.addEventListener("invoiceUpdated", handleUpdate);
+    return () => {
+      window.removeEventListener("salesUpdated", handleUpdate);
+      window.removeEventListener("invoiceUpdated", handleUpdate);
+    };
+  }, [refresh]);
   const transactions = allTx.slice(0, 6);
 
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);

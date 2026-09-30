@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSalesData } from '@/hooks/useSales';
@@ -68,6 +68,18 @@ interface Props {
 
 export default function AllTransactionsTable({ dateRange }: Props) {
   const { data, loading, refresh } = useSalesData(dateRange);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      refresh();
+    };
+    window.addEventListener('salesUpdated', handleUpdate);
+    window.addEventListener('invoiceUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('salesUpdated', handleUpdate);
+      window.removeEventListener('invoiceUpdated', handleUpdate);
+    };
+  }, [refresh]);
 
   const [searchTerm, setSearchTerm]   = useState('');
   const [currentPage, setCurrentPage] = useState(1);

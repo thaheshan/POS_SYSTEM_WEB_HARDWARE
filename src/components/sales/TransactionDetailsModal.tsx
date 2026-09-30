@@ -122,7 +122,7 @@ async function downloadInvoicePDF({
       <td>
         <div style="font-weight:700;color:#0f172a;font-size:12px;">${item.productName}</div>
         ${item.sku ? `<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px;">SKU: ${item.sku}</div>` : ""}
-        ${itemDiscount > 0 ? `<div style="font-size:10.5px;color:#ef4444;font-weight:600;margin-top:2px;">Discount applied: -LKR ${itemDiscount.toLocaleString()} ${item.discountPercentage ? `(${item.discountPercentage}%)` : ""}</div>` : ""}
+        ${itemDiscount > 0 ? `<div style="font-size:10.5px;color:#ef4444;font-weight:600;margin-top:2px;">Item Discount: -LKR ${itemDiscount.toLocaleString()}</div>` : ""}
       </td>
       <td style="text-align:center;font-weight:800;color:#0f172a;">${item.qty}</td>
       <td style="text-align:right;color:#334155;font-family:monospace;">
@@ -176,7 +176,6 @@ async function downloadInvoicePDF({
     .totals-box { width:320px; }
     .total-row { display:flex; justify-content:space-between; padding:6px 0; font-size:12px; font-weight:600; color:#334155; border-bottom:1px solid #f1f5f9; }
     .total-row.discount { color:#dc2626; }
-    .total-row.tax { color:#059669; }
     .grand-total { display:flex; justify-content:space-between; align-items:center; background:#1e40af; color:#fff; padding:12px 16px; border-radius:8px; margin-top:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
     .grand-total span:first-child { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.08em; }
     .grand-total span:last-child { font-size:18px; font-weight:900; font-family:monospace; }
@@ -261,8 +260,7 @@ async function downloadInvoicePDF({
   <div class="totals">
     <div class="totals-box">
       <div class="total-row"><span>Subtotal</span><span style="font-family:monospace;">LKR ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-      ${discount > 0 ? `<div class="total-row discount"><span>Discount</span><span style="font-family:monospace;">-LKR ${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
-      ${tax > 0 ? `<div class="total-row tax"><span>Tax / VAT</span><span style="font-family:monospace;">LKR ${tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
+      ${discount > 0 ? `<div class="total-row discount"><span>Overall Discount</span><span style="font-family:monospace;">-LKR ${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
       <div class="grand-total">
         <span>Total Amount</span>
         <span>LKR ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -281,7 +279,7 @@ async function downloadInvoicePDF({
     </div>
   </div>
 </div>
-<script>window.onload = () => { window.print(); }<\/script>
+<script>window.onload = () => { window.print(); }</script>
 </body></html>`;
 
   const blob = new Blob([html], { type: "text/html" });
@@ -298,10 +296,7 @@ interface Props {
 }
 
 // ─── Normalize one item from any backend shape ───────────────────────────────
-// Handles: { productName }, { product: { name } }, { stock: { product: { name } } },
-//          { stockItem: { product: { name } } }, { itemName }, { name }, { title }, etc.
 function normalizeItem(raw: any) {
-  // ── Product name ──────────────────────────────────────────────────────────
   const productName =
     raw.productName ||
     raw.product_name ||
@@ -320,7 +315,6 @@ function normalizeItem(raw: any) {
     raw.label ||
     "";
 
-  // ── Product ID ───────────────────────────────────────────────────────────
   const productId =
     raw.productId ||
     raw.product_id ||
@@ -334,7 +328,6 @@ function normalizeItem(raw: any) {
     raw.stock?._id ||
     "";
 
-  // ── SKU ──────────────────────────────────────────────────────────────────
   const sku =
     raw.sku ||
     raw.product?.sku ||
@@ -342,10 +335,8 @@ function normalizeItem(raw: any) {
     raw.stockItem?.sku ||
     "";
 
-  // ── Quantity ─────────────────────────────────────────────────────────────
   const qty = Number(raw.quantity ?? raw.qty ?? raw.count ?? raw.amount ?? 1);
 
-  // ── Unit price ───────────────────────────────────────────────────────────
   const unitPrice = Number(
     raw.unitPrice ??
       raw.unit_price ??
@@ -359,8 +350,7 @@ function normalizeItem(raw: any) {
       0,
   );
 
-  // ── Discounts ────────────────────────────────────────────────────────────
-  const discountAmount = Number(raw.discountAmount ?? raw.discount_amount ?? 0);
+  const discountAmount = Number(raw.discountAmount ?? raw.discount_amount ?? raw.discount ?? 0);
   const discountPercentage = Number(raw.discountPercentage ?? raw.discount_percentage ?? 0);
 
   return {
@@ -372,12 +362,12 @@ function normalizeItem(raw: any) {
     discountAmount,
     discountPercentage,
     get total() {
-      return this.qty * this.unitPrice;
+      const gross = (this.qty || 0) * (this.unitPrice || 0);
+      return Math.max(0, gross - (this.discountAmount || 0));
     },
   };
 }
 
-// ─── Helper: does this object look like a line-item? ─────────────────────────
 function looksLikeItem(o: any): boolean {
   if (!o || typeof o !== "object" || Array.isArray(o)) return false;
   return (
@@ -394,22 +384,18 @@ function looksLikeItem(o: any): boolean {
     "unitPrice" in o ||
     "unit_price" in o ||
     "sellingPrice" in o ||
-    // has a nested product/stock object with a name
     !!o.product?.name ||
     !!o.stock?.product?.name
   );
 }
 
-// ─── Aggressively find items array anywhere inside a response ─────────────────
 function extractItems(obj: any, depth = 0): any[] {
   if (!obj || typeof obj !== "object" || depth > 6) return [];
 
-  // obj itself is an array of items
   if (Array.isArray(obj) && obj.length > 0 && looksLikeItem(obj[0])) {
     return obj;
   }
 
-  // Named keys (highest priority)
   const itemKeys = [
     "items",
     "saleItems",
@@ -428,7 +414,6 @@ function extractItems(obj: any, depth = 0): any[] {
 
   for (const k of itemKeys) {
     const val = obj[k];
-    // Handle stringified JSON
     if (typeof val === "string" && val.trim().startsWith("[")) {
       try {
         const parsed = JSON.parse(val);
@@ -438,29 +423,23 @@ function extractItems(obj: any, depth = 0): any[] {
           looksLikeItem(parsed[0])
         )
           return parsed;
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
     if (Array.isArray(val) && val.length > 0 && looksLikeItem(val[0]))
       return val;
   }
 
-  // Any array property whose first element looks like a line item
   for (const k of Object.keys(obj)) {
     let arr: any = obj[k];
     if (typeof arr === "string" && arr.trim().startsWith("[")) {
       try {
         arr = JSON.parse(arr);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
     if (Array.isArray(arr) && arr.length > 0 && looksLikeItem(arr[0]))
       return arr;
   }
 
-  // Recurse into nested plain objects
   for (const k of Object.keys(obj)) {
     const child = obj[k];
     if (child && typeof child === "object" && !Array.isArray(child)) {
@@ -472,7 +451,6 @@ function extractItems(obj: any, depth = 0): any[] {
   return [];
 }
 
-// ─── Find the invoice object (unwrap data/sale/invoice wrappers) ──────────────
 function unwrapInvoice(raw: any): any {
   if (!raw || typeof raw !== "object") return {};
   if (
@@ -506,6 +484,10 @@ export default function TransactionDetailsModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [shopProfile, setShopProfile] = useState<any>(null);
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [customersList, setCustomersList] = useState<any[]>([]);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [activeProductSearchIdx, setActiveProductSearchIdx] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -514,6 +496,31 @@ export default function TransactionDetailsModal({
   useEffect(() => {
     if (!isOpen) return;
     shopApi.getProfile().then((p) => setShopProfile(p)).catch(() => {});
+    api
+      .get("/products")
+      .then((res) => {
+        const list = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setCatalogProducts(list);
+      })
+      .catch(() => {});
+
+    api
+      .get("/customers")
+      .then((res) => {
+        const list = Array.isArray(res.data?.data?.items)
+          ? res.data.data.items
+          : Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setCustomersList(list);
+      })
+      .catch(() => {});
   }, [isOpen]);
 
   // ── Load invoice ────────────────────────────────────────────────────────────
@@ -527,7 +534,6 @@ export default function TransactionDetailsModal({
     const buildState = (invoice: any, rawItems: any[]) => {
       const normalized = rawItems.map(normalizeItem);
 
-      // Log what we got so devs can debug backend shape easily
       if (normalized.length === 0) {
         console.warn(
           "[TransactionModal] No items extracted from response. rawItems =",
@@ -537,7 +543,6 @@ export default function TransactionDetailsModal({
         );
       }
 
-      // Extract returned items from all possible properties or stringified JSON or negative quantities in rawItems
       let rawReturned =
         invoice.returnedItems ||
         invoice.returned_items ||
@@ -557,7 +562,6 @@ export default function TransactionDetailsModal({
         } catch {}
       }
 
-      // Check if rawItems array itself contains items marked as return/returned or negative quantity
       const itemsInRawThatAreReturned = rawItems.filter(
         (i: any) =>
           Number(i.quantity ?? i.qty ?? 0) < 0 ||
@@ -582,7 +586,6 @@ export default function TransactionDetailsModal({
         };
       });
 
-      // Filter out returned items from finalItems if they were mixed into rawItems with negative values
       const cleanNewItems = normalized.filter(
         (i: any) =>
           i.qty > 0 &&
@@ -594,8 +597,14 @@ export default function TransactionDetailsModal({
 
       const finalItems = cleanNewItems.length > 0 ? cleanNewItems : normalized;
 
+      const initialDiscount = Number(
+        invoice.discountAmount ?? invoice.discount_amount ?? invoice.discount ?? 0
+      );
+
       setData({
         ...invoice,
+        discount: initialDiscount,
+        discountAmount: initialDiscount,
         _normalizedItems: finalItems,
         _normalizedReturnedItems: normalizedReturned,
       });
@@ -603,13 +612,12 @@ export default function TransactionDetailsModal({
         customerName: invoice.customerName || invoice.customer?.name || "",
         phone: invoice.customerPhone || invoice.customer?.phone || "",
         email: invoice.customerEmail || invoice.customer?.email || "",
-        discount: Number(invoice.discount ?? 0),
+        discount: initialDiscount,
         notes: invoice.notes || "",
         items: finalItems.map((it) => ({ ...it })),
       });
     };
 
-    // Primary: fetch single sale
     api
       .get(`/sales/${invoiceId}`)
       .then((res) => {
@@ -618,7 +626,6 @@ export default function TransactionDetailsModal({
         buildState(invoice, rawItems);
       })
       .catch(async () => {
-        // Fallback: search the full sales list
         try {
           const allRes = await api.get("/sales", { params: { limit: 2000 } });
           let list: any[] = [];
@@ -667,36 +674,67 @@ export default function TransactionDetailsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const calcDiscount = Number(editData.discount ?? 0);
       const payload = {
         customerName: editData.customerName,
         customerPhone: editData.phone,
         customerEmail: editData.email,
-        discount: editData.discount,
+        discount: calcDiscount,
+        discountAmount: calcDiscount,
         notes: editData.notes,
         items: editData.items.map((it: any) => ({
           productId: it.productId,
           productName: it.productName,
-          quantity: it.qty,
-          unitPrice: it.unitPrice,
+          sku: it.sku || "",
+          quantity: Number(it.qty ?? it.quantity ?? 1),
+          unitPrice: Number(it.unitPrice ?? it.price ?? 0),
+          discountAmount: Number(it.discountAmount ?? it.discount ?? 0),
         })),
       };
       await api.put(`/sales/${invoiceId}`, payload);
+      
+      const updatedItems = editData.items.map((it: any) => ({
+        ...it,
+        qty: Number(it.qty ?? it.quantity ?? 1),
+        unitPrice: Number(it.unitPrice ?? it.price ?? 0),
+        discountAmount: Number(it.discountAmount ?? it.discount ?? 0),
+        get total() {
+          const gross = (this.qty || 0) * (this.unitPrice || 0);
+          return Math.max(0, gross - (this.discountAmount || 0));
+        },
+      }));
+      const calcSubtotal = updatedItems.reduce((s: number, it: any) => s + it.total, 0);
+      const calcTotal = Math.max(0, calcSubtotal - calcDiscount);
+
       logActivity({
         action: "UPDATE_SALE",
         details: `Updated invoice specifications for "${invNum}" (Customer: ${editData.customerName || 'Walk-in'})`,
-        amount: Number(data?.totalAmount || data?.amount || 0),
+        amount: calcTotal,
         httpMethod: "PUT",
         endpoint: `/sales/${invoiceId}`,
       });
-      // Reflect edits locally
+
       setData((prev: any) => ({
         ...prev,
         customerName: editData.customerName,
         customerPhone: editData.phone,
+        customerEmail: editData.email,
         notes: editData.notes,
-        discount: editData.discount,
-        _normalizedItems: editData.items,
+        discount: calcDiscount,
+        discountAmount: calcDiscount,
+        subtotal: calcSubtotal,
+        totalAmount: calcTotal,
+        amount: calcTotal,
+        _normalizedItems: updatedItems,
       }));
+
+      window.dispatchEvent(
+        new CustomEvent("salesUpdated", {
+          detail: { invoiceId, totalAmount: calcTotal },
+        })
+      );
+      window.dispatchEvent(new Event("invoiceUpdated"));
+
       setActiveTab("view");
     } catch (err: any) {
       console.error(
@@ -712,7 +750,6 @@ export default function TransactionDetailsModal({
     }
   };
 
-  // ── Delete invoice ────────────────────────────────────────────────────────────
   const handleDelete = () => {
     setShowDeleteConfirm(true);
   };
@@ -720,7 +757,6 @@ export default function TransactionDetailsModal({
   const confirmDelete = async () => {
     setIsDeleting(true);
     try {
-      // Always prefer the real UUID so DELETE /sales/:uuid works reliably
       const realId = data?.id || data?._id || invoiceId;
       await api.delete(`/sales/${realId}`);
       logActivity({
@@ -732,7 +768,6 @@ export default function TransactionDetailsModal({
       });
       setShowDeleteConfirm(false);
       onClose();
-      // Force reload to ensure the list reflects the deletion immediately
       window.location.reload();
     } catch (err: any) {
       console.error("[TransactionModal] Delete failed:", err);
@@ -772,18 +807,15 @@ export default function TransactionDetailsModal({
   const dateStr = data?.createdAt || data?.date || data?.created_at;
   const formattedDate = dateStr ? format(new Date(dateStr), "dd/MM/yyyy") : "—";
   const formattedTime = dateStr ? format(new Date(dateStr), "HH:mm") : "";
-
   const viewItems: ReturnType<typeof normalizeItem>[] =
     data?._normalizedItems ?? [];
 
   const subtotal =
-    viewItems.reduce((s, it) => s + it.total, 0) ||
-    Number(data?.subtotal ?? data?.totalAmount ?? 0);
+    viewItems.length > 0
+      ? viewItems.reduce((s, it) => s + it.total, 0)
+      : Number(data?.subtotal ?? data?.totalAmount ?? 0);
   const discount = Number(data?.discountAmount ?? data?.discount_amount ?? data?.discount ?? 0);
-  const tax = Number(data?.tax ?? 0);
-  const totalAmount = Number(
-    data?.totalAmount ?? data?.amount ?? subtotal - discount + tax,
-  );
+  const totalAmount = Math.max(0, subtotal - discount);
 
   const payStatus = data?.paymentStatus || data?.status || "Completed";
   const customer = data?.customerName || data?.customer?.name || "Walk-in";
@@ -869,7 +901,6 @@ export default function TransactionDetailsModal({
     await printThermalReceipt(payload);
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   const modalContent = (
     <div
       role="dialog"
@@ -954,7 +985,7 @@ export default function TransactionDetailsModal({
                         items: viewItems,
                         subtotal,
                         discount,
-                        tax,
+                        tax: 0,
                         totalAmount,
                         shopProfile,
                       })
@@ -1141,10 +1172,13 @@ export default function TransactionDetailsModal({
                           <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-16 text-center">
                             Qty
                           </th>
-                          <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32 text-right">
+                          <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28 text-right">
                             Unit Price
                           </th>
-                          <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32 text-right">
+                          <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28 text-right">
+                            Item Disc
+                          </th>
+                          <th className="pb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28 text-right">
                             Total
                           </th>
                         </tr>
@@ -1153,7 +1187,7 @@ export default function TransactionDetailsModal({
                         {viewItems.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="py-10 text-center text-gray-400 text-[13px]"
                             >
                               No items recorded for this invoice.
@@ -1186,6 +1220,9 @@ export default function TransactionDetailsModal({
                               <td className="py-4 text-right text-[13px] font-medium text-gray-700 font-mono">
                                 Rs. {item.unitPrice.toLocaleString()}
                               </td>
+                              <td className="py-4 text-right text-[13px] font-semibold text-red-500 font-mono">
+                                {item.discountAmount > 0 ? `−Rs. ${item.discountAmount.toLocaleString()}` : "—"}
+                              </td>
                               <td className="py-4 text-right text-[14px] font-black text-gray-900 font-mono">
                                 Rs. {item.total.toLocaleString()}
                               </td>
@@ -1210,20 +1247,10 @@ export default function TransactionDetailsModal({
                       {discount > 0 && (
                         <div className="flex justify-between text-[12px] font-bold text-red-500">
                           <span className="uppercase tracking-widest text-[9px]">
-                            Discount
+                            Overall Discount
                           </span>
                           <span className="font-mono text-[14px]">
                             −Rs. {discount.toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                      {tax > 0 && (
-                        <div className="flex justify-between text-[12px] font-bold text-emerald-500">
-                          <span className="uppercase tracking-widest text-[9px]">
-                            Tax
-                          </span>
-                          <span className="font-mono text-[14px]">
-                            +Rs. {tax.toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -1267,21 +1294,71 @@ export default function TransactionDetailsModal({
                           Details
                         </h4>
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
+                          <div className="relative">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
-                              Customer Name
+                              Customer Name (Search to Auto-fill)
                             </label>
                             <input
                               type="text"
+                              placeholder="Type customer name..."
                               value={editData.customerName ?? ""}
-                              onChange={(e) =>
+                              onFocus={() => setShowCustomerDropdown(true)}
+                              onChange={(e) => {
                                 setEditData({
                                   ...editData,
                                   customerName: e.target.value,
-                                })
-                              }
+                                });
+                                setShowCustomerDropdown(true);
+                              }}
                               className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all font-bold text-gray-900"
                             />
+                            {/* Floating Customer Autocomplete Dropdown */}
+                            {showCustomerDropdown && (editData.customerName ?? "").trim().length > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-gray-100">
+                                {(() => {
+                                  const q = (editData.customerName ?? "").toLowerCase().trim();
+                                  const matches = customersList.filter(
+                                    (c: any) =>
+                                      (c.name ?? "").toLowerCase().includes(q) ||
+                                      (c.phone ?? "").toLowerCase().includes(q) ||
+                                      (c.email ?? "").toLowerCase().includes(q)
+                                  );
+
+                                  if (matches.length === 0) {
+                                    return (
+                                      <div className="p-3 text-[12px] font-medium text-gray-400 text-center">
+                                        No matching customer. Will update record on save.
+                                      </div>
+                                    );
+                                  }
+
+                                  return matches.map((c: any) => (
+                                    <div
+                                      key={c.id || c._id}
+                                      onClick={() => {
+                                        setEditData({
+                                          ...editData,
+                                          customerName: c.name || "",
+                                          phone: c.phone || "",
+                                          email: c.email || "",
+                                        });
+                                        setShowCustomerDropdown(false);
+                                      }}
+                                      className="p-3 hover:bg-emerald-50/70 transition-colors cursor-pointer flex flex-col gap-0.5"
+                                    >
+                                      <div className="text-[13px] font-bold text-gray-900 flex items-center justify-between">
+                                        <span>{c.name}</span>
+                                        <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Auto-fill</span>
+                                      </div>
+                                      <div className="text-[11px] font-medium text-gray-500 flex gap-3">
+                                        {c.phone && <span>📞 {c.phone}</span>}
+                                        {c.email && <span>✉️ {c.email}</span>}
+                                      </div>
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
@@ -1330,27 +1407,90 @@ export default function TransactionDetailsModal({
                             (item: any, i: number) => (
                               <div
                                 key={i}
-                                className="flex gap-3 items-end bg-gray-50 p-4 rounded-xl border border-gray-200"
+                                className="flex gap-3 items-end bg-gray-50 p-4 rounded-xl border border-gray-200 relative"
                               >
-                                <div className="flex-1">
+                                <div className="flex-1 relative">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
-                                    Product Name
+                                    Product / Item (Search by Name or SKU)
                                   </label>
                                   <input
                                     type="text"
+                                    placeholder="Type product name or SKU..."
                                     value={item.productName ?? ""}
+                                    onFocus={() => setActiveProductSearchIdx(i)}
                                     onChange={(e) => {
+                                      const val = e.target.value;
                                       const n = [...editData.items];
                                       n[i] = {
                                         ...n[i],
-                                        productName: e.target.value,
+                                        productName: val,
                                       };
                                       setEditData({ ...editData, items: n });
+                                      setActiveProductSearchIdx(i);
                                     }}
-                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900"
+                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900 bg-white"
                                   />
+
+                                  {/* Floating Product Autocomplete Search Dropdown */}
+                                  {activeProductSearchIdx === i && (item.productName ?? "").trim().length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100">
+                                      {(() => {
+                                        const q = (item.productName ?? "").toLowerCase().trim();
+                                        const matches = catalogProducts.filter(
+                                          (p: any) =>
+                                            (p.name ?? "").toLowerCase().includes(q) ||
+                                            (p.sku ?? "").toLowerCase().includes(q) ||
+                                            (p.barcode ?? "").toLowerCase().includes(q)
+                                        );
+
+                                        if (matches.length === 0) {
+                                          return (
+                                            <div className="p-3 text-[12px] font-medium text-gray-400 text-center">
+                                              No matching catalog product. Custom item will be saved.
+                                            </div>
+                                          );
+                                        }
+
+                                        return matches.map((p: any) => {
+                                          const selPrice = Number(p.sellingPrice ?? p.price ?? 0);
+                                          return (
+                                            <div
+                                              key={p.id || p._id}
+                                              onClick={() => {
+                                                const n = [...editData.items];
+                                                n[i] = {
+                                                  ...n[i],
+                                                  productId: p.id || p._id,
+                                                  productName: p.name || p.productName,
+                                                  sku: p.sku || "",
+                                                  unitPrice: selPrice,
+                                                };
+                                                setEditData({ ...editData, items: n });
+                                                setActiveProductSearchIdx(null);
+                                              }}
+                                              className="p-3 hover:bg-emerald-50/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                                            >
+                                              <div className="flex flex-col">
+                                                <span className="text-[13px] font-bold text-gray-900">
+                                                  {p.name}
+                                                </span>
+                                                {p.sku && (
+                                                  <span className="text-[11px] font-mono text-gray-400">
+                                                    SKU: {p.sku}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <span className="text-[13px] font-black text-emerald-600 font-mono shrink-0">
+                                                Rs. {selPrice.toLocaleString()}
+                                              </span>
+                                            </div>
+                                          );
+                                        });
+                                      })()}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="w-20">
+                                <div className="w-16">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
                                     Qty
                                   </label>
@@ -1366,10 +1506,10 @@ export default function TransactionDetailsModal({
                                       };
                                       setEditData({ ...editData, items: n });
                                     }}
-                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900 text-center"
+                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-2 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900 text-center"
                                   />
                                 </div>
-                                <div className="w-32">
+                                <div className="w-28">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
                                     Unit Price
                                   </label>
@@ -1384,7 +1524,28 @@ export default function TransactionDetailsModal({
                                       };
                                       setEditData({ ...editData, items: n });
                                     }}
-                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900 text-right"
+                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-2 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-gray-900 text-right"
+                                  />
+                                </div>
+                                <div className="w-28">
+                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
+                                    Item Disc (Rs)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    placeholder="0"
+                                    value={item.discountAmount ?? item.discount ?? 0}
+                                    onChange={(e) => {
+                                      const n = [...editData.items];
+                                      n[i] = {
+                                        ...n[i],
+                                        discountAmount: Number(e.target.value),
+                                        discount: Number(e.target.value),
+                                      };
+                                      setEditData({ ...editData, items: n });
+                                    }}
+                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-2 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-red-600 text-right font-mono"
                                   />
                                 </div>
                                 <button
@@ -1414,8 +1575,10 @@ export default function TransactionDetailsModal({
                                     sku: "",
                                     qty: 1,
                                     unitPrice: 0,
+                                    discountAmount: 0,
                                     get total() {
-                                      return this.qty * this.unitPrice;
+                                      const gross = (this.qty || 0) * (this.unitPrice || 0);
+                                      return Math.max(0, gross - (this.discountAmount || 0));
                                     },
                                   },
                                 ],
@@ -1438,7 +1601,7 @@ export default function TransactionDetailsModal({
                         <div className="flex flex-col gap-4">
                           <div>
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
-                              Discount Amount (Rs)
+                              Overall Invoice Discount (Rs)
                             </label>
                             <input
                               type="number"
@@ -1479,14 +1642,16 @@ export default function TransactionDetailsModal({
                         </p>
                         {(() => {
                           const s = (editData.items ?? []).reduce(
-                            (acc: number, it: any) =>
-                              acc +
-                              (it.qty ?? it.quantity ?? 1) *
-                                (it.unitPrice ?? it.price ?? 0),
+                            (acc: number, it: any) => {
+                              const q = Number(it.qty ?? it.quantity ?? 1);
+                              const p = Number(it.unitPrice ?? it.price ?? 0);
+                              const d = Number(it.discountAmount ?? it.discount ?? 0);
+                              return acc + Math.max(0, (q * p) - d);
+                            },
                             0,
                           );
                           const d = Number(editData.discount ?? 0);
-                          const t = s - d;
+                          const t = Math.max(0, s - d);
                           return (
                             <div className="flex flex-col gap-1 text-[12px] font-bold text-gray-700">
                               <div className="flex justify-between">
@@ -1497,7 +1662,7 @@ export default function TransactionDetailsModal({
                               </div>
                               {d > 0 && (
                                 <div className="flex justify-between text-red-500">
-                                  <span>Discount</span>
+                                  <span>Overall Discount</span>
                                   <span className="font-mono">
                                     −Rs. {d.toLocaleString()}
                                   </span>
@@ -1543,7 +1708,7 @@ export default function TransactionDetailsModal({
                   items: viewItems,
                   subtotal,
                   discount,
-                  tax,
+                  tax: 0,
                   totalAmount,
                   returnedItems: returnedViewItems,
                   shopProfile,
@@ -1566,7 +1731,7 @@ export default function TransactionDetailsModal({
                   items: viewItems,
                   subtotal,
                   discount,
-                  tax,
+                  tax: 0,
                   totalAmount,
                   returnedItems: returnedViewItems,
                   shopProfile,
