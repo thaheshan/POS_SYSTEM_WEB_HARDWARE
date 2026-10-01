@@ -1402,7 +1402,7 @@ export default function POSPage() {
 
       // Populate order discount if set
       if (invoice.discountAmount && Number(invoice.discountAmount) > 0) {
-        setDiscountType('FIXED');
+        setDiscountType('fixed');
         setDiscountValue(Number(invoice.discountAmount));
       }
 
