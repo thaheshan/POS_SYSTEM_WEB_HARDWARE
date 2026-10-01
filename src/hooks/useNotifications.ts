@@ -1,1 +1,1 @@
-export * from './useNotifications.tsx';
+export * from './useNotifications';
