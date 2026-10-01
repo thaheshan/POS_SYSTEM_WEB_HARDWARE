@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import {
   Minus, Plus, X, ChevronDown, ChevronUp, CheckCircle2, Pause, Printer, AlertTriangle,
   Package, SearchIcon, ArrowLeft, LayoutGrid, Banknote, CreditCard,
-  Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil, Percent, DollarSign,
+  Smartphone, ShoppingCart, Users, Zap, Scan, Tag, Pencil, Percent, DollarSign, Receipt,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1320,6 +1320,104 @@ export default function POSPage() {
     } catch {}
   }, [selectedCustomer]);
 
+  // ── Invoice Lookup State & Handler
+  const [posInvoiceNumberInput, setPosInvoiceNumberInput] = useState('');
+  const [isPosInvoiceLoading, setIsPosInvoiceLoading] = useState(false);
+  const [posInvoiceError, setPosInvoiceError] = useState('');
+  const [loadedInvoiceId, setLoadedInvoiceId] = useState<string | null>(null);
+
+  const handleLoadInvoiceToPos = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const invNo = posInvoiceNumberInput.trim();
+    if (!invNo) {
+      setPosInvoiceError('Please enter an invoice number');
+      return;
+    }
+
+    setIsPosInvoiceLoading(true);
+    setPosInvoiceError('');
+
+    try {
+      const res = await api.get(`/sales/${encodeURIComponent(invNo)}`);
+      const payload = res.data?.data;
+      const invoice = payload?.data ? payload.data : payload;
+
+      if (!invoice) {
+        setPosInvoiceError('Invoice not found');
+        return;
+      }
+
+      // Populate cart with items from invoice
+      const newCartItems: CartItem[] = (invoice.items || []).map((item: any) => {
+        const prod = item.product || {};
+        const isCustom = item.isCustom || !item.productId;
+        const rawDiscVal = Number(item.discountAmount ?? item.discount ?? 0);
+        const rawDiscPct = Number(item.discountPercentage ?? 0);
+
+        const discountType = rawDiscPct > 0 ? 'PERCENTAGE' : 'FIXED_AMOUNT';
+        const primaryDiscountValue = rawDiscPct > 0 ? rawDiscPct : rawDiscVal;
+
+        return {
+          id: item.id || `inv-item-${Math.random()}`,
+          productId: item.productId || '',
+          name: prod.name || item.productName || 'Product Item',
+          price: Number(item.unitPrice ?? item.price ?? 0),
+          basePrice: Number(item.unitPrice ?? item.price ?? 0),
+          costPrice: Number(item.costPrice ?? prod.purchasePrice ?? 0),
+          qty: Number(item.quantity ?? 1),
+          originalQty: Number(item.quantity ?? 1),
+          discountAmount: rawDiscVal,
+          discountType: discountType,
+          primaryDiscount: rawDiscVal,
+          primaryDiscountValue: primaryDiscountValue,
+          primaryDiscountType: discountType,
+          primaryDiscountPercentage: rawDiscPct,
+          unit: prod.unit || item.unit || 'Pcs',
+          stock: prod.stock !== undefined ? Number(prod.stock) : 999,
+          imageUrl: prod.imageUrl || prod.image,
+          isCustom: isCustom,
+          category: prod.category?.name || 'General',
+          taxRate: Number(prod.taxRate || 0),
+        };
+      });
+
+      setCart(newCartItems);
+
+      // Populate customer details if customer exists on invoice
+      if (invoice.customer) {
+        setSelectedCustomer({
+          id: invoice.customer.id,
+          name: invoice.customer.name || invoice.customerName || '',
+          phone: invoice.customer.phone || invoice.customerPhone || '',
+          email: invoice.customer.email || '',
+        });
+      } else if (invoice.customerName) {
+        setSelectedCustomer({
+          id: 'walk-in',
+          name: invoice.customerName,
+          phone: invoice.customerPhone || '',
+          email: '',
+        });
+      }
+
+      // Populate order discount if set
+      if (invoice.discountAmount && Number(invoice.discountAmount) > 0) {
+        setDiscountType('FIXED');
+        setDiscountValue(Number(invoice.discountAmount));
+      }
+
+      // Set loaded invoice ID marker & switch view state to POS
+      setLoadedInvoiceId(invoice.invoiceNumber || invoice.id || invNo);
+      setViewState('pos');
+    } catch (err: any) {
+      console.error('Failed to load invoice to POS', err);
+      const backendMessage = err?.response?.data?.message;
+      setPosInvoiceError(backendMessage || 'Failed to load invoice. Check invoice number.');
+    } finally {
+      setIsPosInvoiceLoading(false);
+    }
+  };
+
 
   // ── Cart helpers
   const handleApplyItemDiscount = (
@@ -2254,6 +2352,70 @@ export default function POSPage() {
                       <Plus className="w-3 h-3" strokeWidth={3} />
                       Brand
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Invoice Lookup Bar */}
+              <div className="px-6 py-2 bg-slate-50/80 border-b border-gray-100 flex items-center justify-between gap-3">
+                <form onSubmit={handleLoadInvoiceToPos} className="flex items-center gap-2 flex-1 max-w-md">
+                  <div className="relative flex-1">
+                    <Receipt className="w-4 h-4 text-emerald-600 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Enter Invoice # to edit (e.g., INV-2026-178...)"
+                      value={posInvoiceNumberInput}
+                      onChange={(e) => {
+                        setPosInvoiceNumberInput(e.target.value);
+                        if (posInvoiceError) setPosInvoiceError('');
+                      }}
+                      className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-sm"
+                    />
+                    {posInvoiceNumberInput && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPosInvoiceNumberInput('');
+                          setPosInvoiceError('');
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isPosInvoiceLoading || !posInvoiceNumberInput.trim()}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 shrink-0"
+                  >
+                    {isPosInvoiceLoading ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Load Invoice</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {loadedInvoiceId && (
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-bold shrink-0">
+                    <span>Editing: <strong className="font-mono text-emerald-900">{loadedInvoiceId}</strong></span>
+                    <button
+                      onClick={() => setLoadedInvoiceId(null)}
+                      className="text-emerald-600 hover:text-emerald-900 font-bold ml-1"
+                      title="Clear loaded invoice badge"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {posInvoiceError && (
+                  <div className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg shrink-0">
+                    ⚠ {posInvoiceError}
                   </div>
                 )}
               </div>

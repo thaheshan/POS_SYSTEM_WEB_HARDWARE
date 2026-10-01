@@ -25,6 +25,7 @@ import { printExchangeThermalHTMLReceipt } from "@/utils/thermalReceiptTemplate"
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/utils/activityLogger";
+import AddCustomerModal from "@/components/customers/AddCustomerModal";
 
 // ── PDF Invoice Generator ──────────────────────────────────────────────────────
 async function downloadInvoicePDF({
@@ -487,6 +488,8 @@ export default function TransactionDetailsModal({
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [customersList, setCustomersList] = useState<any[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [creditAmount, setCreditAmount] = useState<string>("");
   const [activeProductSearchIdx, setActiveProductSearchIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -511,13 +514,12 @@ export default function TransactionDetailsModal({
     api
       .get("/customers")
       .then((res) => {
-        const list = Array.isArray(res.data?.data?.items)
-          ? res.data.data.items
-          : Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
+        let list: any[] = [];
+        if (Array.isArray(res.data)) list = res.data;
+        else if (Array.isArray(res.data?.data)) list = res.data.data;
+        else if (Array.isArray(res.data?.data?.data)) list = res.data.data.data;
+        else if (Array.isArray(res.data?.data?.items)) list = res.data.data.items;
+        else if (Array.isArray(res.data?.items)) list = res.data.items;
         setCustomersList(list);
       })
       .catch(() => {});
@@ -601,17 +603,25 @@ export default function TransactionDetailsModal({
         invoice.discountAmount ?? invoice.discount_amount ?? invoice.discount ?? 0
       );
 
+      const initialCustomerName = invoice.customerName || invoice.customer?.name || "Walk-in Customer";
+      const initialCustomerPhone = invoice.customerPhone || invoice.customer?.phone || "";
+      const initialCustomerEmail = invoice.customerEmail || invoice.customer?.email || "";
+
       setData({
         ...invoice,
+        customerName: initialCustomerName,
+        customerPhone: initialCustomerPhone,
+        customerEmail: initialCustomerEmail,
         discount: initialDiscount,
         discountAmount: initialDiscount,
         _normalizedItems: finalItems,
         _normalizedReturnedItems: normalizedReturned,
       });
       setEditData({
-        customerName: invoice.customerName || invoice.customer?.name || "",
-        phone: invoice.customerPhone || invoice.customer?.phone || "",
-        email: invoice.customerEmail || invoice.customer?.email || "",
+        customerName: initialCustomerName === "Walk-in Customer" ? "" : initialCustomerName,
+        phone: initialCustomerPhone,
+        email: initialCustomerEmail,
+        customerId: invoice.customerId || invoice.customer?.id || undefined,
         discount: initialDiscount,
         notes: invoice.notes || "",
         items: finalItems.map((it) => ({ ...it })),
@@ -679,6 +689,7 @@ export default function TransactionDetailsModal({
         customerName: editData.customerName,
         customerPhone: editData.phone,
         customerEmail: editData.email,
+        customerId: editData.customerId || undefined,
         discount: calcDiscount,
         discountAmount: calcDiscount,
         notes: editData.notes,
@@ -692,6 +703,23 @@ export default function TransactionDetailsModal({
         })),
       };
       await api.put(`/sales/${invoiceId}`, payload);
+
+      // Apply credit payment if provided
+      let creditResult: any = null;
+      const parsedCredit = Number(creditAmount);
+      if (parsedCredit > 0) {
+        try {
+          const creditRes = await api.patch(`/sales/${invoiceId}/add-credit`, {
+            amount: parsedCredit,
+          });
+          creditResult = creditRes.data;
+        } catch (creditErr: any) {
+          alert(
+            creditErr?.response?.data?.message ||
+              "Invoice saved, but credit payment failed. Please try again.",
+          );
+        }
+      }
       
       const updatedItems = editData.items.map((it: any) => ({
         ...it,
@@ -726,6 +754,11 @@ export default function TransactionDetailsModal({
         totalAmount: calcTotal,
         amount: calcTotal,
         _normalizedItems: updatedItems,
+        ...(creditResult ? {
+          paidAmount: creditResult.newPaidAmount,
+          balance: creditResult.newBalance,
+          paymentStatus: creditResult.paymentStatus,
+        } : {}),
       }));
 
       window.dispatchEvent(
@@ -735,6 +768,7 @@ export default function TransactionDetailsModal({
       );
       window.dispatchEvent(new Event("invoiceUpdated"));
 
+      setCreditAmount("");
       setActiveTab("view");
     } catch (err: any) {
       console.error(
@@ -831,10 +865,14 @@ export default function TransactionDetailsModal({
 
   const returnedViewItems: any[] = data?._normalizedReturnedItems || [];
 
-  const resolvedStoreName =
-    shopProfile?.name && !shopProfile.name.toLowerCase().includes("futura")
-      ? shopProfile.name
-      : (authUser?.name ? `${authUser.name}'s Store` : "Hardware Store");
+  const resolvedStoreName = (() => {
+    const name = shopProfile?.name?.trim();
+    if (name && name.length > 0 && !name.toLowerCase().includes("futura") && !name.toLowerCase().includes("hardware store")) {
+      return name;
+    }
+    // Never use authUser.name as store name — fall back to a generic name
+    return "THAHESHAN'S HARDWARE STORE";
+  })();
 
   const handleThermalPrint = async () => {
     if (returnedViewItems.length > 0 || invNum.startsWith("EXC-")) {
@@ -871,6 +909,12 @@ export default function TransactionDetailsModal({
       return;
     }
 
+    const paidSoFar = Number(data?.paidAmount ?? 0);
+    const outstanding = Number(data?.balance ?? 0);
+    const invPayStatus = (data?.paymentStatus || "").toUpperCase();
+    const isPartial = invPayStatus === "PARTIAL";
+    const isUnpaid = invPayStatus === "UNPAID";
+
     const payload = {
       storeName: resolvedStoreName,
       storeAddress:
@@ -889,12 +933,18 @@ export default function TransactionDetailsModal({
         qty: it.qty,
         price: it.unitPrice,
         lineTotal: it.total,
+        discountAmount: Number(it.discountAmount ?? 0),
+        discountPercentage: Number(it.discountPercentage ?? 0),
       })),
       subtotal: subtotal,
       discount: discount,
       total: totalAmount,
-      amountTendered: totalAmount,
-      change: 0,
+      // For partial/unpaid invoices show how much was actually paid
+      amountTendered: isUnpaid ? 0 : paidSoFar > 0 ? paidSoFar : totalAmount,
+      change: (!isPartial && !isUnpaid) ? Number(data?.changeAmount ?? 0) : 0,
+      // Pass credit/balance info for partial invoices
+      creditLeftover: (isPartial || isUnpaid) ? outstanding : 0,
+      totalOutstandingCredit: (isPartial || isUnpaid) ? outstanding : undefined,
       notes: data?.notes || "",
     };
 
@@ -1289,10 +1339,18 @@ export default function TransactionDetailsModal({
                     <div className="flex flex-col gap-6">
                       {/* Customer details */}
                       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h4 className="text-[14px] font-black text-gray-900 flex items-center gap-2 mb-5">
-                          <User className="w-4 h-4 text-blue-500" /> Customer
-                          Details
-                        </h4>
+                        <div className="flex items-center justify-between mb-5">
+                          <h4 className="text-[14px] font-black text-gray-900 flex items-center gap-2">
+                            <User className="w-4 h-4 text-blue-500" /> Customer Details
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCustomerModal(true)}
+                            className="text-[11px] font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> New Customer
+                          </button>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="relative">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
@@ -1300,7 +1358,7 @@ export default function TransactionDetailsModal({
                             </label>
                             <input
                               type="text"
-                              placeholder="Type customer name..."
+                              placeholder="Type customer name or phone..."
                               value={editData.customerName ?? ""}
                               onFocus={() => setShowCustomerDropdown(true)}
                               onChange={(e) => {
@@ -1314,48 +1372,67 @@ export default function TransactionDetailsModal({
                             />
                             {/* Floating Customer Autocomplete Dropdown */}
                             {showCustomerDropdown && (editData.customerName ?? "").trim().length > 0 && (
-                              <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-gray-100">
+                              <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100">
                                 {(() => {
                                   const q = (editData.customerName ?? "").toLowerCase().trim();
                                   const matches = customersList.filter(
                                     (c: any) =>
-                                      (c.name ?? "").toLowerCase().includes(q) ||
-                                      (c.phone ?? "").toLowerCase().includes(q) ||
+                                      (c.name ?? c.customerName ?? c.full_name ?? "").toLowerCase().includes(q) ||
+                                      (c.phone ?? c.phone_number ?? c.mobile ?? "").toLowerCase().includes(q) ||
                                       (c.email ?? "").toLowerCase().includes(q)
                                   );
 
                                   if (matches.length === 0) {
                                     return (
-                                      <div className="p-3 text-[12px] font-medium text-gray-400 text-center">
-                                        No matching customer. Will update record on save.
+                                      <div className="p-3 text-center flex flex-col items-center gap-2">
+                                        <span className="text-[12px] font-medium text-gray-400">
+                                          No matching customer found.
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setShowCustomerDropdown(false);
+                                            setShowAddCustomerModal(true);
+                                          }}
+                                          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                                        >
+                                          <Plus className="w-3.5 h-3.5" /> Create "{editData.customerName}"
+                                        </button>
                                       </div>
                                     );
                                   }
 
-                                  return matches.map((c: any) => (
-                                    <div
-                                      key={c.id || c._id}
-                                      onClick={() => {
-                                        setEditData({
-                                          ...editData,
-                                          customerName: c.name || "",
-                                          phone: c.phone || "",
-                                          email: c.email || "",
-                                        });
-                                        setShowCustomerDropdown(false);
-                                      }}
-                                      className="p-3 hover:bg-emerald-50/70 transition-colors cursor-pointer flex flex-col gap-0.5"
-                                    >
-                                      <div className="text-[13px] font-bold text-gray-900 flex items-center justify-between">
-                                        <span>{c.name}</span>
-                                        <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Auto-fill</span>
+                                  return matches.map((c: any) => {
+                                    const custName = c.name || c.customerName || c.full_name || "Unknown";
+                                    const custPhone = c.phone || c.phone_number || c.mobile || "";
+                                    const custEmail = c.email || "";
+
+                                    return (
+                                      <div
+                                        key={c.id || c._id || custPhone}
+                                        onClick={() => {
+                                          setEditData({
+                                            ...editData,
+                                            customerName: custName,
+                                            phone: custPhone,
+                                            email: custEmail,
+                                            customerId: c.id || c._id || undefined,
+                                          });
+                                          setShowCustomerDropdown(false);
+                                        }}
+                                        className="p-3 hover:bg-emerald-50/70 transition-colors cursor-pointer flex flex-col gap-0.5"
+                                      >
+                                        <div className="text-[13px] font-bold text-gray-900 flex items-center justify-between">
+                                          <span>{custName}</span>
+                                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Auto-fill</span>
+                                        </div>
+                                        <div className="text-[11px] font-medium text-gray-500 flex gap-3">
+                                          {custPhone && <span>📞 {custPhone}</span>}
+                                          {custEmail && <span>✉️ {custEmail}</span>}
+                                        </div>
                                       </div>
-                                      <div className="text-[11px] font-medium text-gray-500 flex gap-3">
-                                        {c.phone && <span>📞 {c.phone}</span>}
-                                        {c.email && <span>✉️ {c.email}</span>}
-                                      </div>
-                                    </div>
-                                  ));
+                                    );
+                                  });
                                 })()}
                               </div>
                             )}
@@ -1545,8 +1622,26 @@ export default function TransactionDetailsModal({
                                       };
                                       setEditData({ ...editData, items: n });
                                     }}
-                                    className="w-full text-[13px] border border-gray-200 rounded-lg px-2 py-2 outline-none focus:border-emerald-500 transition-all font-bold text-red-600 text-right font-mono"
+                                    className={`w-full text-[13px] border rounded-lg px-2 py-2 outline-none focus:border-red-400 transition-all font-bold text-right font-mono ${
+                                      Number(item.discountAmount ?? item.discount ?? 0) > 0
+                                        ? "border-red-200 bg-red-50 text-red-600"
+                                        : "border-gray-200 text-red-600"
+                                    }`}
                                   />
+                                </div>
+                                {/* Live Line Total */}
+                                <div className="w-28 shrink-0">
+                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
+                                    Line Total
+                                  </label>
+                                  <div className="w-full text-[13px] border border-emerald-200 bg-emerald-50 rounded-lg px-2 py-2 font-black text-emerald-700 text-right font-mono select-none">
+                                    {(() => {
+                                      const q = Number(item.qty ?? item.quantity ?? 1);
+                                      const p = Number(item.unitPrice ?? item.price ?? 0);
+                                      const d = Number(item.discountAmount ?? item.discount ?? 0);
+                                      return `Rs. ${Math.max(0, q * p - d).toLocaleString()}`;
+                                    })()}
+                                  </div>
                                 </div>
                                 <button
                                   onClick={() => {
@@ -1634,6 +1729,51 @@ export default function TransactionDetailsModal({
                           </div>
                         </div>
                       </div>
+
+                      {/* Add Credit / Record Payment */}
+                      {(() => {
+                        const invPayStatus = (data?.paymentStatus || data?.status || "").toUpperCase();
+                        const currentBalance = Number(data?.balance ?? 0);
+                        const currentPaid = Number(data?.paidAmount ?? 0);
+                        if (invPayStatus !== "PARTIAL" && invPayStatus !== "UNPAID") return null;
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                              <h4 className="text-[13px] font-black text-amber-800">
+                                Add Credit / Record Payment
+                              </h4>
+                            </div>
+                            <div className="flex flex-col gap-2 mb-3 text-[11.5px] font-semibold text-amber-700">
+                              <div className="flex justify-between">
+                                <span>Already Paid</span>
+                                <span className="font-mono font-black">Rs. {currentPaid.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-red-600">
+                                <span>Outstanding Balance</span>
+                                <span className="font-mono font-black">Rs. {currentBalance.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest block mb-1.5">
+                              Payment Amount (Rs)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max={currentBalance}
+                              placeholder={`Max Rs. ${currentBalance.toLocaleString()}`}
+                              value={creditAmount}
+                              onChange={(e) => setCreditAmount(e.target.value)}
+                              className="w-full text-[13px] border-2 border-amber-300 rounded-lg px-3 py-2 outline-none focus:border-amber-500 transition-all font-mono font-bold text-gray-900 bg-white"
+                            />
+                            {Number(creditAmount) > 0 && (
+                              <p className="text-[10.5px] text-amber-700 font-semibold mt-1.5">
+                                💰 Rs. {Math.min(Number(creditAmount), currentBalance).toLocaleString()} will be recorded when you save.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Live total preview */}
                       <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
@@ -1867,6 +2007,28 @@ export default function TransactionDetailsModal({
           </div>,
           document.body,
         )}
+
+      {showAddCustomerModal && (
+        <AddCustomerModal
+          onClose={() => setShowAddCustomerModal(false)}
+          onSuccess={(newCust) => {
+            if (newCust) {
+              const custName = newCust.name || newCust.customerName || newCust.full_name || "";
+              const custPhone = newCust.phone || newCust.phone_number || newCust.mobile || "";
+              const custEmail = newCust.email || "";
+              setCustomersList((prev) => [newCust, ...prev]);
+              setEditData((prev: any) => ({
+                ...prev,
+                customerName: custName,
+                phone: custPhone,
+                email: custEmail,
+                customerId: newCust.id || newCust._id || undefined,
+              }));
+              setShowCustomerDropdown(false);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
@@ -10,6 +11,11 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', customerType: 'Individual', outstandingBalance: '0' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.name || !form.phone) {
@@ -80,8 +86,10 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000000] flex items-center justify-center p-4">
       <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <div>
@@ -157,6 +165,7 @@ export default function AddCustomerModal({ onClose, onSuccess }: { onClose: () =
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -141,17 +141,17 @@ function ReportPageContent({ params }: ReportPageProps) {
                 cardTotal: data.summary?.cardTotal || 0,
               },
               items: (data.items || []).map((sale: any) => ({
-                invoiceNumber: sale.invoiceNo,
+                invoiceNumber: sale.invoiceNo || sale.invoiceNumber,
                 date: sale.createdAt,
-                customerName: sale.customer?.name || "Walk-in Customer",
-                cashierName: sale.cashier?.name || "Cashier",
+                customerName: sale.customerName || sale.customer?.name || "Walk-in Customer",
+                cashierName: sale.cashierName || sale.cashier?.name || "Cashier",
                 paymentMethod:
                   sale.paymentMethod === "cash"
                     ? "Cash"
                     : sale.paymentMethod === "card"
                       ? "Card"
                       : "Bank Transfer",
-                totalAmount: sale.total,
+                totalAmount: sale.total || sale.totalAmount,
               })),
             };
             break;
@@ -166,10 +166,10 @@ function ReportPageContent({ params }: ReportPageProps) {
             const res = await salesAPI.getById(invoiceId);
             const sale = res.data?.data || res.data;
             tableData = {
-              transactionNumber: sale.invoiceNo,
+              transactionNumber: sale.invoiceNo || sale.invoiceNumber,
               transactionType: "Sale",
               date: sale.createdAt,
-              partyName: sale.customer?.name || "Walk-in Customer",
+              partyName: sale.customerName || sale.customer?.name || "Walk-in Customer",
               partyContact: sale.customer?.phone || "N/A",
               partyAddress: sale.customer?.address,
               items: sale.items.map((item: any) => ({
