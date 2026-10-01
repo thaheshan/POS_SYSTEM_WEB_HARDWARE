@@ -51,8 +51,9 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   data.items.forEach((item) => {
     lines.push(item.name);
     const itemDiscount = Number(item.discountAmount) || 0;
+    const unitPriceStr = `Rs. ${Number(item.price).toLocaleString()}`;
     const finalLineTotal = item.lineTotal || item.qty * (item.price || 0);
-    const qtyStr = `  ${item.qty} x`;
+    const qtyStr = `  ${item.qty} x ${unitPriceStr}`;
     const totalStr = `Rs. ${finalLineTotal.toLocaleString()}`;
     lines.push(leftRight(qtyStr, totalStr));
     // Show product-specific discount directly under the product line
@@ -60,7 +61,7 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
       const discountLabel = item.discountPercentage && item.discountPercentage > 0
         ? `  Discount (${item.discountPercentage.toFixed(0)}%)`
         : `  Item Discount`;
-      const discountValue = `-Rs. ${(itemDiscount * item.qty).toLocaleString()}`;
+      const discountValue = `-Rs. ${itemDiscount.toLocaleString()}`;
       lines.push(leftRight(discountLabel, discountValue));
     }
   });
@@ -79,13 +80,12 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(doubleLine);
 
   // Payment Breakdown
-  lines.push(leftRight("Paid / Tendered:", `Rs. ${data.amountTendered.toLocaleString()}`));
-  if (data.creditLeftover && data.creditLeftover > 0) {
-    lines.push(leftRight("Credit Added:", `Rs. ${data.creditLeftover.toLocaleString()}`));
-    if (data.totalOutstandingCredit !== undefined) {
-      lines.push(leftRight("Total Account Credit:", `Rs. ${data.totalOutstandingCredit.toLocaleString()}`));
-    }
+  const isCredit = data.creditLeftover && data.creditLeftover > 0;
+  if (isCredit) {
+    lines.push(leftRight("Paid So Far:", `Rs. ${data.amountTendered.toLocaleString()}`));
+    lines.push(leftRight("Outstanding Balance:", `Rs. ${data.creditLeftover.toLocaleString()}`));
   } else {
+    lines.push(leftRight("Tendered / Paid:", `Rs. ${data.amountTendered.toLocaleString()}`));
     lines.push(leftRight("Change:", `Rs. ${data.change.toLocaleString()}`));
   }
 
@@ -119,7 +119,7 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
           ? `  Discount (${item.discountPercentage.toFixed(0)}%)`
           : `  Item Discount`
       }</td>
-      <td class="line-total" style="color:#000; font-weight:800;">-Rs. ${(itemDiscount * item.qty).toLocaleString()}</td>
+      <td class="line-total" style="color:#000; font-weight:800;">-Rs. ${itemDiscount.toLocaleString()}</td>
     </tr>`
           : "";
 
@@ -128,7 +128,7 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
       <td colspan="3" class="item-name">${item.name}</td>
     </tr>
     <tr class="item-calc">
-      <td class="qty">${item.qty} x</td>
+      <td class="qty">${item.qty} x Rs. ${Number(item.price).toLocaleString()}</td>
       <td class="wh">${item.warehouseName || ""}</td>
       <td class="line-total">Rs. ${finalLineTotal.toLocaleString()}</td>
     </tr>${discountRow}`;
@@ -216,7 +216,9 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     }
     <tr>
       <td style="width:50%;">Pay: ${data.paymentMethod}</td>
-      <td style="width:50%; text-align:right;">${data.creditLeftover && data.creditLeftover > 0 ? "[CREDIT SALE]" : "[PAID]"}</td>
+      <td style="width:50%; text-align:right;">${
+        data.creditLeftover && data.creditLeftover > 0 ? "[PARTIAL / CREDIT]" : "[PAID]"
+      }</td>
     </tr>
   </table>
 
@@ -257,20 +259,23 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
 
   <!-- Payment Breakdown -->
   <table style="width:100%; font-size:10.5px; font-weight:700;">
+    ${
+      data.creditLeftover && data.creditLeftover > 0
+        ? `
+    <tr>
+      <td>Paid So Far:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.amountTendered.toLocaleString()}</td>
+    </tr>
+    <tr class="bold" style="color:#c00;">
+      <td>Outstanding Balance:</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${data.creditLeftover.toLocaleString()}</td>
+    </tr>
+    `
+        : `
     <tr>
       <td>Tendered / Paid:</td>
       <td style="text-align:right; font-weight:900;">Rs. ${data.amountTendered.toLocaleString()}</td>
     </tr>
-    ${
-      data.creditLeftover && data.creditLeftover > 0
-        ? `
-    <tr class="bold">
-      <td>Credit Added Today:</td>
-      <td style="text-align:right; font-weight:900;">Rs. ${data.creditLeftover.toLocaleString()}</td>
-    </tr>
-    ${data.totalOutstandingCredit !== undefined ? `<tr class="bold"><td>Total Account Credit:</td><td style="text-align:right; font-weight:900;">Rs. ${data.totalOutstandingCredit.toLocaleString()}</td></tr>` : ""}
-    `
-        : `
     <tr>
       <td>Change:</td>
       <td style="text-align:right; font-weight:900;">Rs. ${data.change.toLocaleString()}</td>

@@ -121,7 +121,7 @@ export default function SalesReportsPage() {
         cashierName:   inv.cashier?.first_name
                         ? `${inv.cashier.first_name} ${inv.cashier.last_name ?? ''}`.trim()
                         : '—',
-        customerName: inv.customer?.name || 'Walk-in',
+        customerName: inv.customerName || inv.customer?.name || 'Walk-in',
         amount:        Number(inv.totalAmount || 0),
         saleType:      inv.saleType || 'CASH',
         status:        inv.status || 'COMPLETED',

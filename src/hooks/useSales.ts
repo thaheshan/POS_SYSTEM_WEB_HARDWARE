@@ -183,7 +183,7 @@ export function useSalesData(dateRange: DateRange | undefined) {
         const isExchange = invNum.startsWith('EXC-');
         const typeLabel = isReturn ? 'Return' : (isExchange ? 'Exchange' : null);
 
-        const customerName = inv.customer?.name || inv.customerName || 'Walk-in Customer';
+        const customerName = inv.customerName || inv.customer?.name || 'Walk-in Customer';
         const date = new Date(inv.createdAt).toISOString().split('T')[0];
         const status = inv.status ? (inv.status.charAt(0).toUpperCase() + inv.status.slice(1).toLowerCase()) : (isReturn ? 'Refunded' : 'Completed');
 
