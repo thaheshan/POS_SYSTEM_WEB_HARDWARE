@@ -1389,14 +1389,14 @@ export default function POSPage() {
           id: invoice.customer.id,
           name: invoice.customer.name || invoice.customerName || '',
           phone: invoice.customer.phone || invoice.customerPhone || '',
-          email: invoice.customer.email || '',
+          customerType: invoice.customer.customerType || 'RETAIL',
         });
       } else if (invoice.customerName) {
         setSelectedCustomer({
           id: 'walk-in',
           name: invoice.customerName,
           phone: invoice.customerPhone || '',
-          email: '',
+          customerType: 'WALK_IN',
         });
       }
 
