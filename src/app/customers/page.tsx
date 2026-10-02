@@ -56,7 +56,7 @@ interface Customer {
 
 
 // ─── Edit Customer Modal ──────────────────────────────────────────────────────
-function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Customer; onClose: () => void; onSuccess: (updatedId?: string, newBalance?: number) => void }) {
+function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Customer; onClose: () => void; onSuccess: (updatedId?: string, newBalance?: number, extraFields?: Partial<Customer>) => void }) {
   const [form, setForm] = useState({
     name: customer.name,
     phone: customer.phone,
@@ -84,13 +84,30 @@ function EditCustomerModal({ customer, onClose, onSuccess }: { customer: Custome
       outstanding: newCredit,
     };
     try {
+      let updatedRes: any;
       try {
-        await api.put(`/customers/${customer.id}`, payload);
+        updatedRes = await api.put(`/customers/${customer.id}`, payload);
       } catch {
-        await api.patch(`/customers/${customer.id}`, payload);
+        updatedRes = await api.patch(`/customers/${customer.id}`, payload);
       }
+      // Extract confirmed balance from server response (fallback to what user entered)
+      const resData = updatedRes?.data?.data ?? updatedRes?.data ?? {};
+      const confirmedBalance =
+        resData.outstandingBalance !== undefined ? Number(resData.outstandingBalance)
+        : resData.creditBalance !== undefined ? Number(resData.creditBalance)
+        : resData.outstanding_balance !== undefined ? Number(resData.outstanding_balance)
+        : resData.outstanding !== undefined ? Number(resData.outstanding)
+        : newCredit;
+      const safeBalance = isNaN(confirmedBalance) ? newCredit : confirmedBalance;
       toastSuccess(`Updated ${form.name}'s details & outstanding balance.`);
-      onSuccess(customer.id, newCredit);
+      onSuccess(customer.id, safeBalance, {
+        name: form.name,
+        phone: form.phone,
+        email: form.email || 'N/A',
+        address: form.address || 'N/A',
+        customerType: form.customerType,
+        initials: (form.name || 'NA').substring(0, 2).toUpperCase(),
+      });
       onClose();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to update customer.');
@@ -493,17 +510,19 @@ export default function CustomersPage() {
         <EditCustomerModal
           customer={editingCustomer}
           onClose={() => setEditingCustomer(null)}
-          onSuccess={(updatedId?: string, newBalance?: number) => {
+          onSuccess={(updatedId?: string, newBalance?: number, extraFields?: Partial<Customer>) => {
             if (updatedId && newBalance !== undefined) {
-              setCustomers((prev) =>
-                prev.map((c) =>
-                  c.id === updatedId
-                    ? { ...c, outstanding: newBalance, isOverdue: newBalance > 0 }
-                    : c
-                )
-              );
+              const updatedCustomer = (prev: Customer) =>
+                prev.id === updatedId
+                  ? { ...prev, ...extraFields, outstanding: newBalance, isOverdue: newBalance > 0 }
+                  : prev;
+              // Update the customers list immediately (no refetch race condition)
+              setCustomers((prev) => prev.map(updatedCustomer));
+              // Also sync viewingCustomer if it was the same customer
+              setViewingCustomer((prev) => (prev && prev.id === updatedId ? updatedCustomer(prev) : prev));
             }
-            fetchCustomers();
+            // Refresh in background to sync any server-side computed fields
+            setTimeout(() => fetchCustomers(), 800);
           }}
         />
       )}

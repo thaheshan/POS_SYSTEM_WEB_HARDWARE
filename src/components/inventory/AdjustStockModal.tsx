@@ -44,18 +44,13 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
 
   const fetchProducts = async () => {
     try {
-      const [stockRes, productsRes, whRes] = await Promise.allSettled([
+      const [stockRes, whRes] = await Promise.allSettled([
         api.get('/stock'),
-        api.get('/products'),
         api.get('/warehouses'),
       ]);
 
       const stockItems: any[] = stockRes.status === 'fulfilled'
         ? (stockRes.value.data?.data || stockRes.value.data || [])
-        : [];
-
-      const allProducts: any[] = productsRes.status === 'fulfilled'
-        ? (productsRes.value.data?.data || productsRes.value.data || [])
         : [];
 
       if (whRes.status === 'fulfilled') {
@@ -65,30 +60,14 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
         }
       }
 
-      // Deduplicate products using a Map by product id
+      // Deduplicate products using a Map by product id directly from /stock
       const productMap = new Map<string, any>();
 
-      // 1. Process all products from /products catalog
-      allProducts.forEach((p: any) => {
-        const id = String(p.id);
-        productMap.set(id, {
-          id,
-          name: p.name || 'Unknown',
-          sku: p.sku || '',
-          barcode: p.barcode || '',
-          category: p.category || '',
-          qty: Number(p.quantity ?? p.qty ?? 0),
-          warehouseId: undefined,
-          branchId: undefined,
-        });
-      });
-
-      // 2. Merge stock data from /stock endpoint
       stockItems.forEach((item: any) => {
-        const id = String(item.product_id || item.productId || item.id);
+        const id = String(item.product?.id || item.product_id || item.productId || item.id);
         const availableQty = Number(item.available_quantity ?? item.availableQuantity ?? item.quantity ?? 0);
-        const name = item.product?.name || item.product_name || item.name;
-        const sku = item.product?.sku || item.sku;
+        const name = item.product?.name || item.product_name || item.name || 'Unknown Item';
+        const sku = item.product?.sku || item.sku || '';
 
         if (productMap.has(id)) {
           const existing = productMap.get(id);
@@ -100,10 +79,10 @@ export default function AdjustStockModal({ isOpen, onClose, onSuccess }: AdjustS
         } else {
           productMap.set(id, {
             id,
-            name: name || 'Unknown',
-            sku: sku || '',
-            barcode: item.barcode || '',
-            category: item.category || '',
+            name,
+            sku,
+            barcode: item.product?.barcode || item.barcode || '',
+            category: item.product?.category?.name || item.category_name || item.category || '',
             qty: availableQty,
             warehouseId: item.warehouseId || item.warehouse_id,
             branchId: item.branchId || item.branch_id,

@@ -1142,104 +1142,57 @@ export default function POSPage() {
   const fetchProducts = async () => {
     try {
       setFetchError(null);
-      
-      const [stockRes, productsRes] = await Promise.allSettled([
-        api.get('/stock'),
-        api.get('/products'),
-      ]);
 
-      const stockItems: any[] = stockRes.status === 'fulfilled'
-        ? (stockRes.value.data?.data || stockRes.value.data || [])
-        : [];
+      // ── Only fetch /stock (already contains product name, price, SKU, category,
+      //    discount config, barcode via nested item.product.*).
+      // ── Removed parallel /products fetch: with 1700+ products that call added
+      //    ~510 KB of egress per load with no extra value for POS use case.
+      const stockRes = await api.get('/stock');
+      const stockItems: any[] = stockRes.data?.data || stockRes.data || [];
 
-      const allProducts: any[] = productsRes.status === 'fulfilled'
-        ? (productsRes.value.data?.data || productsRes.value.data || [])
-        : [];
-
-      const stockProductIds = new Set(stockItems.map((s: any) => String(s.product_id || s.productId)));
-
-      // Map products that have stock records
+      // Map products from stock records (all sellable products have stock records)
       const mappedStockProducts: Product[] = stockItems.map((item: any, index: number) => {
         const name = item.product?.name || item.product_name || 'Unknown';
         const prodId = String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`);
-        const originalProduct = allProducts.find((p: any) => String(p.id) === prodId);
 
-        const { sellType, measurementUnit } = extractProductSellTypeAndUnit(item, originalProduct);
+        const { sellType, measurementUnit } = extractProductSellTypeAndUnit(item, item.product);
         const qty = Number(item.available_quantity || item.availableQuantity || item.quantity || 0);
 
-        const rawComp = item.comparePrice ?? item.compare_price ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.product?.minimumSellingPrice ?? item.product?.minimum_selling_price ?? originalProduct?.minimumSellingPrice ?? originalProduct?.comparePrice ?? 0;
+        const rawComp = item.comparePrice ?? item.compare_price ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.product?.minimumSellingPrice ?? item.product?.minimum_selling_price ?? 0;
         const comparePrice = Number(rawComp) > 0 ? Number(rawComp) : undefined;
+
+        // Discount config — available directly from /stock via nested product object
+        const prod = item.product || {};
 
         return {
           id: prodId,
-          name: name,
-          sku: item.product?.sku || item.sku || 'N/A',
-          price: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
-          purchasePrice: Number(item.product?.purchase_price || item.product?.purchasePrice || originalProduct?.purchasePrice || originalProduct?.purchase_price || 0) || undefined,
+          name,
+          sku: prod.sku || item.sku || 'N/A',
+          price: Number(prod.selling_price || prod.sellingPrice || item.selling_price || 0),
+          purchasePrice: Number(prod.purchase_price || prod.purchasePrice || item.purchase_price || 0) || undefined,
           comparePrice,
           stock: qty,
           status: qty > 10 ? 'In Stock' : (qty > 0 ? 'Low Stock' : 'Out of Stock'),
-          category: item.product?.category?.name || item.category_name || 'All',
-          subCategory: item.product?.subCategory?.name || item.product?.subcategory?.name || item.subCategory?.name || item.subcategory?.name || item.subcategory_name || item.subCategoryName || originalProduct?.subCategory?.name || originalProduct?.subcategory?.name || originalProduct?.subCategoryName || null,
-          brand: item.product?.brand?.name || item.brand?.name || item.brand_name || item.brandName || originalProduct?.brand?.name || originalProduct?.brandName || (typeof item.product?.brand === 'string' ? item.product?.brand : (typeof originalProduct?.brand === 'string' ? originalProduct?.brand : null)) || null,
-          img: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
+          category: prod.category?.name || item.category_name || 'All',
+          subCategory: prod.subCategory?.name || prod.subcategory?.name || item.subcategory_name || null,
+          brand: prod.brand?.name || item.brand_name || null,
+          img: item.image_url || prod.image_url || prod.image || null,
           warehouseId: item.warehouseId || item.warehouse_id,
           branchId: item.branchId || item.branch_id,
-          warehouseName: item.warehouse?.name || 'Main Store',
+          warehouseName: item.warehouse?.name || item.warehouse_name || 'Main Store',
           sellType,
           measurementUnit,
-          barcode: originalProduct?.barcode || item.product?.barcode || item.barcode || undefined,
-          // Discount configurations (fall back to stock/product API values if not found in allProducts)
-          isDiscountEnabled: originalProduct?.isDiscountEnabled || item.product?.isDiscountEnabled || item.isDiscountEnabled || false,
-          isDiscountApproved: originalProduct?.isDiscountApproved || item.product?.isDiscountApproved || item.isDiscountApproved || false,
-          discountType: originalProduct?.discountType || item.product?.discountType || item.discountType || 'PERCENTAGE',
-          maxAllowedDiscount: Number(originalProduct?.maxAllowedDiscount || item.product?.maxAllowedDiscount || item.maxAllowedDiscount || 0),
-          defaultDiscountValue: Number(originalProduct?.defaultDiscountValue || item.product?.defaultDiscountValue || item.defaultDiscountValue || 0),
+          barcode: prod.barcode || item.barcode || undefined,
+          // Discount config read directly from stock API's nested product object
+          isDiscountEnabled: prod.isDiscountEnabled || item.isDiscountEnabled || false,
+          isDiscountApproved: prod.isDiscountApproved || item.isDiscountApproved || false,
+          discountType: prod.discountType || item.discountType || 'PERCENTAGE',
+          maxAllowedDiscount: Number(prod.maxAllowedDiscount || item.maxAllowedDiscount || 0),
+          defaultDiscountValue: Number(prod.defaultDiscountValue || item.defaultDiscountValue || 0),
         };
       });
 
-      // Map products that do NOT have a stock record yet
-      const mappedNoStockProducts: Product[] = allProducts
-        .filter((p: any) => !stockProductIds.has(String(p.id)))
-        .map((p: any) => {
-          const name = p.name || 'Unknown';
-          const { sellType, measurementUnit } = extractProductSellTypeAndUnit(p, p);
-          const rawComp = p.minimumSellingPrice ?? p.minimum_selling_price ?? p.comparePrice ?? p.compare_price ?? 0;
-          const comparePrice = Number(rawComp) > 0 ? Number(rawComp) : undefined;
-
-          return {
-            id: String(p.id),
-            name: name,
-            sku: p.sku || 'N/A',
-            barcode: p.barcode || undefined,
-            price: Number(p.sellingPrice || 0),
-            purchasePrice: Number(p.purchasePrice || p.purchase_price || 0) || undefined,
-            comparePrice,
-            stock: 0,
-            status: 'Out of Stock',
-            category: p.category?.name || 'All',
-            subCategory: p.subCategory?.name || p.subcategory?.name || p.subCategoryName || null,
-            brand: p.brand?.name || p.brandName || (typeof p.brand === 'string' ? p.brand : null) || null,
-            img: p.images?.[0]?.imageUrl || null,
-            warehouseId: undefined,
-            branchId: undefined,
-            warehouseName: undefined,
-            sellType,
-            measurementUnit,
-            // Discount configurations
-            isDiscountEnabled: p.isDiscountEnabled || false,
-            isDiscountApproved: p.isDiscountApproved || false,
-            discountType: p.discountType || 'PERCENTAGE',
-            maxAllowedDiscount: Number(p.maxAllowedDiscount || 0),
-            defaultDiscountValue: Number(p.defaultDiscountValue || 0),
-          };
-        });
-
-      console.log("[POS] Mapped products:", {
-        mappedStockProducts,
-        mappedNoStockProducts,
-      });
-      setProductsList([...mappedStockProducts, ...mappedNoStockProducts]);
+      setProductsList(mappedStockProducts);
     } catch (err: any) {
       console.error('[POS] Failed to fetch products:', err);
       setFetchError(err.message || 'Failed to connect to API');
@@ -1247,6 +1200,7 @@ export default function POSPage() {
       setIsLoading(false);
     }
   };
+
 
   // Qty Popup state
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
