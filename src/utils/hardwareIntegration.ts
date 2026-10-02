@@ -109,37 +109,31 @@ export async function printThermalReceipt(
 ): Promise<{ success: boolean; message: string }> {
   const rawTextStream = formatESCPosTextStream(payload, 48);
 
+  // Attempt 1: Fast check if Local Till Agent is running on localhost:9100 (200ms max)
   try {
-    // Attempt 1: Send formatted receipt payload to Local Till Agent
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 200);
     const agentRes = await fetch(`${LOCAL_PRINT_AGENT_URL}/print`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, escposText: rawTextStream }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (agentRes.ok) {
       return { success: true, message: "Thermal receipt printed via local print agent." };
     }
   } catch (err) {
-    console.warn("[Hardware Integration] Local print agent offline, sending to NestJS API...");
+    // Local agent offline — proceed to thermal window immediately
   }
 
-  try {
-    // Attempt 2: Send to NestJS Backend API Socket Printer Driver
-    const apiRes = await api.post("/hardware/print-receipt", { ...payload, escposText: rawTextStream });
-    if (apiRes.status === 200 || apiRes.status === 201) {
-      return { success: true, message: "Thermal receipt printed via network printer." };
-    }
-  } catch (err) {
-    console.warn("[Hardware Integration] Network printer socket offline. Launching 80mm Thermal Window...");
-  }
-
-  // Attempt 3: Dedicated 80mm/58mm Thermal Print Template Window
+  // Attempt 2: Dedicated 80mm/58mm Thermal Print Template Window
   printThermalHTMLReceipt(payload);
 
   return {
     success: true,
-    message: "Thermal receipt template launched for 80mm/58mm roll printing.",
+    message: "Thermal receipt window launched for 80mm/58mm roll printing.",
   };
 }
 

@@ -47,7 +47,7 @@ import QRBatchTestModal from "@/components/inventory/QRBatchTestModal";
 import ZPLGeneratorModal from "@/components/inventory/ZPLGeneratorModal";
 import { shopApi } from "@/api/shop";
 import { DateRange } from "react-day-picker";
-import api from "@/api/axiosInstance";
+import api, { clearApiCache } from "@/api/axiosInstance";
 import {
   format,
   parse,
@@ -346,8 +346,8 @@ export default function InventoryPage() {
         const actualProdId = item.product_id || item.productId || item.product?.id || item.product?.productId || item.id;
         const matchingProduct = allProducts.find((p: any) => String(p.id) === String(actualProdId));
 
-        const rawPurchaseCost = Number(matchingProduct?.purchasePrice ?? item.purchase_price ?? item.product?.purchasePrice ?? 0);
-        const rawSellingPrice = Number(matchingProduct?.sellingPrice ?? item.selling_price ?? item.product?.sellingPrice ?? 0);
+        const rawPurchaseCost = Number(matchingProduct?.purchasePrice ?? matchingProduct?.purchase_price ?? item.purchase_price ?? item.product?.purchasePrice ?? item.product?.purchase_price ?? 0);
+        const rawSellingPrice = Number(matchingProduct?.sellingPrice ?? matchingProduct?.selling_price ?? item.selling_price ?? item.product?.sellingPrice ?? item.product?.selling_price ?? 0);
         const cost = rawPurchaseCost > 1 ? rawPurchaseCost : (rawSellingPrice > 0 ? rawSellingPrice : rawPurchaseCost);
         const totalVal = qty * cost;
 
@@ -356,38 +356,40 @@ export default function InventoryPage() {
           productId: actualProdId,
           product_id: actualProdId,
           stockId: item.id || item.stock_id,
-          name: item.product_name || item.product?.name || matchingProduct?.name || "Unknown",
-          sku: item.sku || item.product?.sku || matchingProduct?.sku || "N/A",
-          skuInfo: item.sku || item.product?.sku || matchingProduct?.sku || "N/A",
+          name: matchingProduct?.name || matchingProduct?.product_name || item.product?.name || item.product_name || "Unknown",
+          sku: matchingProduct?.sku || item.product?.sku || item.sku || "N/A",
+          skuInfo: matchingProduct?.sku || item.product?.sku || item.sku || "N/A",
           category:
-            item.category_name ||
-            item.product?.category?.name ||
             matchingProduct?.category?.name ||
+            matchingProduct?.categoryName ||
+            item.product?.category?.name ||
+            item.category_name ||
             "Uncategorized",
           subCategory:
-            item.subcategory_name ||
-            item.product?.subCategory?.name ||
-            item.product?.subcategory?.name ||
-            item.product?.subCategoryName ||
             matchingProduct?.subCategory?.name ||
             matchingProduct?.subcategory?.name ||
             matchingProduct?.subCategoryName ||
+            item.product?.subCategory?.name ||
+            item.product?.subcategory?.name ||
+            item.subcategory_name ||
             "—",
           brand:
-            item.brand_name ||
-            item.product?.brand?.name ||
-            item.product?.brandName ||
             matchingProduct?.brand?.name ||
             matchingProduct?.brandName ||
+            item.product?.brand?.name ||
+            item.brand_name ||
             (typeof item.product?.brand === "string" ? item.product?.brand : "—"),
           warehouse:
             item.warehouse_name || item.warehouse?.name || "Main Warehouse",
-          product: item.product || matchingProduct || item,
+          product: matchingProduct || item.product || item,
           image: formatImageUrl(
-            item.product?.images?.[0]?.imageUrl ||
-            item.product?.images?.[0]?.url ||
             matchingProduct?.images?.[0]?.imageUrl ||
             matchingProduct?.images?.[0]?.url ||
+            matchingProduct?.image ||
+            matchingProduct?.imageUrl ||
+            matchingProduct?.image_url ||
+            item.product?.images?.[0]?.imageUrl ||
+            item.product?.images?.[0]?.url ||
             item.images?.[0]?.imageUrl ||
             item.images?.[0]?.url ||
             item.product?.image ||
@@ -408,34 +410,34 @@ export default function InventoryPage() {
           cost,
           purchasePrice: rawPurchaseCost,
           sellingPrice: rawSellingPrice,
-          comparePrice: Number(item.product?.minimumSellingPrice ?? matchingProduct?.minimumSellingPrice ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.comparePrice ?? item.compare_price ?? 0),
-          minimumSellingPrice: Number(item.product?.minimumSellingPrice ?? matchingProduct?.minimumSellingPrice ?? item.minimum_selling_price ?? 0),
-          description: item.product?.description ?? matchingProduct?.description ?? item.description ?? "",
-          shortDescription: item.product?.shortDescription ?? matchingProduct?.shortDescription ?? item.shortDescription ?? "",
-          barcode: item.product?.barcode ?? matchingProduct?.barcode ?? item.barcode ?? "",
-          productType: item.product?.sellType ?? matchingProduct?.sellType ?? item.sellType ?? item.productType ?? "FIX",
-          sellType: item.product?.sellType ?? matchingProduct?.sellType ?? item.sellType ?? "FIX",
-          unit: item.product?.measurementUnit ?? matchingProduct?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
-          measurementUnit: item.product?.measurementUnit ?? matchingProduct?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
-          minStock: Number(item.product?.minimumStockLevel ?? matchingProduct?.minimumStockLevel ?? item.minimum_stock_level ?? item.minStock ?? 10),
-          minimumStockLevel: Number(item.product?.minimumStockLevel ?? matchingProduct?.minimumStockLevel ?? item.minimum_stock_level ?? 10),
-          maxLevel: Number(item.product?.maximumStockLevel ?? matchingProduct?.maximumStockLevel ?? item.maximum_stock_level ?? item.maxLevel ?? Math.max(minStock, qty, 1)),
-          maximumStockLevel: Number(item.product?.maximumStockLevel ?? matchingProduct?.maximumStockLevel ?? item.maximum_stock_level ?? 200),
-          categoryId: item.category_id || item.product?.categoryId || item.product?.category?.id || matchingProduct?.categoryId,
-          subCategoryId: item.subcategory_id || item.product?.subcategoryId || item.product?.subCategory?.id || matchingProduct?.subcategoryId,
-          brandId: item.brand_id || item.product?.brandId || item.product?.brand?.id || matchingProduct?.brandId,
-          supplierId: item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || matchingProduct?.supplierProducts?.[0]?.supplierId || "",
-          supplier: item.supplierName || item.supplier_name || item.product?.supplierProducts?.[0]?.supplier?.name || matchingProduct?.supplierProducts?.[0]?.supplier?.name || "",
+          comparePrice: Number(matchingProduct?.minimumSellingPrice ?? matchingProduct?.minimum_selling_price ?? matchingProduct?.comparePrice ?? matchingProduct?.compare_price ?? item.product?.minimumSellingPrice ?? item.product?.minimum_selling_price ?? item.minimumSellingPrice ?? item.minimum_selling_price ?? item.comparePrice ?? item.compare_price ?? 0),
+          minimumSellingPrice: Number(matchingProduct?.minimumSellingPrice ?? matchingProduct?.minimum_selling_price ?? item.product?.minimumSellingPrice ?? item.minimum_selling_price ?? 0),
+          description: matchingProduct?.description ?? item.product?.description ?? item.description ?? "",
+          shortDescription: matchingProduct?.shortDescription ?? matchingProduct?.short_description ?? item.product?.shortDescription ?? item.shortDescription ?? "",
+          barcode: matchingProduct?.barcode ?? item.product?.barcode ?? item.barcode ?? "",
+          productType: matchingProduct?.sellType ?? matchingProduct?.productType ?? item.product?.sellType ?? item.sellType ?? item.productType ?? "FIX",
+          sellType: matchingProduct?.sellType ?? item.product?.sellType ?? item.sellType ?? "FIX",
+          unit: matchingProduct?.measurementUnit ?? matchingProduct?.measurement_unit ?? item.product?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
+          measurementUnit: matchingProduct?.measurementUnit ?? matchingProduct?.measurement_unit ?? item.product?.measurementUnit ?? item.measurementUnit ?? "Pieces (pcs)",
+          minStock: Number(matchingProduct?.minimumStockLevel ?? matchingProduct?.minimum_stock_level ?? item.product?.minimumStockLevel ?? item.minimum_stock_level ?? item.minStock ?? 10),
+          minimumStockLevel: Number(matchingProduct?.minimumStockLevel ?? matchingProduct?.minimum_stock_level ?? item.product?.minimumStockLevel ?? item.minimum_stock_level ?? 10),
+          maxLevel: Number(matchingProduct?.maximumStockLevel ?? matchingProduct?.maximum_stock_level ?? item.product?.maximumStockLevel ?? item.maximum_stock_level ?? item.maxLevel ?? Math.max(minStock, qty, 1)),
+          maximumStockLevel: Number(matchingProduct?.maximumStockLevel ?? matchingProduct?.maximum_stock_level ?? item.product?.maximumStockLevel ?? item.maximum_stock_level ?? 200),
+          categoryId: matchingProduct?.categoryId ?? matchingProduct?.category_id ?? item.category_id ?? item.product?.categoryId ?? item.product?.category?.id,
+          subCategoryId: matchingProduct?.subcategoryId ?? matchingProduct?.subCategoryId ?? matchingProduct?.subcategory_id ?? item.subcategory_id ?? item.product?.subcategoryId ?? item.product?.subCategory?.id,
+          brandId: matchingProduct?.brandId ?? matchingProduct?.brand_id ?? item.brand_id ?? item.product?.brandId ?? item.product?.brand?.id,
+          supplierId: matchingProduct?.supplierProducts?.[0]?.supplierId || matchingProduct?.supplierId || item.supplierId || item.supplier_id || item.product?.supplierProducts?.[0]?.supplierId || "",
+          supplier: matchingProduct?.supplierProducts?.[0]?.supplier?.name || matchingProduct?.supplierName || item.supplierName || item.supplier_name || item.product?.supplierProducts?.[0]?.supplier?.name || "",
           warehouseId: item.warehouse_id,
-          isDiscountEnabled: item.isDiscountEnabled || item.product?.isDiscountEnabled || matchingProduct?.isDiscountEnabled || false,
-          isDiscountApproved: item.isDiscountApproved || item.product?.isDiscountApproved || matchingProduct?.isDiscountApproved || false,
-          discountType: item.discountType || item.product?.discountType || matchingProduct?.discountType || "PERCENTAGE",
-          maxAllowedDiscount: Number(item.maxAllowedDiscount || item.product?.maxAllowedDiscount || matchingProduct?.maxAllowedDiscount || 0),
-          defaultDiscountValue: Number(item.defaultDiscountValue || item.product?.defaultDiscountValue || matchingProduct?.defaultDiscountValue || 0),
-          hasSecondaryDiscount: item.hasSecondaryDiscount || item.product?.hasSecondaryDiscount || matchingProduct?.hasSecondaryDiscount || false,
-          secondaryDiscountType: item.secondaryDiscountType || item.product?.secondaryDiscountType || matchingProduct?.secondaryDiscountType || "PERCENTAGE",
-          maxSecondaryDiscount: Number(item.maxSecondaryDiscount || item.product?.maxSecondaryDiscount || matchingProduct?.maxSecondaryDiscount || 0),
-          defaultSecondaryDiscount: Number(item.defaultSecondaryDiscount || item.product?.defaultSecondaryDiscount || matchingProduct?.defaultSecondaryDiscount || 0),
+          isDiscountEnabled: matchingProduct?.isDiscountEnabled ?? item.isDiscountEnabled ?? item.product?.isDiscountEnabled ?? false,
+          isDiscountApproved: matchingProduct?.isDiscountApproved ?? item.isDiscountApproved ?? item.product?.isDiscountApproved ?? false,
+          discountType: matchingProduct?.discountType ?? item.discountType ?? item.product?.discountType ?? "PERCENTAGE",
+          maxAllowedDiscount: Number(matchingProduct?.maxAllowedDiscount ?? item.maxAllowedDiscount ?? item.product?.maxAllowedDiscount ?? 0),
+          defaultDiscountValue: Number(matchingProduct?.defaultDiscountValue ?? item.defaultDiscountValue ?? item.product?.defaultDiscountValue ?? 0),
+          hasSecondaryDiscount: matchingProduct?.hasSecondaryDiscount ?? item.hasSecondaryDiscount ?? item.product?.hasSecondaryDiscount ?? false,
+          secondaryDiscountType: matchingProduct?.secondaryDiscountType ?? item.secondaryDiscountType ?? item.product?.secondaryDiscountType ?? "PERCENTAGE",
+          maxSecondaryDiscount: Number(matchingProduct?.maxSecondaryDiscount ?? item.maxSecondaryDiscount ?? item.product?.maxSecondaryDiscount ?? 0),
+          defaultSecondaryDiscount: Number(matchingProduct?.defaultSecondaryDiscount ?? item.defaultSecondaryDiscount ?? item.product?.defaultSecondaryDiscount ?? 0),
         };
       });
 
@@ -734,6 +736,9 @@ export default function InventoryPage() {
         defaultDiscountValue,
         imageFile,
         base64Image,
+        updatePreviousSales, // ← exclude from backend PATCH payload
+        costChanged,         // ← exclude from backend PATCH payload
+        sellingChanged,      // ← exclude from backend PATCH payload
         ...coreData
       } = updatedData;
 
@@ -743,6 +748,9 @@ export default function InventoryPage() {
 
       // Clean non-UUID strings for relation fields so PATCH requests do not send invalid syntax strings like "—"
       const cleanCoreData: any = { ...coreData };
+      cleanCoreData.status = "ACTIVE";
+      cleanCoreData.isActive = true;
+      delete cleanCoreData.stockStatus;
       [
         "subCategoryId",
         "subcategoryId",
@@ -903,9 +911,71 @@ export default function InventoryPage() {
         endpoint: `/products/${targetProdId}`,
       });
 
+      // Step: If checkbox was ticked, retroactively fix all past sales items for this product
+      if (updatedData.updatePreviousSales) {
+        try {
+          const recalcRes = await fetch("/api/recalculate-sales-cost", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productId: targetProdId,
+              newCostPrice: Number(updatedData.purchasePrice ?? 0),
+              newSellingPrice: Number(updatedData.sellingPrice ?? 0),
+              updateCost: Boolean(updatedData.costChanged),
+              updateSelling: Boolean(updatedData.sellingChanged),
+            }),
+          });
+          const recalcData = await recalcRes.json();
+          if (recalcData.success) {
+            toast.success(
+              `✓ Previous sales corrected: ${recalcData.message}`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.error(`Previous sales update had issues: ${recalcData.error || "Unknown error"}`, { duration: 6000 });
+          }
+        } catch (recalcErr: any) {
+          toast.error("Could not recalculate previous sales. Product price was still updated.");
+        }
+      }
+
+      // Step: Optimistically update inventoryData state so table immediately displays updated values
+      setInventoryData((prev) =>
+        prev.map((i) => {
+          if (i.id === selectedItem.id || i.productId === targetProdId) {
+            const newSelling = Number(updatedData.sellingPrice ?? i.sellingPrice ?? 0);
+            const newCost = Number(updatedData.purchasePrice ?? i.purchasePrice ?? 0);
+            return {
+              ...i,
+              name: updatedData.name || i.name,
+              sku: updatedData.sku || i.sku,
+              skuInfo: updatedData.sku || i.skuInfo,
+              sellingPrice: newSelling,
+              purchasePrice: newCost,
+              price: newSelling,
+              cost: newCost,
+              unitCost: `Rs. ${newCost.toLocaleString()}`,
+              comparePrice: Number(updatedData.comparePrice ?? i.comparePrice ?? 0),
+              description: updatedData.description ?? i.description,
+              shortDescription: updatedData.shortDescription ?? i.shortDescription,
+              barcode: updatedData.barcode ?? i.barcode,
+              unit: updatedData.unit || i.unit,
+              measurementUnit: updatedData.unit || i.measurementUnit,
+              productType: updatedData.productType || i.productType,
+              sellType: updatedData.productType || i.sellType,
+              minStock: Number(updatedData.minimumStockLevel ?? i.minStock),
+              maxLevel: Number(updatedData.maximumStockLevel ?? i.maxLevel),
+              isDiscountEnabled: updatedData.isDiscountEnabled ?? i.isDiscountEnabled,
+            };
+          }
+          return i;
+        })
+      );
+
       toast.success("Product updated successfully!");
       setIsEditModalOpen(false);
       setSelectedItem(null);
+      clearApiCache();
       fetchInventory(); // Refresh inventory data list
     } catch (error: any) {
       console.error("Failed to update product details:", error);
@@ -928,6 +998,7 @@ export default function InventoryPage() {
         endpoint: `/products/${targetProdId}`,
       });
       toast.success(`Unit price for "${item.name}" permanently updated to Rs. ${newPrice.toLocaleString()}`);
+      clearApiCache();
       fetchInventory();
     } catch (error: any) {
       console.error("Failed to update unit price:", error);

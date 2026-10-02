@@ -76,13 +76,22 @@ async function downloadInvoicePDF({
   let currentProfile = initialProfile;
   if (!currentProfile) {
     try {
-      currentProfile = await shopApi.getProfile();
+      const cached = typeof window !== "undefined" ? localStorage.getItem("pos_shop_profile") : null;
+      if (cached) currentProfile = JSON.parse(cached);
+    } catch {}
+    try {
+      const live = await shopApi.getProfile();
+      if (live) currentProfile = live;
     } catch (e) {
       console.error("Could not fetch shop profile for invoice PDF", e);
     }
   }
 
-  const shopName = currentProfile?.name || "Futura Hardware POS";
+  const rawShopName = currentProfile?.name?.trim();
+  const shopName =
+    rawShopName && !rawShopName.toLowerCase().includes("futura") && !rawShopName.toLowerCase().includes("user's")
+      ? rawShopName
+      : "Trinco Hardware & Electricals";
   const addressParts = [
     currentProfile?.address,
     currentProfile?.city,
@@ -484,7 +493,14 @@ export default function TransactionDetailsModal({
   const [mounted, setMounted] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [shopProfile, setShopProfile] = useState<any>(null);
+  const [shopProfile, setShopProfile] = useState<any>(() => {
+    try {
+      const cached = typeof window !== "undefined" ? localStorage.getItem("pos_shop_profile") : null;
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [customersList, setCustomersList] = useState<any[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -498,7 +514,17 @@ export default function TransactionDetailsModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    shopApi.getProfile().then((p) => setShopProfile(p)).catch(() => {});
+    shopApi
+      .getProfile()
+      .then((p) => {
+        if (p) {
+          setShopProfile(p);
+          try {
+            localStorage.setItem("pos_shop_profile", JSON.stringify(p));
+          } catch {}
+        }
+      })
+      .catch(() => {});
     api
       .get("/products")
       .then((res) => {
@@ -867,22 +893,53 @@ export default function TransactionDetailsModal({
 
   const resolvedStoreName = (() => {
     const name = shopProfile?.name?.trim();
-    if (name && name.length > 0 && !name.toLowerCase().includes("futura") && !name.toLowerCase().includes("hardware store")) {
+    if (name && name.length > 0 && !name.toLowerCase().includes("futura") && !name.toLowerCase().includes("user's")) {
       return name;
     }
-    // Never use authUser.name as store name — fall back to a generic name
-    return "THAHESHAN'S HARDWARE STORE";
+    const authShopName = authUser?.shopName?.trim();
+    if (authShopName && authShopName.length > 0 && !authShopName.toLowerCase().includes("futura") && !authShopName.toLowerCase().includes("user's")) {
+      return authShopName;
+    }
+    return "Trinco Hardware & Electricals";
   })();
 
   const handleThermalPrint = async () => {
+    let currentProfile = shopProfile;
+    if (!currentProfile) {
+      try {
+        const cached = typeof window !== "undefined" ? localStorage.getItem("pos_shop_profile") : null;
+        if (cached) currentProfile = JSON.parse(cached);
+      } catch {}
+      try {
+        const live = await shopApi.getProfile();
+        if (live) {
+          currentProfile = live;
+          setShopProfile(live);
+          try { localStorage.setItem("pos_shop_profile", JSON.stringify(live)); } catch {}
+        }
+      } catch {}
+    }
+
+    const printStoreName = (() => {
+      const pName = currentProfile?.name?.trim();
+      if (pName && !pName.toLowerCase().includes("futura") && !pName.toLowerCase().includes("user's")) return pName;
+      const uShop = authUser?.shopName?.trim();
+      if (uShop && !uShop.toLowerCase().includes("futura") && !uShop.toLowerCase().includes("user's")) return uShop;
+      return "Trinco Hardware & Electricals";
+    })();
+
+    const storeAddr =
+      [currentProfile?.address, currentProfile?.city, currentProfile?.district]
+        .filter(Boolean)
+        .join(", ") || authUser?.shopAddress || "Sri Lanka";
+
+    const storePhone = currentProfile?.phone || authUser?.shopPhone || "";
+
     if (returnedViewItems.length > 0 || invNum.startsWith("EXC-")) {
       printExchangeThermalHTMLReceipt({
-        storeName: resolvedStoreName,
-        storeAddress:
-          [shopProfile?.address, shopProfile?.city, shopProfile?.district]
-            .filter(Boolean)
-            .join(", ") || "",
-        storePhone: shopProfile?.phone || "",
+        storeName: printStoreName,
+        storeAddress: storeAddr,
+        storePhone: storePhone,
         exchangeNo: invNum,
         originalInvoiceNo: data?.originalInvoiceNo || data?.original_invoice_no || "N/A",
         date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
@@ -916,12 +973,9 @@ export default function TransactionDetailsModal({
     const isUnpaid = invPayStatus === "UNPAID";
 
     const payload = {
-      storeName: resolvedStoreName,
-      storeAddress:
-        [shopProfile?.address, shopProfile?.city, shopProfile?.district]
-          .filter(Boolean)
-          .join(", ") || "Sri Lanka",
-      storePhone: shopProfile?.phone || "",
+      storeName: printStoreName,
+      storeAddress: storeAddr,
+      storePhone: storePhone,
       invoiceNo: invNum,
       date: `${formattedDate}${formattedTime ? ` at ${formattedTime}` : ""}`,
       cashier: cashier,

@@ -26,14 +26,16 @@ import {
   MoreVertical,
   Edit3,
   MessageSquare,
+  RotateCcw,
 } from 'lucide-react';
-import api from '@/api/axiosInstance';
+import api, { clearApiCache } from '@/api/axiosInstance';
 import * as Popover from '@radix-ui/react-popover';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import SettleCreditModal from '@/components/customers/SettleCreditModal';
+import CustomerProfileModal from '@/components/customers/CustomerProfileModal';
 import { triggerBatchCreditReminders, sendSingleCreditReminderSMS } from '@/utils/textlkSmsService';
 import { toastInfo, toastSuccess, toastError } from '@/lib/toast';
 
@@ -301,7 +303,23 @@ function ViewCustomerModal({ customer, onClose, onEdit }: { customer: Customer; 
 }
 
 // ─── Dots Menu ────────────────────────────────────────────────────────────────
-function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit, onSendSMS }: { cust: Customer; onView: () => void; onEdit: () => void; onDelete: () => void; onSettleCredit?: () => void; onSendSMS?: () => void }) {
+function CustomerMenu({
+  cust,
+  onView,
+  onEdit,
+  onDelete,
+  onSettleCredit,
+  onSendSMS,
+  onReconcile,
+}: {
+  cust: Customer;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onSettleCredit?: () => void;
+  onSendSMS?: () => void;
+  onReconcile?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -322,7 +340,7 @@ function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit, onSendSM
         <MoreVertical className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-20 w-52">
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-xl rounded-xl p-1.5 z-20 w-56">
           {onSettleCredit && cust.outstanding > 0 && (
             <button
               onClick={() => { onSettleCredit(); setOpen(false); }}
@@ -337,6 +355,14 @@ function CustomerMenu({ cust, onView, onEdit, onDelete, onSettleCredit, onSendSM
               className="w-full text-left px-3 py-2 text-[12px] font-bold text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2.5 transition-colors"
             >
               <MessageSquare className="w-3.5 h-3.5 text-amber-600" /> Send Credit Reminder (SMS)
+            </button>
+          )}
+          {onReconcile && (
+            <button
+              onClick={() => { onReconcile(); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-[12px] font-bold text-blue-700 hover:bg-blue-50 rounded-lg flex items-center gap-2.5 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-blue-600" /> Sync & Recalculate Balance
             </button>
           )}
           <button
@@ -390,7 +416,10 @@ export default function CustomersPage() {
     to: new Date()
   });
 
-  useEffect(() => { fetchCustomers(); }, []);
+  useEffect(() => {
+    clearApiCache('/customers');
+    fetchCustomers();
+  }, []);
 
   const fetchCustomers = async () => {
     try {
@@ -417,19 +446,20 @@ export default function CustomersPage() {
         const txCount = Number(c.transactionsCount ?? c.transactions_count ?? 0);
         const val = isNaN(outVal) ? 0 : outVal;
 
+        const cleanName = (c.name || c.customer_name || 'Unknown').trim();
         return {
-          id: c.id,
-          name: c.name || 'Unknown',
+          id: c.id || c.customer_id,
+          name: cleanName,
           phone: c.phone || 'N/A',
           email: c.email || 'N/A',
           address: c.address || 'N/A',
-          customerType: c.customerType || 'Individual',
+          customerType: c.customerType || c.customer_type || 'Individual',
           totalPurchases: isNaN(totalPur) ? 0 : totalPur,
           outstanding: val,
           transactions: isNaN(txCount) ? 0 : txCount,
           isOverdue: val > 0,
           lastActive: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
-          initials: (c.name || 'NA').substring(0, 2).toUpperCase(),
+          initials: (cleanName || 'NA').substring(0, 2).toUpperCase(),
         };
       });
       setCustomers(mapped);
@@ -438,6 +468,43 @@ export default function CustomersPage() {
       setCustomers([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReconcileCustomer = async (cust: Customer) => {
+    try {
+      toastInfo(`Recalculating and syncing balance for ${cust.name}...`);
+      const res = await fetch(`/api/customers/reconcile?customerId=${cust.id}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.results?.[0]) {
+        const r = data.results[0];
+        toastSuccess(
+          `Synced ${r.customerName}! Outstanding: Rs. ${r.reconciledState.outstanding_balance.toLocaleString()} | Total Purchases: Rs. ${r.reconciledState.total_purchases.toLocaleString()}`
+        );
+        clearApiCache('/customers');
+        await fetchCustomers();
+      } else {
+        toastError(new Error(data.message || 'Failed to reconcile customer'));
+      }
+    } catch (err: any) {
+      toastError(err);
+    }
+  };
+
+  const handleReconcileAll = async () => {
+    try {
+      toastInfo('Recalculating and syncing all customer balances from verified invoices...');
+      const res = await fetch('/api/customers/reconcile?all=true', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toastSuccess(`Reconciled ${data.results?.length || 0} customer(s) successfully!`);
+        clearApiCache('/customers');
+        await fetchCustomers();
+      } else {
+        toastError(new Error(data.message || 'Failed to reconcile customers'));
+      }
+    } catch (err: any) {
+      toastError(err);
     }
   };
 
@@ -500,7 +567,7 @@ export default function CustomersPage() {
       {/* Modals */}
       {showAddModal && <AddCustomerModal onClose={() => setShowAddModal(false)} onSuccess={fetchCustomers} />}
       {viewingCustomer && (
-        <ViewCustomerModal
+        <CustomerProfileModal
           customer={viewingCustomer}
           onClose={() => setViewingCustomer(null)}
           onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); }}
@@ -563,6 +630,14 @@ export default function CustomersPage() {
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
+
+            <button
+              onClick={handleReconcileAll}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:text-blue-700 hover:border-blue-300 rounded-xl text-[13px] font-bold shadow-xs transition-all active:scale-95"
+              title="Sync & recalculate all customer balances directly from verified sales invoices"
+            >
+              <RotateCcw className="w-4 h-4 text-blue-600" /> Sync Balances
+            </button>
 
             <button
               onClick={() => window.print()}
@@ -736,6 +811,7 @@ export default function CustomersPage() {
                       onDelete={() => setCustomerToDelete(cust)}
                       onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
                       onSendSMS={() => handleSendSingleSMS(cust)}
+                      onReconcile={() => handleReconcileCustomer(cust)}
                     />
                   </div>
 
@@ -835,6 +911,7 @@ export default function CustomersPage() {
                           onDelete={() => setCustomerToDelete(cust)}
                           onSettleCredit={() => { setSettleCreditCustomer(cust); setShowSettleCreditModal(true); }}
                           onSendSMS={() => handleSendSingleSMS(cust)}
+                          onReconcile={() => handleReconcileCustomer(cust)}
                         />
                       </div>
                     </td>

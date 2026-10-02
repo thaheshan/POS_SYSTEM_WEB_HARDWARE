@@ -154,6 +154,9 @@ export default function EditInventoryModal({
   const [comparePrice, setComparePrice] = useState<number | "">("");
   const [taxInclusive, setTaxInclusive] = useState(false);
   const [taxRate, setTaxRate] = useState("18");
+  const [originalCostPrice, setOriginalCostPrice] = useState<number>(0); // track initial to detect changes
+  const [originalSellingPrice, setOriginalSellingPrice] = useState<number>(0); // track initial selling price
+  const [updatePreviousSales, setUpdatePreviousSales] = useState(false); // checkbox to backfill past sales
 
   // Stock & Inventory State
   const [qty, setQty] = useState<number>(0);
@@ -200,8 +203,13 @@ export default function EditInventoryModal({
     setProductType(item.productType || item.product_type || "FIX");
     setUnit(item.unit || item.measurementUnit || item.measurement_unit || "Pieces (pcs)");
 
-    setUnitCost(item.sellingPrice || item.price || item.unitCost || 0);
-    setCostPrice(item.purchasePrice || item.costPrice || item.cost || 0);
+    const loadedCost = item.purchasePrice ?? item.purchase_price ?? item.costPrice ?? item.cost ?? 0;
+    const loadedSell = item.sellingPrice ?? item.selling_price ?? item.price ?? item.unitCost ?? 0;
+    setUnitCost(loadedSell);
+    setCostPrice(loadedCost);
+    setOriginalCostPrice(Number(loadedCost));
+    setOriginalSellingPrice(Number(loadedSell));
+    setUpdatePreviousSales(false); // always reset checkbox on open
     const compVal = item.comparePrice ?? item.compare_price ?? item.minimumSellingPrice ?? item.minimum_selling_price;
     setComparePrice(compVal !== undefined && compVal !== null && compVal !== "" && Number(compVal) !== 0 ? Number(compVal) : "");
     setTaxInclusive(item.taxInclusive || false);
@@ -528,7 +536,9 @@ export default function EditInventoryModal({
         brandId: brandId || item?.brandId || item?.brand_id || item?.product?.brandId || undefined,
         warehouseId: warehouseId || item?.warehouseId || item?.warehouse_id || undefined,
         supplierId: supplierId || item?.supplierId || item?.supplier_id || undefined,
-        status,
+        stockStatus: status,
+        status: "ACTIVE",
+        isActive: true,
         autoReorder,
         isDiscountEnabled,
         discountType,
@@ -540,6 +550,10 @@ export default function EditInventoryModal({
         defaultSecondaryDiscount: hasSecondaryDiscount && defaultSecondaryDiscount !== "" ? parseFloat(String(defaultSecondaryDiscount)) || 0 : 0,
         imageFile,
         base64Image: previewUrl && previewUrl.startsWith("data:") ? previewUrl : undefined,
+        // Retroactive sales recalculation flags
+        updatePreviousSales: updatePreviousSales && (Number(costPrice) !== originalCostPrice || Number(unitCost) !== originalSellingPrice),
+        costChanged: Number(costPrice) !== originalCostPrice,
+        sellingChanged: Number(unitCost) !== originalSellingPrice,
       };
 
       await onSave(payload);
@@ -556,6 +570,9 @@ export default function EditInventoryModal({
   const compP = Number(comparePrice) || 0;
   const profitMargin = sellP > 0 && costP > 0 ? Math.round(((sellP - costP) / costP) * 100) : 0;
   const compareDiscountPct = compP > sellP && sellP > 0 ? Math.round(((compP - sellP) / compP) * 100) : 0;
+  const costChanged = Number(costPrice) !== originalCostPrice;
+  const sellingChanged = Number(unitCost) !== originalSellingPrice;
+  const priceChanged = costChanged || sellingChanged;
 
 
   return (
@@ -863,7 +880,40 @@ export default function EditInventoryModal({
                 </select>
               </div>
             </div>
+
+
+            {/* Retroactive Sales Recalculation — always visible */}
+            <div className={priceChanged ? "mt-1 p-4 rounded-xl border border-amber-200 bg-amber-50 flex items-start gap-3" : "mt-1 p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-start gap-3 opacity-60"}>
+              <input
+                id="updatePrevSalesChk"
+                type="checkbox"
+                checked={updatePreviousSales}
+                disabled={!priceChanged}
+                onChange={(e) => setUpdatePreviousSales(e.target.checked)}
+                className={priceChanged ? "mt-0.5 rounded w-4 h-4 shrink-0 border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer" : "mt-0.5 rounded w-4 h-4 shrink-0 border-gray-300 text-gray-400 cursor-not-allowed"}
+              />
+              <label htmlFor="updatePrevSalesChk" className={priceChanged ? "cursor-pointer select-none" : "cursor-not-allowed select-none"}>
+                <span className={priceChanged ? "block text-xs font-extrabold text-amber-800" : "block text-xs font-extrabold text-gray-500"}>
+                  Also recalculate past sales invoices &amp; profit for this product
+                </span>
+                <span className={priceChanged ? "block text-[11px] mt-0.5 leading-snug text-amber-700" : "block text-[11px] mt-0.5 leading-snug text-gray-400"}>
+                  {priceChanged
+                    ? (
+                        (costChanged && sellingChanged
+                          ? "Price changes: Cost Rs. " + originalCostPrice.toLocaleString() + " → Rs. " + Number(costPrice).toLocaleString() + ", Selling Rs. " + originalSellingPrice.toLocaleString() + " → Rs. " + Number(unitCost).toLocaleString() + ". "
+                          : sellingChanged
+                          ? "Selling price changed: Rs. " + originalSellingPrice.toLocaleString() + " → Rs. " + Number(unitCost).toLocaleString() + ". "
+                          : "Cost price changed: Rs. " + originalCostPrice.toLocaleString() + " → Rs. " + Number(costPrice).toLocaleString() + ". ") +
+                        (updatePreviousSales
+                          ? "✓ Past sales items & invoices will be updated with these new prices across the system."
+                          : "Tick to update past sales invoices & calculations. Leave unchecked for upcoming sales only.")
+                      )
+                    : "Change either Cost Price or Selling Price above to enable retroactive update of previous sales."}
+                </span>
+              </label>
+            </div>
           </div>
+
 
           {/* 5. INVENTORY & STOCK */}
           <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-4">

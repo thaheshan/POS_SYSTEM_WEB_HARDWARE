@@ -13,7 +13,10 @@ import { HardwarePrintReceiptPayload } from "./hardwareIntegration";
 export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthChars = 40): string {
   const line = "-".repeat(widthChars);
   const doubleLine = "=".repeat(widthChars);
-  const storeNameText = data.storeName || "Hardware Store";
+  const storeNameText =
+    data.storeName && !data.storeName.toLowerCase().includes("futura") && !data.storeName.toLowerCase().includes("user's")
+      ? data.storeName
+      : "Trinco Hardware & Electricals";
   const storeAddressText = data.storeAddress || "";
   const storePhoneText = data.storePhone || "";
 
@@ -80,10 +83,20 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   lines.push(doubleLine);
 
   // Payment Breakdown
-  const isCredit = data.creditLeftover && data.creditLeftover > 0;
+  const isCredit =
+    (data.creditLeftover && data.creditLeftover > 0) ||
+    String(data.paymentMethod).toUpperCase() === "CREDIT";
   if (isCredit) {
     lines.push(leftRight("Paid So Far:", `Rs. ${data.amountTendered.toLocaleString()}`));
     lines.push(leftRight("Outstanding Balance:", `Rs. ${(data.creditLeftover ?? 0).toLocaleString()}`));
+    lines.push(line);
+    const finalCredit =
+      data.totalOutstandingCredit !== undefined && data.totalOutstandingCredit !== null
+        ? data.totalOutstandingCredit
+        : data.creditLeftover ?? 0;
+    lines.push(leftRight("TOTAL OUTSTANDING:", `Rs. ${Number(finalCredit).toLocaleString()}`));
+    lines.push(center("(Total Credit)"));
+    lines.push(line);
   } else {
     lines.push(leftRight("Tendered / Paid:", `Rs. ${data.amountTendered.toLocaleString()}`));
     lines.push(leftRight("Change:", `Rs. ${data.change.toLocaleString()}`));
@@ -98,11 +111,100 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
 }
 
 /**
+ * Opens a dedicated thermal receipt popup window and initiates printing.
+ * Guarantees that the thermal window actually opens on screen and triggers print.
+ */
+export function openThermalPrintWindow(html: string, title = "Thermal Receipt") {
+  if (typeof window === "undefined") return;
+
+  const width = 420;
+  const height = 650;
+  const left = Math.max(0, Math.floor((window.screen.width - width) / 2));
+  const top = Math.max(0, Math.floor((window.screen.height - height) / 2));
+
+  // 1. Try opening a centered dedicated thermal preview & print popup window
+  const printWin = window.open(
+    "",
+    "_blank",
+    `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes`
+  );
+
+  if (printWin) {
+    try {
+      printWin.document.open();
+      printWin.document.write(html);
+      printWin.document.close();
+      printWin.focus();
+      setTimeout(() => {
+        try {
+          printWin.focus();
+          printWin.print();
+        } catch (e) {
+          console.warn("[Thermal Print] Window print failed:", e);
+        }
+      }, 350);
+      return;
+    } catch (e) {
+      console.warn("[Thermal Print] Failed to write to print window:", e);
+    }
+  }
+
+  // 2. Fallback: Open via Blob URL in new tab if blank popup was blocked
+  try {
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const newTab = window.open(url, "_blank");
+    if (newTab) {
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return;
+    }
+  } catch (e) {
+    console.warn("[Thermal Print] Blob URL fallback failed:", e);
+  }
+
+  // 3. Last Resort: Same-origin iframe fallback
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(html);
+      doc.close();
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.warn("[Thermal Print] Iframe print failed:", e);
+        }
+        setTimeout(() => {
+          try {
+            document.body.removeChild(iframe);
+          } catch {}
+        }, 5000);
+      }, 350);
+    }
+  } catch (e) {
+    console.error("[Thermal Print] All print methods failed:", e);
+  }
+}
+
+/**
  * 2. Dedicated HTML Thermal Receipt Window Generator (Exact 58mm/80mm Safe Paper Boundary)
  * Triggered when printing to thermal receipt printer via OS print driver dialog.
  */
 export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
-  const storeNameText = data.storeName || "Hardware Store";
+  const storeNameText =
+    data.storeName && !data.storeName.toLowerCase().includes("futura") && !data.storeName.toLowerCase().includes("user's")
+      ? data.storeName
+      : "Trinco Hardware & Electricals";
   const storeAddressText = data.storeAddress || "";
   const storePhoneText = data.storePhone || "";
 
@@ -260,7 +362,8 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
   <!-- Payment Breakdown -->
   <table style="width:100%; font-size:10.5px; font-weight:700;">
     ${
-      data.creditLeftover && data.creditLeftover > 0
+      (data.creditLeftover && data.creditLeftover > 0) ||
+      String(data.paymentMethod).toUpperCase() === "CREDIT"
         ? `
     <tr>
       <td>Paid So Far:</td>
@@ -269,6 +372,20 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     <tr class="bold" style="color:#c00;">
       <td>Outstanding Balance:</td>
       <td style="text-align:right; font-weight:900;">Rs. ${(data.creditLeftover ?? 0).toLocaleString()}</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border-top:1px dashed #000; padding-top:4px;"></td>
+    </tr>
+    <tr class="bold" style="font-size:11.5px; background:#f9f9f9;">
+      <td style="padding:3px 2px;">TOTAL OUTSTANDING:</td>
+      <td style="text-align:right; font-weight:900; font-size:12px; color:#c00; padding:3px 2px;">Rs. ${Number(
+        data.totalOutstandingCredit !== undefined && data.totalOutstandingCredit !== null
+          ? data.totalOutstandingCredit
+          : data.creditLeftover ?? 0
+      ).toLocaleString()}</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="font-size:8.5px; font-weight:700; color:#555; text-align:right;">(Total Credit)</td>
     </tr>
     `
         : `
@@ -291,63 +408,20 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     <div>Thank you for shopping at ${storeNameText}!</div>
   </div>
 
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        try {
+          window.focus();
+          window.print();
+        } catch (e) {}
+      }, 250);
+    };
+  </script>
 </body>
 </html>`;
 
-  // ── Silent Iframe Print (no popup window) ──────────────────────────────────
-  // Uses a hidden off-screen iframe. The browser OS print dialog appears
-  // directly — no browser popup window is opened.
-  // NOTE: Completely silent zero-dialog printing is ONLY possible via the
-  //       Local Print Agent at localhost:9100 (tried first in printThermalReceipt).
-  // ──────────────────────────────────────────────────────────────────────────
-
-  const triggerPrint = () => {
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText =
-      'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;opacity:0;pointer-events:none;';
-
-    let hasPrinted = false;
-
-    const cleanup = () => {
-      setTimeout(() => {
-        try { document.body.removeChild(iframe); } catch {}
-      }, 4000);
-    };
-
-    const doPrint = () => {
-      if (hasPrinted) return;
-      hasPrinted = true;
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (e) {
-        console.warn('[Thermal Print] iframe.print() failed:', e);
-      } finally {
-        cleanup();
-      }
-    };
-
-    // Set onload BEFORE appending so it never fires early
-    iframe.onload = doPrint;
-
-    // Use blob URL as src — this reliably fires onload
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    iframe.src = url;
-    document.body.appendChild(iframe);
-
-    // Revoke blob URL after use
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-    // Safety fallback: if onload doesn't fire within 2s, print anyway
-    setTimeout(() => {
-      if (!hasPrinted) {
-        doPrint();
-      }
-    }, 2000);
-  };
-
-  triggerPrint();
+  openThermalPrintWindow(html, `Receipt-${data.invoiceNo}`);
 }
 
 /**
@@ -376,7 +450,12 @@ export interface ReturnReceiptPayload {
 }
 
 export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
-  const storeNameText = data.storeName || "Hardware Store";
+  const storeNameText =
+    data.storeName && !data.storeName.toLowerCase().includes("futura") && !data.storeName.toLowerCase().includes("user's")
+      ? data.storeName
+      : "Trinco Hardware & Electricals";
+  const storeAddressText = data.storeAddress || "";
+  const storePhoneText = data.storePhone || "";
   const reasonText = (data.reason || "RETURN").replace(/_/g, " ").toUpperCase();
 
   const itemRows = data.items
@@ -504,50 +583,23 @@ export function printReturnThermalHTMLReceipt(data: ReturnReceiptPayload) {
   <div class="text-center footer">
     <div>*** OFFICIAL RETURN VOUCHER ***</div>
     <div>Thank you for your cooperation</div>
-    <div>futurahardware.com</div>
+    <div>${storeNameText}</div>
   </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        try {
+          window.focus();
+          window.print();
+        } catch (e) {}
+      }, 250);
+    };
+  </script>
 </body>
 </html>`;
 
-  // Hidden Iframe Print
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText =
-    "position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;opacity:0;pointer-events:none;";
-
-  let hasPrinted = false;
-
-  const cleanup = () => {
-    setTimeout(() => {
-      try { document.body.removeChild(iframe); } catch {}
-    }, 4000);
-  };
-
-  const doPrint = () => {
-    if (hasPrinted) return;
-    hasPrinted = true;
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } catch (e) {
-      console.warn("[Return Thermal Print] iframe.print() failed:", e);
-    } finally {
-      cleanup();
-    }
-  };
-
-  iframe.onload = doPrint;
-
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-  setTimeout(() => {
-    if (!hasPrinted) {
-      doPrint();
-    }
-  }, 2000);
+  openThermalPrintWindow(html, `Return-${data.returnNo}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -583,7 +635,12 @@ export interface ExchangeReceiptPayload {
 }
 
 export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
-  const storeNameText = data.storeName || "Futura Hardware";
+  const storeNameText =
+    data.storeName && !data.storeName.toLowerCase().includes("futura") && !data.storeName.toLowerCase().includes("user's")
+      ? data.storeName
+      : "Trinco Hardware & Electricals";
+  const storeAddressText = data.storeAddress || "";
+  const storePhoneText = data.storePhone || "";
 
   const returnedRows = data.returnedItems
     .map(
@@ -726,52 +783,19 @@ export function printExchangeThermalHTMLReceipt(data: ExchangeReceiptPayload) {
     <div class="bold">Thank you for shopping at ${storeNameText}!</div>
     <div>Please retain this exchange receipt for your records.</div>
   </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        try {
+          window.focus();
+          window.print();
+        } catch (e) {}
+      }, 250);
+    };
+  </script>
 </body>
 </html>`;
 
-  // Spool print job via invisible iframe
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-
-  let hasPrinted = false;
-
-  const cleanup = () => {
-    setTimeout(() => {
-      try {
-        document.body.removeChild(iframe);
-      } catch {}
-    }, 4000);
-  };
-
-  const doPrint = () => {
-    if (hasPrinted) return;
-    hasPrinted = true;
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } catch (e) {
-      console.warn("[Exchange Thermal Print] iframe.print() failed:", e);
-    } finally {
-      cleanup();
-    }
-  };
-
-  iframe.onload = doPrint;
-
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-  setTimeout(() => {
-    if (!hasPrinted) {
-      doPrint();
-    }
-  }, 2000);
+  openThermalPrintWindow(html, `Exchange-${data.exchangeNo}`);
 }
