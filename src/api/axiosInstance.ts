@@ -82,7 +82,8 @@ api.interceptors.response.use(
     // Populate cache for successful cacheable GETs
     if ((!method || method === 'get') && CACHEABLE_PATTERNS.some(p => url.includes(p))) {
       const key = url + JSON.stringify(response.config.params || {});
-      if (response.config.adapter?.name !== 'bound adapter') { // don't re-cache an already-cached response
+      const adapterObj = response.config.adapter as any;
+      if (!adapterObj || adapterObj.name !== 'bound adapter') { // don't re-cache an already-cached response
         _cache.set(key, { data: response.data, expiry: Date.now() + CACHE_TTL_MS });
       }
     }
