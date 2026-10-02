@@ -57,62 +57,31 @@ export default function ReturnProductPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [stockRes, productsRes] = await Promise.allSettled([
-        api.get('/stock'),
-        api.get('/products'),
-      ]);
-
-      const stockItems: any[] = stockRes.status === 'fulfilled'
-        ? (stockRes.value.data?.data || stockRes.value.data || [])
-        : [];
-
-      const allProducts: any[] = productsRes.status === 'fulfilled'
-        ? (productsRes.value.data?.data || productsRes.value.data || [])
-        : [];
-
-      const stockProductIds = new Set(stockItems.map((s: any) => String(s.product_id || s.productId)));
+      const stockRes = await api.get('/stock');
+      const stockItems: any[] = stockRes.data?.data || stockRes.data || [];
 
       const mappedFromStock: ProductStockItem[] = stockItems.map((item: any, index: number) => {
         const prodId = String(item.product?.id || item.product_id || item.productId || item.id || `fallback-${index}`);
-        const originalProduct = allProducts.find((p: any) => String(p.id) === prodId);
 
         return {
           id: String(item.id || prodId),
           productId: prodId,
-          name: item.product?.name || item.product_name || originalProduct?.name || 'Unknown Item',
-          sku: item.product?.sku || item.sku || originalProduct?.sku || 'N/A',
-          barcode: item.product?.barcode || item.barcode || originalProduct?.barcode,
-          category: item.product?.category?.name || item.category_name || originalProduct?.category?.name || 'General',
-          brand: item.product?.brand?.name || item.brand_name || originalProduct?.brand?.name || undefined,
-          unitPrice: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || originalProduct?.sellingPrice || 0),
+          name: item.product?.name || item.product_name || 'Unknown Item',
+          sku: item.product?.sku || item.sku || 'N/A',
+          barcode: item.product?.barcode || item.barcode,
+          category: item.product?.category?.name || item.category_name || 'General',
+          brand: item.product?.brand?.name || item.brand_name || undefined,
+          unitPrice: Number(item.product?.selling_price || item.product?.sellingPrice || item.selling_price || 0),
           currentStock: Number(item.available_quantity ?? item.availableQuantity ?? item.quantity ?? 0),
           warehouseId: item.warehouseId || item.warehouse_id,
           warehouseName: item.warehouse?.name || 'Main Store',
-          image: item.image_url || item.product?.image_url || item.product?.image || item.image || originalProduct?.images?.[0]?.imageUrl || null,
-          sellType: item.product?.sellType || originalProduct?.sellType || 'fixed',
-          measurementUnit: item.product?.measurementUnit || item.measurement_unit || item.unit || originalProduct?.measurementUnit || 'pcs',
+          image: item.image_url || item.product?.image_url || item.product?.image || item.image || null,
+          sellType: item.product?.sellType || 'fixed',
+          measurementUnit: item.product?.measurementUnit || item.measurement_unit || item.unit || 'pcs',
         };
       });
 
-      const mappedNoStock: ProductStockItem[] = allProducts
-        .filter((p: any) => !stockProductIds.has(String(p.id)))
-        .map((p: any) => ({
-          id: String(p.id),
-          productId: String(p.id),
-          name: p.name || 'Unknown Item',
-          sku: p.sku || 'N/A',
-          barcode: p.barcode,
-          category: p.category?.name || 'General',
-          brand: p.brand?.name || (typeof p.brand === 'string' ? p.brand : undefined),
-          unitPrice: Number(p.sellingPrice || 0),
-          currentStock: 0,
-          image: p.images?.[0]?.imageUrl || null,
-          sellType: p.sellType || 'fixed',
-          measurementUnit: p.measurementUnit || 'pcs',
-        }));
-
-      const combined = [...mappedFromStock, ...mappedNoStock];
-      setProductsList(combined);
+      setProductsList(mappedFromStock);
     } catch (err: any) {
       console.error('[ReturnProduct] Failed to fetch inventory stock:', err);
       setFetchError(err?.message || 'Failed to load live stock data.');

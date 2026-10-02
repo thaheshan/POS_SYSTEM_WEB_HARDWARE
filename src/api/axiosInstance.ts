@@ -9,6 +9,21 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+// ── In-memory GET cache (session-level, 5-minute TTL) ──────────────────────
+// Prevents duplicate Supabase egress when multiple pages call the same endpoints.
+// Endpoints: /stock, /products, /customers, /categories, /warehouses, /branches, /suppliers
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHEABLE_PATTERNS = ['/stock', '/products', '/customers', '/categories', '/suppliers', '/warehouses', '/branches', '/units'];
+interface CacheEntry { data: any; expiry: number; }
+const _cache = new Map<string, CacheEntry>();
+
+export function clearApiCache(urlFragment?: string) {
+  if (!urlFragment) { _cache.clear(); return; }
+  for (const key of _cache.keys()) {
+    if (key.includes(urlFragment)) _cache.delete(key);
+  }
+}
+
 const api = axios.create({
   // Use environment API URL when available, otherwise local backend for development.
   baseURL:
@@ -21,7 +36,7 @@ const api = axios.create({
   xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
-// ── Request interceptor: attach JWT & CSRF tokens to every API call
+// ── Request interceptor: serve from cache for eligible GETs; attach JWT & CSRF tokens
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -42,13 +57,46 @@ api.interceptors.request.use((config) => {
       config.headers["X-XSRF-TOKEN"] = decoded;
       config.headers["X-CSRF-TOKEN"] = decoded;
     }
+
+    // ── Cache lookup: serve cached GET if fresh (avoids Supabase egress) ──
+    const isGet = !config.method || config.method.toLowerCase() === 'get';
+    const url = config.url || '';
+    if (isGet && CACHEABLE_PATTERNS.some(p => url.includes(p))) {
+      const key = url + JSON.stringify(config.params || {});
+      const cached = _cache.get(key);
+      if (cached && cached.expiry > Date.now()) {
+        // Return a resolved promise that looks like an axios response
+        config.adapter = () => Promise.resolve({ data: cached.data, status: 200, statusText: 'OK (cached)', headers: {}, config });
+      }
+    }
   }
   return config;
 });
 
-// ── Response interceptor: retry transient network/timeout errors & log warnings
+// ── Response interceptor: populate cache; retry transient errors; auto-clear cache on mutations
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = response.config.method?.toLowerCase();
+    const url = response.config.url || '';
+
+    // Populate cache for successful cacheable GETs
+    if ((!method || method === 'get') && CACHEABLE_PATTERNS.some(p => url.includes(p))) {
+      const key = url + JSON.stringify(response.config.params || {});
+      if (response.config.adapter?.name !== 'bound adapter') { // don't re-cache an already-cached response
+        _cache.set(key, { data: response.data, expiry: Date.now() + CACHE_TTL_MS });
+      }
+    }
+
+    // Auto-clear cache for mutating requests so next GET fetches fresh data
+    if (method && ['post', 'put', 'patch', 'delete'].includes(method)) {
+      // Clear cache entries related to the same resource type
+      const segments = url.split('/').filter(Boolean);
+      const resource = segments[segments.length - 2] || segments[segments.length - 1] || '';
+      if (resource) clearApiCache(resource);
+    }
+
+    return response;
+  },
   async (error) => {
     const config = error?.config;
 
