@@ -83,7 +83,7 @@ export function formatESCPosTextStream(data: HardwarePrintReceiptPayload, widthC
   const isCredit = data.creditLeftover && data.creditLeftover > 0;
   if (isCredit) {
     lines.push(leftRight("Paid So Far:", `Rs. ${data.amountTendered.toLocaleString()}`));
-    lines.push(leftRight("Outstanding Balance:", `Rs. ${data.creditLeftover.toLocaleString()}`));
+    lines.push(leftRight("Outstanding Balance:", `Rs. ${(data.creditLeftover ?? 0).toLocaleString()}`));
   } else {
     lines.push(leftRight("Tendered / Paid:", `Rs. ${data.amountTendered.toLocaleString()}`));
     lines.push(leftRight("Change:", `Rs. ${data.change.toLocaleString()}`));
@@ -268,7 +268,7 @@ export function printThermalHTMLReceipt(data: HardwarePrintReceiptPayload) {
     </tr>
     <tr class="bold" style="color:#c00;">
       <td>Outstanding Balance:</td>
-      <td style="text-align:right; font-weight:900;">Rs. ${data.creditLeftover.toLocaleString()}</td>
+      <td style="text-align:right; font-weight:900;">Rs. ${(data.creditLeftover ?? 0).toLocaleString()}</td>
     </tr>
     `
         : `
