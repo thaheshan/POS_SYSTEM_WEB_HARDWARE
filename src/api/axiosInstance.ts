@@ -13,6 +13,9 @@ const api = axios.create({
   // Use environment API URL when available, otherwise local backend for development.
   baseURL:
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1",
+  headers: {
+    'Accept-Encoding': 'gzip, deflate, br',
+  },
   withCredentials: true,
   xsrfCookieName: "XSRF-TOKEN",
   xsrfHeaderName: "X-XSRF-TOKEN",
