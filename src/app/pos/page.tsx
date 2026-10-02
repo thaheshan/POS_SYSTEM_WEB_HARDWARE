@@ -1350,34 +1350,26 @@ export default function POSPage() {
       // Populate cart with items from invoice
       const newCartItems: CartItem[] = (invoice.items || []).map((item: any) => {
         const prod = item.product || {};
-        const isCustom = item.isCustom || !item.productId;
         const rawDiscVal = Number(item.discountAmount ?? item.discount ?? 0);
         const rawDiscPct = Number(item.discountPercentage ?? 0);
-
-        const discountType = rawDiscPct > 0 ? 'PERCENTAGE' : 'FIXED_AMOUNT';
-        const primaryDiscountValue = rawDiscPct > 0 ? rawDiscPct : rawDiscVal;
+        const discType: 'PERCENTAGE' | 'FIXED_AMOUNT' = rawDiscPct > 0 ? 'PERCENTAGE' : 'FIXED_AMOUNT';
 
         return {
           id: item.id || `inv-item-${Math.random()}`,
-          productId: item.productId || '',
           name: prod.name || item.productName || 'Product Item',
           price: Number(item.unitPrice ?? item.price ?? 0),
-          basePrice: Number(item.unitPrice ?? item.price ?? 0),
-          costPrice: Number(item.costPrice ?? prod.purchasePrice ?? 0),
           qty: Number(item.quantity ?? 1),
-          originalQty: Number(item.quantity ?? 1),
-          discountAmount: rawDiscVal,
-          discountType: discountType,
-          primaryDiscount: rawDiscVal,
-          primaryDiscountValue: primaryDiscountValue,
-          primaryDiscountType: discountType,
-          primaryDiscountPercentage: rawDiscPct,
-          unit: prod.unit || item.unit || 'Pcs',
-          stock: prod.stock !== undefined ? Number(prod.stock) : 999,
-          imageUrl: prod.imageUrl || prod.image,
-          isCustom: isCustom,
-          category: prod.category?.name || 'General',
-          taxRate: Number(prod.taxRate || 0),
+          img: prod.imageUrl || prod.image || '',
+          warehouseId: item.warehouseId || prod.warehouseId || undefined,
+          sellType: (prod.sellType || 'fixed') as 'fixed' | 'loose',
+          measurementUnit: prod.unit || item.unit || undefined,
+          discountType: discType,
+          discountAmount: rawDiscVal > 0 ? rawDiscVal : undefined,
+          discountPercentage: rawDiscPct > 0 ? rawDiscPct : undefined,
+          primaryDiscountValue: rawDiscPct > 0 ? rawDiscPct : rawDiscVal || undefined,
+          primaryDiscountType: discType,
+          isDiscountEnabled: rawDiscVal > 0 || rawDiscPct > 0,
+          comparePrice: undefined,
         };
       });
 
