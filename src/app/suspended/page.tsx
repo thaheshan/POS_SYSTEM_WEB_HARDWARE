@@ -13,43 +13,57 @@ export default function SuspendedPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
-    const userStr = localStorage.getItem("pos_user");
-    if (!userStr) {
-      router.push("/auth/login");
-      return;
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const emailParam = searchParams.get("email");
+      if (emailParam) {
+        setEmail(emailParam);
+      }
     }
-    try {
-      const user = JSON.parse(userStr);
-      setShopName(user.shopName || "Your Shop");
-      setEmail(user.email || "");
-    } catch (e) {
-      router.push("/auth/login");
+    const userStr = localStorage.getItem("pos_user") || localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setShopName(user.shopName || user.name || "Your Shop");
+        if (user.email) {
+          setEmail((prev) => prev || user.email);
+        }
+      } catch (e) {}
     }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("pos_user");
+    localStorage.removeItem("user");
     localStorage.removeItem("pos_token");
     document.cookie = "pos_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push("/auth/login");
   };
 
   const handleNotifyPayment = async () => {
+    if (!email) {
+      alert("Please provide the account email address.");
+      return;
+    }
     setIsSubmitting(true);
     setSuccessMsg("");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/auth/complete-payment-by-email`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+      const res = await fetch(`${apiBase}/auth/complete-payment-by-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       
-      if (!res.ok) throw new Error("Failed to process payment notification.");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to process payment notification.");
+      }
       
-      setSuccessMsg("Payment verified! Your account is now active. You will be redirected to login.");
+      setSuccessMsg("Payment verified! Your account is now active. Redirecting to login...");
       setTimeout(() => {
         router.push("/auth/login");
-      }, 3000);
+      }, 2500);
     } catch (err: any) {
       alert(err.message || "Something went wrong.");
     } finally {

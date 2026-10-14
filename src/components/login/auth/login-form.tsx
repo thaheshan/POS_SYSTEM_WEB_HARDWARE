@@ -75,7 +75,7 @@ export default function LoginForm() {
       } else if (errorMessage.toLowerCase().includes("rejected by administration")) {
         router.push("/auth/request-rejected");
       } else if (errorMessage.includes("ACCOUNT_SUSPENDED")) {
-        router.push("/suspended");
+        router.push(`/suspended?email=${encodeURIComponent(email)}`);
       } else {
         setError(errorMessage);
       }
