@@ -65,6 +65,9 @@ const normalizeAuthUser = (value: unknown): AuthUser | null => {
     name: name as string,
     role: role as AuthUser["role"],
     tenantId: candidate.tenant_id || candidate.tenantId,
+    shopName: candidate.shopName || candidate.shop_name || candidate.shop?.name || null,
+    shopAddress: candidate.shopAddress || candidate.shop_address || candidate.shop?.address || null,
+    shopPhone: candidate.shopPhone || candidate.shop_phone || candidate.shop?.phone || null,
     logoUrl: candidate.logoUrl || candidate.logo_url || null,
     createdAt:
       typeof candidate.createdAt === "string"

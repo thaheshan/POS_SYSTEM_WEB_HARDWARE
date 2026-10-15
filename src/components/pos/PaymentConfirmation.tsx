@@ -203,7 +203,7 @@ function downloadInvoicePDF({
 <div class="page">
   <div class="header">
     <div>
-      <div class="brand-name">${storeName || "Futura Hardware POS"}</div>
+      <div class="brand-name">${storeName || "Trinco Hardware & Electricals"}</div>
       <div class="brand-sub">Hardware &amp; Building Materials Management</div>
     </div>
     <div class="invoice-label">
@@ -283,20 +283,35 @@ function downloadInvoicePDF({
     </div>
   </div>
 
-  <div class="section-title">Payment Details</div>
+  <div class="section-title">${paymentMethod.toLowerCase() === "credit" || creditLeftover > 0 ? "Payment & Credit Details" : "Payment Details"}</div>
   <div class="payment-grid">
     <div class="payment-box">
       <div class="meta-label">Amount Tendered / Paid</div>
       <div class="meta-value" style="font-family:monospace;">Rs. ${amountTendered.toLocaleString()}</div>
     </div>
+    ${
+      paymentMethod.toLowerCase() === "credit" || creditLeftover > 0
+        ? `
+    <div class="payment-box" style="background:#fff1f2; border:1px solid #fecdd3;">
+      <div class="meta-label" style="color:#e11d48;">Invoice Balance</div>
+      <div class="meta-value" style="font-family:monospace; color:#be123c;">Rs. ${creditLeftover.toLocaleString()}</div>
+    </div>
+    <div class="payment-box" style="background:#fff1f2; border:1px solid #fecdd3;">
+      <div class="meta-label" style="color:#e11d48;">Total Outstanding Balance</div>
+      <div class="meta-value" style="font-family:monospace; color:#9f1239; font-weight:900;">Rs. ${(totalOutstandingCredit || creditLeftover).toLocaleString()}</div>
+    </div>
+    `
+        : `
     <div class="payment-box">
-      <div class="meta-label">Change / Credit Leftover</div>
+      <div class="meta-label">Change</div>
       <div class="meta-value" style="font-family:monospace;">Rs. ${change.toLocaleString()}</div>
     </div>
     <div class="payment-box">
       <div class="meta-label">Total Items</div>
       <div class="meta-value">${items.length} item${items.length !== 1 ? "s" : ""}</div>
     </div>
+    `
+    }
   </div>
 
   ${
@@ -355,7 +370,18 @@ export default function PaymentConfirmation({
   const [selectedMethod, setSelectedMethod] = useState<string>(paymentMethod || "cash");
   const [creditPaidInput, setCreditPaidInput] = useState<string>("0");
   const [customerAccount, setCustomerAccount] = useState<any>(null);
-  const [shopProfile, setShopProfile] = useState<any>(null);
+  const [shopProfile, setShopProfile] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pos_shop_profile");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.name && !parsed.name.toLowerCase().includes("futura")) return parsed;
+        }
+      } catch {}
+    }
+    return null;
+  });
 
   // Focus scroll container on mount for immediate ArrowUp/ArrowDown keyboard navigation
   useEffect(() => {
@@ -369,7 +395,12 @@ export default function PaymentConfirmation({
     shopApi
       .getProfile()
       .then((data) => {
-        if (data?.name) setShopProfile(data);
+        if (data?.name && !data.name.toLowerCase().includes("futura")) {
+          setShopProfile(data);
+          try {
+            localStorage.setItem("pos_shop_profile", JSON.stringify(data));
+          } catch {}
+        }
       })
       .catch(() => {});
   }, []);
@@ -393,20 +424,44 @@ export default function PaymentConfirmation({
 
   const cashierName = formatCashierLabel(authUser);
 
+  const getCachedShopProfile = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const c = localStorage.getItem("pos_shop_profile");
+        return c ? JSON.parse(c) : null;
+      } catch { return null; }
+    }
+    return null;
+  };
+
+  const cachedProfile = getCachedShopProfile();
+
   const rawStoreName =
     shopProfile?.name ||
-    authUser?.shop?.name ||
+    cachedProfile?.name ||
     authUser?.shopName ||
+    authUser?.shop?.name ||
     authUser?.shop_name ||
     authUser?.tenantName;
 
   const storeName =
-    rawStoreName && !rawStoreName.toLowerCase().includes("futura")
+    rawStoreName && !rawStoreName.toLowerCase().includes("futura") && !rawStoreName.toLowerCase().includes("user's")
       ? rawStoreName
-      : (authUser?.name ? `${authUser.name}'s Store` : "Hardware Store");
+      : "Trinco Hardware & Electricals";
 
-  const storeAddress = shopProfile?.address || "";
-  const storePhone = shopProfile?.phone || "";
+  const storeAddress =
+    shopProfile?.address ||
+    cachedProfile?.address ||
+    authUser?.shopAddress ||
+    authUser?.shop?.address ||
+    "";
+
+  const storePhone =
+    shopProfile?.phone ||
+    cachedProfile?.phone ||
+    authUser?.shopPhone ||
+    authUser?.shop?.phone ||
+    "";
 
 
   // Fetch customer account details if customerId is provided
@@ -465,6 +520,26 @@ export default function PaymentConfirmation({
   const validExistingCredit = isNaN(existingCreditBalance) ? 0 : existingCreditBalance;
   const newTotalOutstanding = validExistingCredit + creditLeftover;
 
+  const getActiveTotalOutstanding = () => {
+    let base = validExistingCredit;
+    if (base <= 0 && (customerId || selectedCustomer)) {
+      const directCustVal = Number(
+        customerAccount?.outstandingBalance ??
+        customerAccount?.outstanding ??
+        customerAccount?.creditBalance ??
+        customerAccount?.outstanding_balance ??
+        selectedCustomer?.outstandingBalance ??
+        selectedCustomer?.outstanding ??
+        selectedCustomer?.creditBalance ??
+        selectedCustomer?.outstanding_balance ?? 0
+      );
+      if (!isNaN(directCustVal) && directCustVal > 0) {
+        base = directCustVal;
+      }
+    }
+    return base + creditLeftover;
+  };
+
   // Execute Hardware Cash Drawer Kick (ESC/POS)
   const handleDrawerKick = async () => {
     toastInfo("Sending Cash Drawer Kick signal...");
@@ -475,12 +550,42 @@ export default function PaymentConfirmation({
   };
 
   // Execute ESC/POS Thermal Receipt Print
-  const handleESCPrint = async () => {
+  const handleESCPrint = async (overrideTotalOutstanding?: number) => {
     toastInfo("Printing receipt to thermal printer...");
+
+    const activeTotalOutstanding =
+      overrideTotalOutstanding !== undefined
+        ? overrideTotalOutstanding
+        : getActiveTotalOutstanding();
+
+    // Always fetch latest live shop profile directly from the API
+    let activeStoreName = storeName;
+    let activeStoreAddress = storeAddress;
+    let activeStorePhone = storePhone;
+
+    try {
+      const liveData = await shopApi.getProfile();
+      if (liveData?.name && !liveData.name.toLowerCase().includes("futura") && !liveData.name.toLowerCase().includes("user's")) {
+        activeStoreName = liveData.name;
+        if (liveData.address) activeStoreAddress = liveData.address;
+        if (liveData.phone) activeStorePhone = liveData.phone;
+        setShopProfile(liveData);
+        try {
+          localStorage.setItem("pos_shop_profile", JSON.stringify(liveData));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn("[Thermal Receipt] Live profile fetch fallback:", err);
+    }
+
+    if (!activeStoreName || activeStoreName.toLowerCase().includes("futura") || activeStoreName.toLowerCase().includes("user's")) {
+      activeStoreName = "Trinco Hardware & Electricals";
+    }
+
     const payload: HardwarePrintReceiptPayload = {
-      storeName: storeName,
-      storeAddress: storeAddress,
-      storePhone: storePhone,
+      storeName: activeStoreName,
+      storeAddress: activeStoreAddress,
+      storePhone: activeStorePhone,
       invoiceNo: invoiceRef,
       date: new Date().toLocaleString("en-GB"),
       cashier: cashierName,
@@ -504,7 +609,7 @@ export default function PaymentConfirmation({
       amountTendered: effectivePaidAmount,
       change: isCreditSale ? 0 : change,
       creditLeftover,
-      totalOutstandingCredit: newTotalOutstanding,
+      totalOutstandingCredit: activeTotalOutstanding,
       notes,
       openDrawer: selectedMethod.toLowerCase() === "cash",
     };
@@ -515,9 +620,9 @@ export default function PaymentConfirmation({
     } else {
       // Fallback to browser HTML PDF invoice
       downloadInvoicePDF({
-        storeName,
-        storeAddress,
-        storePhone,
+        storeName: activeStoreName,
+        storeAddress: activeStoreAddress,
+        storePhone: activeStorePhone,
         items,
         customerName,
         customerPhone,
@@ -526,7 +631,7 @@ export default function PaymentConfirmation({
         amountTendered: effectivePaidAmount,
         change: isCreditSale ? 0 : change,
         creditLeftover,
-        totalOutstandingCredit: newTotalOutstanding,
+        totalOutstandingCredit: activeTotalOutstanding,
         subtotal,
         discount,
         total,
@@ -585,12 +690,23 @@ export default function PaymentConfirmation({
             else if (Array.isArray(allRes.data?.data)) allData = allRes.data.data;
             else if (Array.isArray(allRes.data?.data?.data)) allData = allRes.data.data.data;
 
-            const match = allData.find(
-              (c: any) =>
-                c.id === customerId ||
-                (customerPhone && c.phone && c.phone.replace(/\s+/g, "").includes(customerPhone.replace(/\s+/g, ""))) ||
-                (customerName && c.name?.toLowerCase() === customerName.toLowerCase())
-            );
+            const cleanTargetName = customerName?.trim().toLowerCase();
+            const cleanTargetPhone = customerPhone?.replace(/\D/g, "");
+
+            const match = allData.find((c: any) => {
+              const cId = c.id || c.customer_id;
+              if (customerId && cId === customerId) return true;
+
+              const cPhone = String(c.phone || "").replace(/\D/g, "");
+              if (cleanTargetPhone && cPhone && (cPhone === cleanTargetPhone || cPhone.includes(cleanTargetPhone) || cleanTargetPhone.includes(cPhone))) {
+                return true;
+              }
+
+              const cName = (c.name || c.customer_name || "").trim().toLowerCase();
+              if (cleanTargetName && cName === cleanTargetName) return true;
+
+              return false;
+            });
 
             if (match) {
               const matchedBal = Number(
@@ -648,7 +764,7 @@ export default function PaymentConfirmation({
       openCashDrawer();
 
       // 2. Automatically trigger ESC/POS Thermal Receipt Print
-      handleESCPrint();
+      await handleESCPrint(freshTotalOutstanding);
 
       // Trigger TEXT.LK Credit SMS Notification if Credit sale
       if (isCreditSale && customerPhone && customerPhone !== "N/A") {
@@ -1025,9 +1141,27 @@ export default function PaymentConfirmation({
           </div>
           <button
             type="button"
-            onClick={() =>
+            onClick={async () => {
+              let activeStoreName = storeName;
+              let activeStoreAddress = storeAddress;
+              let activeStorePhone = storePhone;
+              try {
+                const liveData = await shopApi.getProfile();
+                if (liveData?.name && !liveData.name.toLowerCase().includes("futura") && !liveData.name.toLowerCase().includes("user's")) {
+                  activeStoreName = liveData.name;
+                  if (liveData.address) activeStoreAddress = liveData.address;
+                  if (liveData.phone) activeStorePhone = liveData.phone;
+                  setShopProfile(liveData);
+                  localStorage.setItem("pos_shop_profile", JSON.stringify(liveData));
+                }
+              } catch {}
+              if (!activeStoreName || activeStoreName.toLowerCase().includes("futura") || activeStoreName.toLowerCase().includes("user's")) {
+                activeStoreName = "Trinco Hardware & Electricals";
+              }
               downloadInvoicePDF({
-                storeName,
+                storeName: activeStoreName,
+                storeAddress: activeStoreAddress,
+                storePhone: activeStorePhone,
                 items,
                 customerName,
                 customerPhone,
@@ -1036,13 +1170,13 @@ export default function PaymentConfirmation({
                 amountTendered: effectivePaidAmount,
                 change: isCreditSale ? 0 : change,
                 creditLeftover,
-                totalOutstandingCredit: newTotalOutstanding,
+                totalOutstandingCredit: getActiveTotalOutstanding(),
                 subtotal,
                 discount,
                 total,
                 notes,
-              })
-            }
+              });
+            }}
             className="w-full py-2.5 px-3 bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
           >
             <FileText className="w-4 h-4 text-gray-500" /> Download Invoice PDF

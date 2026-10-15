@@ -51,7 +51,16 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     }
   }, [isAuthenticated]);
 
-  const shopName = shopProfile?.name || (user?.name ? `${user.name}'s Shop` : 'Loading Shop...');
+  const shopName =
+    shopProfile?.name ||
+    (user as any)?.shopName ||
+    (typeof window !== 'undefined' && (() => {
+      try {
+        const c = localStorage.getItem('pos_shop_profile');
+        return c ? JSON.parse(c)?.name : null;
+      } catch { return null; }
+    })()) ||
+    'Trinco Hardware & Electricals';
   const logoUrl = formatImageUrl(shopProfile?.logo_url || user?.logoUrl) ?? undefined;
 
   return (

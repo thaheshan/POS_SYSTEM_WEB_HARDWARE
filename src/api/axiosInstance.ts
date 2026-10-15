@@ -87,10 +87,7 @@ api.interceptors.response.use(
 
     // Auto-clear cache for mutating requests so next GET fetches fresh data
     if (method && ['post', 'put', 'patch', 'delete'].includes(method)) {
-      // Clear cache entries related to the same resource type
-      const segments = url.split('/').filter(Boolean);
-      const resource = segments[segments.length - 2] || segments[segments.length - 1] || '';
-      if (resource) clearApiCache(resource);
+      clearApiCache();
     }
 
     return response;

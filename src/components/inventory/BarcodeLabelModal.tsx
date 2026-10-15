@@ -29,6 +29,10 @@ interface BarcodeLabelModalProps {
     name: string;
     sku: string;
     unitCost?: string | number;
+    sellingPrice?: number;
+    purchasePrice?: number;
+    price?: number;
+    cost?: number;
     category?: string;
   } | null;
   storeName?: string;
@@ -210,24 +214,24 @@ export default function BarcodeLabelModal({
 
   const extractNumericPrice = (p: any): number => {
     if (!p) return 0;
-    
-    let uCost = 0;
+
+    // 1. Prefer explicit sellingPrice field (set by inventory page)
+    if (typeof p.sellingPrice === "number" && p.sellingPrice > 0) return p.sellingPrice;
+
+    // 2. price field (generic selling price alias)
+    if (typeof p.price === "number" && p.price > 0) return p.price;
+
+    // 3. unitCost string like "Rs. 7,000" — parse it
     if (p.unitCost !== undefined && p.unitCost !== null && p.unitCost !== "") {
-      uCost = parseFloat(String(p.unitCost).replace(/[^\d.]/g, "")) || 0;
+      const parsed = parseFloat(String(p.unitCost).replace(/[^\d.]/g, "")) || 0;
+      if (parsed > 0) return parsed;
     }
 
-    const pCost = typeof p.purchasePrice === "number" && p.purchasePrice > 0 
-      ? p.purchasePrice 
-      : (typeof p.cost === "number" && p.cost > 0 ? p.cost : uCost);
+    // 4. Last resort: purchase/cost price (avoid using this for the code because it encodes cost not selling price)
+    if (typeof p.purchasePrice === "number" && p.purchasePrice > 0) return p.purchasePrice;
+    if (typeof p.cost === "number" && p.cost > 0) return p.cost;
 
-    const sPrice = typeof p.sellingPrice === "number" && p.sellingPrice > 0 
-      ? p.sellingPrice 
-      : (typeof p.price === "number" && p.price > 0 ? p.price : 0);
-
-    // If cost > 1 (real purchase cost), use it; if cost <= 1 (placeholder/missing) but selling price > 1, fallback to selling price
-    if (pCost > 1) return pCost;
-    if (sPrice > 1) return sPrice;
-    return pCost > 0 ? pCost : sPrice;
+    return 0;
   };
 
   const rawPriceNum = extractNumericPrice(product);
