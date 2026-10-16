@@ -4,11 +4,75 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Phone, Mail, MapPin, CreditCard, ShoppingBag, TrendingUp,
   Printer, FileDown, Package, Calendar, Clock, AlertCircle,
-  ChevronDown, ChevronUp, ReceiptText, Banknote, ExternalLink, User, RotateCcw
+  ChevronDown, ChevronUp, ReceiptText, Banknote, ExternalLink, User, RotateCcw,
+  Eye
 } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { shopApi } from '@/api/shop';
 import { openThermalPrintWindow } from '@/utils/thermalReceiptTemplate';
+import TransactionDetailsModal from '@/components/sales/TransactionDetailsModal';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const formatDisplayDate = (dateVal?: string): string => {
+  if (!dateVal) return 'N/A';
+  try {
+    const d = new Date(dateVal);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+  } catch {}
+  return String(dateVal).split('T')[0];
+};
+
+const formatDisplayTime = (timeVal?: string, dateVal?: string): string => {
+  if (!timeVal && !dateVal) return '';
+  if (timeVal && timeVal.includes('T')) {
+    const part = timeVal.split('T')[1];
+    return part ? part.slice(0, 5) : '';
+  }
+  if (timeVal && !timeVal.startsWith('1970') && !timeVal.includes('-')) {
+    return timeVal.slice(0, 5);
+  }
+  if (dateVal && dateVal.includes('T') && !dateVal.endsWith('00:00:00.000Z')) {
+    try {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {}
+  }
+  return '';
+};
+
+const extractItems = (obj: any): any[] => {
+  if (!obj || typeof obj !== 'object') return [];
+  if (Array.isArray(obj) && obj.length > 0) return obj;
+
+  const itemKeys = [
+    'items',
+    'saleItems',
+    'sale_items',
+    'orderItems',
+    'invoiceItems',
+    'lineItems',
+    'line_items',
+    'products',
+    'cart',
+    'details',
+    'transaction_items',
+    'purchasedItems',
+    'purchased_items',
+  ];
+
+  for (const k of itemKeys) {
+    let val = obj[k];
+    if (typeof val === 'string' && val.trim().startsWith('[')) {
+      try { val = JSON.parse(val); } catch {}
+    }
+    if (Array.isArray(val) && val.length > 0) return val;
+  }
+  return [];
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Customer {
@@ -63,50 +127,147 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [shopProfile, setShopProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'credit' | 'cash'>('all');
+  const [productCatalog, setProductCatalog] = useState<Record<string, any>>({});
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchInvoices();
+    // 1. Fetch shop profile
     shopApi.getProfile().then(setShopProfile).catch(() => {});
-    // Also try cached profile
     try {
       const cached = localStorage.getItem('pos_shop_profile');
       if (cached) setShopProfile(JSON.parse(cached));
     } catch {}
+
+    // 2. Fetch products catalog map for resilient product name resolution
+    api.get('/products', { params: { limit: 1000 } })
+      .then((res) => {
+        const list = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.items)
+          ? res.data.items
+          : [];
+        const map: Record<string, any> = {};
+        for (const p of list) {
+          const id = p.id || p.productId || p.product_id || p._id;
+          if (id) map[id] = p;
+        }
+        setProductCatalog(map);
+        fetchInvoices(map);
+      })
+      .catch(() => {
+        fetchInvoices({});
+      });
   }, [customer.id]);
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = async (catalogMapOverride?: Record<string, any>) => {
     setLoading(true);
     try {
+      const catMap = catalogMapOverride || productCatalog;
       const cleanPhone = (customer.phone || '').replace(/\D/g, '');
       const cleanName = (customer.name || '').trim();
 
       // Helper to normalize any raw invoice shape (from Next.js API or NestJS backend)
       const normalizeInvoice = (raw: any): Invoice => {
-        const items = Array.isArray(raw.items)
-          ? raw.items.map((it: any) => ({
-              name: it.product_name || it.name || it.item_name || 'Product',
-              quantity: Number(it.quantity || it.qty || 1),
-              unit_price: Number(it.unit_price || it.unitPrice || it.price || 0),
-              line_total: Number(it.line_total || it.lineTotal || it.total || (Number(it.quantity || 1) * Number(it.unit_price || it.price || 0))),
-              sku: it.sku || '',
-              discount_amount: Number(it.discount_amount || it.discount || 0),
-            }))
-          : [];
+        const rawItems = extractItems(raw);
+
+        const items = rawItems.map((it: any) => {
+          const pid = String(
+            it.productId ||
+            it.product_id ||
+            it.product?.id ||
+            it.product?._id ||
+            it.stock?.product?.id ||
+            it.stockId ||
+            it.stock_id ||
+            ''
+          );
+
+          const catalogItem = pid && catMap ? catMap[pid] : null;
+
+          const directName =
+            it.productName ||
+            it.product_name ||
+            it.itemName ||
+            it.item_name ||
+            it.productTitle ||
+            it.product_title ||
+            it.product?.name ||
+            it.product?.productName ||
+            it.stock?.product?.name ||
+            it.stockItem?.product?.name ||
+            it.stockItem?.name ||
+            it.item?.name ||
+            it.name ||
+            it.title ||
+            it.label ||
+            '';
+
+          const resolvedName =
+            (directName && directName !== 'Product' && directName !== 'Unknown Product' ? directName : '') ||
+            catalogItem?.name ||
+            catalogItem?.productName ||
+            catalogItem?.product_name ||
+            directName ||
+            'Product';
+
+          const sku =
+            it.sku ||
+            it.product?.sku ||
+            it.stock?.product?.sku ||
+            it.stockItem?.sku ||
+            catalogItem?.sku ||
+            '';
+
+          const quantity = Number(it.quantity ?? it.qty ?? it.count ?? it.amount ?? 1);
+          const unit_price = Number(
+            it.unit_price ??
+            it.unitPrice ??
+            it.sellingPrice ??
+            it.selling_price ??
+            it.price ??
+            catalogItem?.selling_price ??
+            catalogItem?.sellingPrice ??
+            catalogItem?.price ??
+            0
+          );
+          const discount_amount = Number(it.discount_amount ?? it.discountAmount ?? it.discount ?? 0);
+          const line_total = Number(
+            it.line_total ??
+            it.lineTotal ??
+            it.total ??
+            (quantity * unit_price - discount_amount)
+          );
+
+          return {
+            name: resolvedName,
+            quantity,
+            unit_price,
+            line_total: Math.max(0, line_total),
+            sku,
+            discount_amount,
+          };
+        });
 
         const total = Number(raw.total_amount ?? raw.totalAmount ?? raw.total ?? 0);
         const paid = Number(raw.paid_amount ?? raw.paidAmount ?? raw.paid ?? 0);
         const rawBal = raw.balance ?? raw.outstandingBalance ?? raw.outstanding;
         const balance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : Math.max(0, total - paid);
 
+        const rawCreatedAt = raw.created_at || raw.createdAt || '';
+        const rawDate = raw.invoice_date || raw.invoiceDate || rawCreatedAt;
+        const rawTime = raw.invoice_time || raw.invoiceTime || (rawCreatedAt ? String(rawCreatedAt).slice(11, 19) : '');
+
         return {
           invoice_id: raw.invoice_id || raw.invoiceId || raw.id || raw.invoice_number || raw.invoiceNumber || '',
           invoice_number: raw.invoice_number || raw.invoiceNumber || raw.no || 'N/A',
-          invoice_date: raw.invoice_date || raw.invoiceDate || (raw.created_at ? String(raw.created_at).slice(0, 10) : ''),
-          invoice_time: raw.invoice_time || raw.invoiceTime || (raw.created_at ? String(raw.created_at).slice(11, 19) : ''),
+          invoice_date: formatDisplayDate(rawDate),
+          invoice_time: formatDisplayTime(rawTime, rawDate),
           sale_type: String(raw.sale_type || raw.saleType || raw.payment_method || raw.paymentMethod || 'CASH').toUpperCase(),
           subtotal: Number(raw.subtotal ?? raw.total ?? total),
-          discount_amount: Number(raw.discount_amount ?? raw.discount ?? 0),
+          discount_amount: Number(raw.discount_amount ?? raw.discountAmount ?? raw.discount ?? 0),
           total_amount: total,
           paid_amount: paid,
           balance: isNaN(balance) ? 0 : balance,
@@ -161,14 +322,23 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
           });
 
           if (matched.length > 0) {
-            // For matched invoices, if item details aren't populated in list view, fetch full details via /sales/:id
+            // For matched invoices, check if item names are present. If not, fetch /sales/:id
             const detailed = await Promise.all(
               matched.map(async (inv: any) => {
                 const realId = inv.id || inv._id || inv.invoice_id || inv.invoiceId;
-                const existingItems = inv.items || inv.saleItems || inv.sale_items || inv.lineItems || [];
-                if (Array.isArray(existingItems) && existingItems.length > 0) {
+                const existingItems = extractItems(inv);
+                const hasItemNames =
+                  Array.isArray(existingItems) &&
+                  existingItems.length > 0 &&
+                  existingItems.some((it: any) => {
+                    const n = it.productName || it.name || it.product_name || it.itemName || it.item_name || it.product?.name;
+                    return n && n !== 'Product';
+                  });
+
+                if (hasItemNames) {
                   return normalizeInvoice(inv);
                 }
+
                 if (realId) {
                   try {
                     const detailRes = await api.get(`/sales/${realId}`);
@@ -199,11 +369,10 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
         } catch {}
       }
 
-
       // Sort newest first
       invData.sort((a, b) => {
-        const da = new Date(`${a.invoice_date || ''}T${a.invoice_time || '00:00:00'}`).getTime();
-        const db = new Date(`${b.invoice_date || ''}T${b.invoice_time || '00:00:00'}`).getTime();
+        const da = new Date(a.invoice_date || 0).getTime() || 0;
+        const db = new Date(b.invoice_date || 0).getTime() || 0;
         return db - da;
       });
 
@@ -261,7 +430,7 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
 
     const invoiceSections = filteredInvoices.map((inv, idx) => {
       const dateStr = inv.invoice_date 
-        ? `${inv.invoice_date} ${inv.invoice_time ? inv.invoice_time.slice(0, 5) : ''}`
+        ? `${inv.invoice_date} ${inv.invoice_time || ''}`.trim()
         : 'N/A';
 
       const itemRows = (inv.items || []).map((item) => {
@@ -487,7 +656,7 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
     const now = new Date().toLocaleString('en-GB');
     const rows = filteredInvoices.map((inv, idx) => {
       const date = inv.invoice_date
-        ? `${inv.invoice_date}${inv.invoice_time ? '<br/><small style="color:#6b7280;font-size:10px;">' + inv.invoice_time.slice(0, 5) + '</small>' : ''}`
+        ? `${inv.invoice_date}${inv.invoice_time ? '<br/><small style="color:#6b7280;font-size:10px;">' + inv.invoice_time + '</small>' : ''}`
         : 'N/A';
       const saleTypeBadge = String(inv.sale_type).toUpperCase() === 'CREDIT'
         ? `<span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:900;">CREDIT</span>`
@@ -797,7 +966,7 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
                               {inv.invoice_time && (
                                 <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1 mt-0.5">
                                   <Clock className="w-3 h-3" />
-                                  {inv.invoice_time.slice(0, 5)}
+                                  {inv.invoice_time}
                                 </span>
                               )}
                             </div>
@@ -834,10 +1003,28 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
                                   {inv.items.length} item{inv.items.length !== 1 ? 's' : ''}
                                 </span>
                               )}
-                              {isExpanded
-                                ? <ChevronUp className="w-4 h-4 text-gray-400" />
-                                : <ChevronDown className="w-4 h-4 text-gray-400" />
-                              }
+                              <button
+                                type="button"
+                                title="View transaction details"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedInvoiceId(inv.invoice_id || inv.invoice_number);
+                                }}
+                                className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title={isExpanded ? "Collapse items" : "Expand items"}
+                                onClick={() => setExpandedInvoice(isExpanded ? null : inv.invoice_id)}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                              >
+                                {isExpanded
+                                  ? <ChevronUp className="w-4 h-4" />
+                                  : <ChevronDown className="w-4 h-4" />
+                                }
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -983,6 +1170,14 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
           </div>
         </div>
       </div>
+
+      {selectedInvoiceId && (
+        <TransactionDetailsModal
+          isOpen={!!selectedInvoiceId}
+          onClose={() => setSelectedInvoiceId(null)}
+          invoiceId={selectedInvoiceId}
+        />
+      )}
     </div>
   );
 }

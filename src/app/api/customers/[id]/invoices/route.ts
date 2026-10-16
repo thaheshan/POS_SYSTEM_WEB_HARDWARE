@@ -31,14 +31,15 @@ export async function GET(
     );
     const invoices = await invRes.json().catch(() => []);
 
-    if (!Array.isArray(invoices)) {
+    if (!Array.isArray(invoices) || invoices.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    // 2. Fetch items for these invoices (try multiple candidate table names)
+    // 2. Fetch items for these invoices
     const invoiceIds = invoices.map((i: any) => i.invoice_id).filter(Boolean);
     const invoiceNumbers = invoices.map((i: any) => i.invoice_number).filter(Boolean);
 
+    let rawItems: any[] = [];
     let itemsByInvoiceId: Record<string, any[]> = {};
 
     if (invoiceIds.length > 0 || invoiceNumbers.length > 0) {
@@ -61,32 +62,82 @@ export async function GET(
             { headers, cache: "no-store" }
           );
           if (itRes.ok) {
-            const rawItems = await itRes.json();
-            if (Array.isArray(rawItems) && rawItems.length > 0) {
-              for (const it of rawItems) {
-                const key = it.invoice_id || it.invoice_number;
-                if (!itemsByInvoiceId[key]) itemsByInvoiceId[key] = [];
-                itemsByInvoiceId[key].push({
-                  name: it.product_name || it.name || it.item_name || "Product",
-                  quantity: Number(it.quantity || it.qty || 1),
-                  unit_price: Number(it.unit_price || it.price || 0),
-                  line_total: Number(
-                    it.total ||
-                      it.line_total ||
-                      Number(it.quantity || 1) * Number(it.unit_price || 0)
-                  ),
-                  sku: it.sku || "",
-                  discount_amount: Number(it.discount_amount || it.discount || 0),
-                });
-              }
-              break; // Found matching table — stop searching
+            const data = await itRes.json();
+            if (Array.isArray(data) && data.length > 0) {
+              rawItems = data;
+              break; // Found the right table
             }
           }
         } catch {}
       }
     }
 
-    // 3. Map invoices to a consistent shape with items embedded
+    // 3. Build a product name map by batch-fetching all unique product_ids
+    const productNameMap: Record<string, string> = {};
+    const productSkuMap: Record<string, string> = {};
+
+    // Collect all product_ids that have no inline name stored
+    const allProductIds = rawItems
+      .filter((it: any) => {
+        const hasName = it.productName || it.product_name || it.itemName || it.item_name || it.name;
+        return !hasName && (it.product_id || it.productId);
+      })
+      .map((it: any) => it.product_id || it.productId)
+      .filter(Boolean);
+
+    const uniqueProductIds = [...new Set(allProductIds)] as string[];
+
+    if (uniqueProductIds.length > 0) {
+      try {
+        const prodRes = await fetch(
+          `${supabaseUrl}/rest/v1/products?select=product_id,name,product_name,sku&product_id=in.(${uniqueProductIds.join(",")})`,
+          { headers, cache: "no-store" }
+        );
+        if (prodRes.ok) {
+          const prods = await prodRes.json();
+          if (Array.isArray(prods)) {
+            for (const p of prods) {
+              const pid = p.product_id || p.id;
+              if (pid) {
+                productNameMap[pid] = p.name || p.product_name || "";
+                productSkuMap[pid] = p.sku || "";
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Group items by invoice key with resolved product names
+    for (const it of rawItems) {
+      const key = it.invoice_id || it.invoice_number;
+      if (!itemsByInvoiceId[key]) itemsByInvoiceId[key] = [];
+      const pid = it.product_id || it.productId || "";
+      const resolvedName =
+        it.productName ||
+        it.product_name ||
+        it.itemName ||
+        it.item_name ||
+        it.name ||
+        (pid ? productNameMap[pid] : "") ||
+        "Product";
+      const resolvedSku =
+        it.sku || (pid ? productSkuMap[pid] : "") || "";
+      itemsByInvoiceId[key].push({
+        name: resolvedName,
+        quantity: Number(it.quantity || it.qty || 1),
+        unit_price: Number(it.unit_price || it.price || 0),
+        line_total: Number(
+          it.total ||
+            it.line_total ||
+            Number(it.quantity || 1) * Number(it.unit_price || 0)
+        ),
+        sku: resolvedSku,
+        discount_amount: Number(it.discount_amount || it.discount || 0),
+      });
+    }
+
+    // 5. Map invoices to a consistent shape with items embedded
     const mapped = invoices.map((inv: any) => {
       const invKey = inv.invoice_id || inv.invoice_number;
       const bal =
