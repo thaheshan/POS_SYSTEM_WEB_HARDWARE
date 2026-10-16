@@ -127,6 +127,7 @@ export async function GET(req: Request) {
     }
 
     // 5. Batch-fetch product names for items that have product_id but no inline name
+    // Try both column names: Supabase products table may use 'id' or 'product_id'
     const productNameMap: Record<string, string> = {};
     const productSkuMap: Record<string, string> = {};
 
@@ -138,24 +139,29 @@ export async function GET(req: Request) {
     const uniqueMissingIds = [...new Set(missingIds)] as string[];
 
     if (uniqueMissingIds.length > 0) {
-      try {
-        const prodRes = await fetch(
-          `${supabaseUrl}/rest/v1/products?select=product_id,name,product_name,sku&product_id=in.(${uniqueMissingIds.join(",")})`,
-          { headers, cache: "no-store" }
-        );
-        if (prodRes.ok) {
-          const prods = await prodRes.json();
-          if (Array.isArray(prods)) {
-            for (const p of prods) {
-              const pid = p.product_id || p.id;
-              if (pid) {
-                productNameMap[pid] = p.name || p.product_name || "";
-                productSkuMap[pid] = p.sku || "";
+      const idList = uniqueMissingIds.join(",");
+      // Try 'id' first (most common PK in Supabase auto-generated schemas)
+      for (const pkCol of ["id", "product_id"]) {
+        try {
+          const prodRes = await fetch(
+            `${supabaseUrl}/rest/v1/products?select=${pkCol},name,product_name,sku&${pkCol}=in.(${idList})`,
+            { headers, cache: "no-store" }
+          );
+          if (prodRes.ok) {
+            const prods = await prodRes.json();
+            if (Array.isArray(prods) && prods.length > 0) {
+              for (const p of prods) {
+                const pid = p[pkCol] || p.id || p.product_id;
+                if (pid) {
+                  productNameMap[pid] = p.name || p.product_name || "";
+                  productSkuMap[pid] = p.sku || "";
+                }
               }
+              break; // found names, stop trying
             }
           }
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     // 6. Group items by invoice key with resolved product names
@@ -195,6 +201,8 @@ export async function GET(req: Request) {
           ? Number(inv.balance)
           : Math.max(0, Number(inv.total_amount || 0) - Number(inv.paid_amount || 0));
       return {
+        // Keep the raw Supabase invoice_id so the client can call /sales/:id on NestJS
+        id: inv.invoice_id || inv.invoice_number,
         invoice_id: inv.invoice_id || inv.invoice_number,
         invoice_number: inv.invoice_number || "N/A",
         invoice_date:

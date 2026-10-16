@@ -279,7 +279,40 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
 
       let invData: Invoice[] = [];
 
+      // ── Helper: enrich any invoice list whose items still show "Product" ──────
+      // Uses NestJS /sales/:id (the same source that TransactionDetailsModal uses
+      // and where product names are always correct).
+      const enrichMissingProductNames = async (list: Invoice[], rawList: any[]): Promise<Invoice[]> => {
+        // Build a map from invoice_number → raw invoice object (contains the original id)
+        const rawByNumber: Record<string, any> = {};
+        for (const r of rawList) {
+          const num = r.invoice_number || r.invoiceNumber || r.no || '';
+          if (num) rawByNumber[num] = r;
+        }
+
+        return Promise.all(
+          list.map(async (inv, idx) => {
+            const allUnnamed = inv.items.length > 0 && inv.items.every(it => !it.name || it.name === 'Product');
+            if (!allUnnamed) return inv; // already has names — skip
+
+            // Find original raw object to get the real DB id
+            const rawObj = rawByNumber[inv.invoice_number] || rawList[idx] || {};
+            const realId = rawObj.id || rawObj._id || rawObj.invoice_id || rawObj.invoiceId || inv.invoice_id;
+            if (!realId) return inv;
+
+            try {
+              const detailRes = await api.get(`/sales/${realId}`);
+              const fullData = detailRes.data?.data || detailRes.data;
+              return normalizeInvoice({ ...rawObj, ...fullData });
+            } catch {
+              return inv;
+            }
+          })
+        );
+      };
+
       // 1. Internal Next.js API route: by customer ID
+      let rawFromApi: any[] = [];
       try {
         const res = await fetch(
           `/api/customers/invoices?customerId=${encodeURIComponent(customer.id)}&name=${encodeURIComponent(cleanName)}&phone=${encodeURIComponent(cleanPhone)}&t=${Date.now()}`
@@ -287,7 +320,10 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
         if (res.ok) {
           const json = await res.json();
           if (Array.isArray(json.data) && json.data.length > 0) {
+            rawFromApi = json.data;
             invData = json.data.map(normalizeInvoice);
+            // ALWAYS enrich — Supabase items table often has no product_name stored
+            invData = await enrichMissingProductNames(invData, rawFromApi);
           }
         }
       } catch {}
