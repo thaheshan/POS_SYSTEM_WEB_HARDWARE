@@ -1133,7 +1133,7 @@ export default function PaymentConfirmation({
             </button>
             <button
               type="button"
-              onClick={handleESCPrint}
+              onClick={() => handleESCPrint()}
               className="py-3 px-3 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors shadow-md"
             >
               <Printer className="w-4 h-4" /> ESC/POS Print
