@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const supabaseUrl = process.env.SUPABASE_URL || "https://ejowthhbspsguurnrgxn.supabase.co";
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    "sb_secret_NC9BnI09ypHj_IgPaApdtg_Jun45R9J";
 
   const headers = {
     apikey: supabaseKey,

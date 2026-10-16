@@ -78,62 +78,127 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      // Try dedicated internal Next.js API route first (direct Supabase query with items)
+      const cleanPhone = (customer.phone || '').replace(/\D/g, '');
+      const cleanName = (customer.name || '').trim();
+
+      // Helper to normalize any raw invoice shape (from Next.js API or NestJS backend)
+      const normalizeInvoice = (raw: any): Invoice => {
+        const items = Array.isArray(raw.items)
+          ? raw.items.map((it: any) => ({
+              name: it.product_name || it.name || it.item_name || 'Product',
+              quantity: Number(it.quantity || it.qty || 1),
+              unit_price: Number(it.unit_price || it.unitPrice || it.price || 0),
+              line_total: Number(it.line_total || it.lineTotal || it.total || (Number(it.quantity || 1) * Number(it.unit_price || it.price || 0))),
+              sku: it.sku || '',
+              discount_amount: Number(it.discount_amount || it.discount || 0),
+            }))
+          : [];
+
+        const total = Number(raw.total_amount ?? raw.totalAmount ?? raw.total ?? 0);
+        const paid = Number(raw.paid_amount ?? raw.paidAmount ?? raw.paid ?? 0);
+        const rawBal = raw.balance ?? raw.outstandingBalance ?? raw.outstanding;
+        const balance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : Math.max(0, total - paid);
+
+        return {
+          invoice_id: raw.invoice_id || raw.invoiceId || raw.id || raw.invoice_number || raw.invoiceNumber || '',
+          invoice_number: raw.invoice_number || raw.invoiceNumber || raw.no || 'N/A',
+          invoice_date: raw.invoice_date || raw.invoiceDate || (raw.created_at ? String(raw.created_at).slice(0, 10) : ''),
+          invoice_time: raw.invoice_time || raw.invoiceTime || (raw.created_at ? String(raw.created_at).slice(11, 19) : ''),
+          sale_type: String(raw.sale_type || raw.saleType || raw.payment_method || raw.paymentMethod || 'CASH').toUpperCase(),
+          subtotal: Number(raw.subtotal ?? raw.total ?? total),
+          discount_amount: Number(raw.discount_amount ?? raw.discount ?? 0),
+          total_amount: total,
+          paid_amount: paid,
+          balance: isNaN(balance) ? 0 : balance,
+          payment_status: String(raw.payment_status || raw.paymentStatus || (balance > 0 ? 'UNPAID' : 'PAID')).toUpperCase(),
+          notes: raw.notes || '',
+          items,
+        };
+      };
+
       let invData: Invoice[] = [];
+
+      // 1. Internal Next.js API route: by customer ID
       try {
         const res = await fetch(
-          `/api/customers/invoices?customerId=${encodeURIComponent(customer.id)}&t=${Date.now()}`
+          `/api/customers/invoices?customerId=${encodeURIComponent(customer.id)}&name=${encodeURIComponent(cleanName)}&phone=${encodeURIComponent(cleanPhone)}&t=${Date.now()}`
         );
         if (res.ok) {
           const json = await res.json();
           if (Array.isArray(json.data) && json.data.length > 0) {
-            invData = json.data;
+            invData = json.data.map(normalizeInvoice);
           }
         }
       } catch {}
 
-      // Fallback 1: backend NestJS customer invoices endpoint
+      // 2. NestJS Backend /sales endpoint (where all checkout invoices and items live!)
       if (invData.length === 0) {
         try {
-          const res = await api.get(`/customers/${customer.id}/invoices`);
-          const d = res.data?.data?.data || res.data?.data || res.data;
-          if (Array.isArray(d)) invData = d;
-        } catch {}
+          const salesRes = await api.get('/sales', { params: { limit: 1000 } });
+          const d = salesRes.data;
+          let list: any[] = [];
+          if (Array.isArray(d?.data?.data?.items)) list = d.data.data.items;
+          else if (Array.isArray(d?.data?.items)) list = d.data.items;
+          else if (Array.isArray(d?.items)) list = d.items;
+          else if (Array.isArray(d?.data)) list = d.data;
+          else if (Array.isArray(d)) list = d;
+
+          const matched = list.filter((inv: any) => {
+            const invCustId = String(inv.customerId || inv.customer_id || inv.customer?.id || '').toLowerCase();
+            const targetId = String(customer.id || '').toLowerCase();
+            if (targetId && invCustId && (invCustId === targetId || invCustId.includes(targetId) || targetId.includes(invCustId))) {
+              return true;
+            }
+            const phone = String(inv.customerPhone || inv.customer_phone || inv.customer?.phone || '').replace(/\D/g, '');
+            if (cleanPhone && phone && (phone === cleanPhone || phone.includes(cleanPhone) || cleanPhone.includes(phone))) {
+              return true;
+            }
+            const name = String(inv.customerName || inv.customer_name || inv.customer?.name || '').trim().toLowerCase();
+            if (cleanName && name && (name === cleanName.toLowerCase() || name.includes(cleanName.toLowerCase()))) {
+              return true;
+            }
+            return false;
+          });
+
+          if (matched.length > 0) {
+            // For matched invoices, if item details aren't populated in list view, fetch full details via /sales/:id
+            const detailed = await Promise.all(
+              matched.map(async (inv: any) => {
+                const realId = inv.id || inv._id || inv.invoice_id || inv.invoiceId;
+                const existingItems = inv.items || inv.saleItems || inv.sale_items || inv.lineItems || [];
+                if (Array.isArray(existingItems) && existingItems.length > 0) {
+                  return normalizeInvoice(inv);
+                }
+                if (realId) {
+                  try {
+                    const detailRes = await api.get(`/sales/${realId}`);
+                    const fullData = detailRes.data?.data || detailRes.data;
+                    return normalizeInvoice({ ...inv, ...fullData });
+                  } catch {}
+                }
+                return normalizeInvoice(inv);
+              })
+            );
+            invData = detailed;
+          }
+        } catch (backendErr) {
+          console.warn('[CustomerProfile] /sales backend fetch fallback:', backendErr);
+        }
       }
 
-      // Fallback: try sales/invoices with customer filter
+      // 3. Direct internal reconcile API route
       if (invData.length === 0) {
         try {
-          const res = await api.get(`/sales/invoices?customerId=${customer.id}`);
-          const d = res.data?.data?.data || res.data?.data || res.data;
-          if (Array.isArray(d)) invData = d;
-        } catch {}
-      }
-
-      // Fallback 2: direct Supabase via our inspect endpoint
-      if (invData.length === 0) {
-        try {
-          const res = await fetch(`/api/customers/reconcile?customerId=${customer.id}&t=${Date.now()}`);
+          const res = await fetch(
+            `/api/customers/reconcile?customerId=${encodeURIComponent(customer.id)}&name=${encodeURIComponent(cleanName)}&t=${Date.now()}`
+          );
           const json = await res.json();
-          if (json.results?.[0]?.invoicesSummary) {
-            // We have summary but not line items — use structure as-is
-            invData = (json.results[0].invoicesSummary || []).map((s: any) => ({
-              invoice_id: s.no || '',
-              invoice_number: s.no || '',
-              invoice_date: s.invoice_date || (s.created_at ? s.created_at.slice(0, 10) : ''),
-              invoice_time: s.invoice_time || (s.created_at ? s.created_at.slice(11, 19) : ''),
-              sale_type: s.sale_type || s.payment_type || 'CASH',
-              subtotal: s.total || 0,
-              discount_amount: 0,
-              total_amount: s.total || 0,
-              paid_amount: s.paid || 0,
-              balance: s.balance || 0,
-              payment_status: s.status || '',
-              items: [],
-            }));
+          if (json.results?.[0]?.invoicesSummary && json.results[0].invoicesSummary.length > 0) {
+            invData = json.results[0].invoicesSummary.map(normalizeInvoice);
           }
         } catch {}
       }
+
 
       // Sort newest first
       invData.sort((a, b) => {

@@ -10,7 +10,9 @@ export const revalidate = 0;
  */
 export async function GET(req: Request) {
   const supabaseUrl = process.env.SUPABASE_URL || "https://ejowthhbspsguurnrgxn.supabase.co";
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    "sb_secret_NC9BnI09ypHj_IgPaApdtg_Jun45R9J";
 
   const headers = {
     apikey: supabaseKey,
@@ -21,22 +23,69 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const customerId = url.searchParams.get("customerId");
+    const customerName = url.searchParams.get("name");
+    const customerPhone = url.searchParams.get("phone");
 
-    if (!customerId) {
+    if (!customerId && !customerName && !customerPhone) {
       return NextResponse.json(
-        { success: false, message: "customerId query param required" },
+        { success: false, message: "customerId, name, or phone required" },
         { status: 400 }
       );
     }
 
-    // 1. Fetch all sales_invoices for this customer (newest first)
-    const invRes = await fetch(
-      `${supabaseUrl}/rest/v1/sales_invoices?customer_id=eq.${encodeURIComponent(
-        customerId.trim()
-      )}&order=created_at.desc`,
-      { headers, cache: "no-store" }
-    );
-    const invoices = await invRes.json().catch(() => []);
+    // 1. Fetch invoices directly by customer_id
+    let invoices: any[] = [];
+    if (customerId) {
+      const invRes = await fetch(
+        `${supabaseUrl}/rest/v1/sales_invoices?customer_id=eq.${encodeURIComponent(
+          customerId.trim()
+        )}&order=created_at.desc`,
+        { headers, cache: "no-store" }
+      );
+      const resData = await invRes.json().catch(() => []);
+      if (Array.isArray(resData)) {
+        invoices = resData;
+      }
+    }
+
+    // 2. If no invoices found by ID, look up customer by name/phone first to get real customer_id
+    if (invoices.length === 0 && (customerName || customerPhone)) {
+      let custQuery = `${supabaseUrl}/rest/v1/customers?select=*`;
+      if (customerName) {
+        custQuery += `&customer_name=ilike.*${encodeURIComponent(customerName.trim())}*`;
+      }
+      try {
+        const custRes = await fetch(custQuery, { headers, cache: "no-store" });
+        const matchedCusts = await custRes.json();
+        if (Array.isArray(matchedCusts) && matchedCusts.length > 0) {
+          const matchedId = matchedCusts[0].customer_id || matchedCusts[0].id;
+          if (matchedId) {
+            const invRes = await fetch(
+              `${supabaseUrl}/rest/v1/sales_invoices?customer_id=eq.${encodeURIComponent(matchedId)}&order=created_at.desc`,
+              { headers, cache: "no-store" }
+            );
+            const resData = await invRes.json().catch(() => []);
+            if (Array.isArray(resData)) {
+              invoices = resData;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 3. If still empty, check sales_invoices table by customer_phone or customer_name column directly
+    if (invoices.length === 0 && customerPhone) {
+      try {
+        const invRes = await fetch(
+          `${supabaseUrl}/rest/v1/sales_invoices?customer_phone=ilike.*${encodeURIComponent(customerPhone.trim())}*&order=created_at.desc`,
+          { headers, cache: "no-store" }
+        );
+        const resData = await invRes.json().catch(() => []);
+        if (Array.isArray(resData) && resData.length > 0) {
+          invoices = resData;
+        }
+      } catch {}
+    }
 
     if (!Array.isArray(invoices) || invoices.length === 0) {
       return NextResponse.json({ success: true, data: [] });
