@@ -40,6 +40,7 @@ type PaymentConfirmationProps = {
     price: number;
     qty: number;
     img: string;
+    sku?: string;
     warehouseId?: string;
     branchId?: string;
     warehouseName?: string;
@@ -738,7 +739,7 @@ export default function PaymentConfirmation({
         items: items.map((item) => ({
           productId: item.id,
           productName: item.name,
-          sku: item.sku || "",
+          sku: (item as any).sku || "",
           quantity: item.qty,
           unitPrice: item.price - (item.discountAmount ?? 0),
           discountAmount: item.discountAmount ?? 0,
