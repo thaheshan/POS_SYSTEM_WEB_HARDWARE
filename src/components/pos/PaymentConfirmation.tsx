@@ -737,8 +737,11 @@ export default function PaymentConfirmation({
         invoiceNumber: invoiceRef,
         items: items.map((item) => ({
           productId: item.id,
+          productName: item.name,
+          sku: item.sku || "",
           quantity: item.qty,
           unitPrice: item.price - (item.discountAmount ?? 0),
+          discountAmount: item.discountAmount ?? 0,
           warehouseId: item.warehouseId,
           branchId: item.branchId,
         })),
