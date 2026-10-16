@@ -124,6 +124,8 @@ export async function GET(
       const resolvedSku =
         it.sku || (pid ? productSkuMap[pid] : "") || "";
       itemsByInvoiceId[key].push({
+        productId: pid,
+        product_id: pid,
         name: resolvedName,
         quantity: Number(it.quantity || it.qty || 1),
         unit_price: Number(it.unit_price || it.price || 0),

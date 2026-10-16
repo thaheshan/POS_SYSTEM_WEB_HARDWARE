@@ -44,9 +44,34 @@ const formatDisplayTime = (timeVal?: string, dateVal?: string): string => {
   return '';
 };
 
-const extractItems = (obj: any): any[] => {
-  if (!obj || typeof obj !== 'object') return [];
-  if (Array.isArray(obj) && obj.length > 0) return obj;
+function looksLikeItem(o: any): boolean {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+  return (
+    'productId' in o ||
+    'product_id' in o ||
+    'productName' in o ||
+    'product_name' in o ||
+    'itemName' in o ||
+    'item_name' in o ||
+    'stockId' in o ||
+    'stock_id' in o ||
+    'quantity' in o ||
+    'qty' in o ||
+    'unitPrice' in o ||
+    'unit_price' in o ||
+    'sellingPrice' in o ||
+    !!o.product?.name ||
+    !!o.product?.productName ||
+    !!o.stock?.product?.name
+  );
+}
+
+function deepExtractItems(obj: any, depth = 0): any[] {
+  if (!obj || typeof obj !== 'object' || depth > 6) return [];
+
+  if (Array.isArray(obj) && obj.length > 0 && looksLikeItem(obj[0])) {
+    return obj;
+  }
 
   const itemKeys = [
     'items',
@@ -65,14 +90,58 @@ const extractItems = (obj: any): any[] => {
   ];
 
   for (const k of itemKeys) {
-    let val = obj[k];
+    const val = obj[k];
     if (typeof val === 'string' && val.trim().startsWith('[')) {
-      try { val = JSON.parse(val); } catch {}
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed) && parsed.length > 0 && looksLikeItem(parsed[0])) {
+          return parsed;
+        }
+      } catch {}
     }
-    if (Array.isArray(val) && val.length > 0) return val;
+    if (Array.isArray(val) && val.length > 0 && looksLikeItem(val[0])) {
+      return val;
+    }
   }
+
+  for (const k of Object.keys(obj)) {
+    let arr: any = obj[k];
+    if (typeof arr === 'string' && arr.trim().startsWith('[')) {
+      try {
+        arr = JSON.parse(arr);
+      } catch {}
+    }
+    if (Array.isArray(arr) && arr.length > 0 && looksLikeItem(arr[0])) {
+      return arr;
+    }
+  }
+
+  for (const k of Object.keys(obj)) {
+    const child = obj[k];
+    if (child && typeof child === 'object' && !Array.isArray(child)) {
+      const found = deepExtractItems(child, depth + 1);
+      if (found.length > 0) return found;
+    }
+  }
+
   return [];
-};
+}
+
+function unwrapInvoice(raw: any): any {
+  if (!raw || typeof raw !== 'object') return {};
+  if (
+    raw.invoiceNumber ||
+    raw.totalAmount !== undefined ||
+    raw.customerName ||
+    raw.customer
+  ) {
+    return raw;
+  }
+  if (raw.data) return unwrapInvoice(raw.data);
+  if (raw.sale) return unwrapInvoice(raw.sale);
+  if (raw.invoice) return unwrapInvoice(raw.invoice);
+  return raw;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Customer {
@@ -152,7 +221,14 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
         const map: Record<string, any> = {};
         for (const p of list) {
           const id = p.id || p.productId || p.product_id || p._id;
-          if (id) map[id] = p;
+          if (id) {
+            map[String(id)] = p;
+            map[String(id).toLowerCase()] = p;
+          }
+          if (p.sku) {
+            map[String(p.sku)] = p;
+            map[String(p.sku).toLowerCase()] = p;
+          }
         }
         setProductCatalog(map);
         fetchInvoices(map);
@@ -168,25 +244,17 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
       const catMap = catalogMapOverride || productCatalog;
       const cleanPhone = (customer.phone || '').replace(/\D/g, '');
       const cleanName = (customer.name || '').trim();
+      const targetId = String(customer.id || '').toLowerCase();
 
       // Helper to normalize any raw invoice shape (from Next.js API or NestJS backend)
-      const normalizeInvoice = (raw: any): Invoice => {
-        const rawItems = extractItems(raw);
+      const normalizeInvoice = (raw: any, explicitItems?: any[]): Invoice => {
+        const rawItems = (Array.isArray(explicitItems) && explicitItems.length > 0)
+          ? explicitItems
+          : (Array.isArray(raw.items) && raw.items.length > 0 && looksLikeItem(raw.items[0]))
+          ? raw.items
+          : deepExtractItems(raw);
 
         const items = rawItems.map((it: any) => {
-          const pid = String(
-            it.productId ||
-            it.product_id ||
-            it.product?.id ||
-            it.product?._id ||
-            it.stock?.product?.id ||
-            it.stockId ||
-            it.stock_id ||
-            ''
-          );
-
-          const catalogItem = pid && catMap ? catMap[pid] : null;
-
           const directName =
             it.productName ||
             it.product_name ||
@@ -196,7 +264,10 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
             it.product_title ||
             it.product?.name ||
             it.product?.productName ||
+            it.product?.title ||
             it.stock?.product?.name ||
+            it.stock?.product?.productName ||
+            it.stock?.product?.title ||
             it.stockItem?.product?.name ||
             it.stockItem?.name ||
             it.item?.name ||
@@ -205,19 +276,48 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
             it.label ||
             '';
 
-          const resolvedName =
-            (directName && directName !== 'Product' && directName !== 'Unknown Product' ? directName : '') ||
-            catalogItem?.name ||
-            catalogItem?.productName ||
-            catalogItem?.product_name ||
-            directName ||
-            'Product';
+          const pid = String(
+            it.productId ||
+            it.product_id ||
+            it.product?.id ||
+            it.product?._id ||
+            it.stock?.product?.id ||
+            it.stock?.product?._id ||
+            it.stockId ||
+            it.stock_id ||
+            it.stock?.id ||
+            it.stock?._id ||
+            ''
+          ).trim();
 
-          const sku =
+          const sku = String(
             it.sku ||
             it.product?.sku ||
             it.stock?.product?.sku ||
             it.stockItem?.sku ||
+            ''
+          ).trim();
+
+          const catalogItem =
+            (pid && (catMap[pid] || catMap[pid.toLowerCase()])) ||
+            (sku && (catMap[sku] || catMap[sku.toLowerCase()])) ||
+            null;
+
+          const catalogName =
+            catalogItem?.name ||
+            catalogItem?.productName ||
+            catalogItem?.product_name ||
+            catalogItem?.title ||
+            '';
+
+          const resolvedName =
+            (directName && directName !== 'Product' && directName !== 'Unknown Product' && directName !== 'Unknown Item' ? directName : '') ||
+            catalogName ||
+            (directName && directName.trim() ? directName : '') ||
+            'Product';
+
+          const resolvedSku =
+            sku ||
             catalogItem?.sku ||
             '';
 
@@ -246,7 +346,7 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
             quantity,
             unit_price,
             line_total: Math.max(0, line_total),
-            sku,
+            sku: resolvedSku,
             discount_amount,
           };
         });
@@ -256,12 +356,12 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
         const rawBal = raw.balance ?? raw.outstandingBalance ?? raw.outstanding;
         const balance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : Math.max(0, total - paid);
 
-        const rawCreatedAt = raw.created_at || raw.createdAt || '';
+        const rawCreatedAt = raw.created_at || raw.createdAt || raw.date || '';
         const rawDate = raw.invoice_date || raw.invoiceDate || rawCreatedAt;
         const rawTime = raw.invoice_time || raw.invoiceTime || (rawCreatedAt ? String(rawCreatedAt).slice(11, 19) : '');
 
         return {
-          invoice_id: raw.invoice_id || raw.invoiceId || raw.id || raw.invoice_number || raw.invoiceNumber || '',
+          invoice_id: raw.invoice_id || raw.invoiceId || raw.id || raw._id || raw.invoice_number || raw.invoiceNumber || '',
           invoice_number: raw.invoice_number || raw.invoiceNumber || raw.no || 'N/A',
           invoice_date: formatDisplayDate(rawDate),
           invoice_time: formatDisplayTime(rawTime, rawDate),
@@ -279,120 +379,92 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
 
       let invData: Invoice[] = [];
 
-      // ── Helper: enrich any invoice list whose items still show "Product" ──────
-      // Uses NestJS /sales/:id (the same source that TransactionDetailsModal uses
-      // and where product names are always correct).
-      const enrichMissingProductNames = async (list: Invoice[], rawList: any[]): Promise<Invoice[]> => {
-        // Build a map from invoice_number → raw invoice object (contains the original id)
-        const rawByNumber: Record<string, any> = {};
-        for (const r of rawList) {
-          const num = r.invoice_number || r.invoiceNumber || r.no || '';
-          if (num) rawByNumber[num] = r;
-        }
-
-        return Promise.all(
-          list.map(async (inv, idx) => {
-            const allUnnamed = inv.items.length > 0 && inv.items.every(it => !it.name || it.name === 'Product');
-            if (!allUnnamed) return inv; // already has names — skip
-
-            // Find original raw object to get the real DB id
-            const rawObj = rawByNumber[inv.invoice_number] || rawList[idx] || {};
-            const realId = rawObj.id || rawObj._id || rawObj.invoice_id || rawObj.invoiceId || inv.invoice_id;
-            if (!realId) return inv;
-
-            try {
-              const detailRes = await api.get(`/sales/${realId}`);
-              const fullData = detailRes.data?.data || detailRes.data;
-              return normalizeInvoice({ ...rawObj, ...fullData });
-            } catch {
-              return inv;
-            }
-          })
-        );
-      };
-
-      // 1. Internal Next.js API route: by customer ID
-      let rawFromApi: any[] = [];
+      // ── Strategy 1: NestJS Backend /sales (primary source for all sales) ──
       try {
-        const res = await fetch(
-          `/api/customers/invoices?customerId=${encodeURIComponent(customer.id)}&name=${encodeURIComponent(cleanName)}&phone=${encodeURIComponent(cleanPhone)}&t=${Date.now()}`
-        );
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json.data) && json.data.length > 0) {
-            rawFromApi = json.data;
-            invData = json.data.map(normalizeInvoice);
-            // ALWAYS enrich — Supabase items table often has no product_name stored
-            invData = await enrichMissingProductNames(invData, rawFromApi);
+        const salesRes = await api.get('/sales', { params: { limit: 1000 } });
+        const d = salesRes.data;
+        let list: any[] = [];
+        if (Array.isArray(d?.data?.data?.items)) list = d.data.data.items;
+        else if (Array.isArray(d?.data?.items)) list = d.data.items;
+        else if (Array.isArray(d?.items)) list = d.items;
+        else if (Array.isArray(d?.data)) list = d.data;
+        else if (Array.isArray(d)) list = d;
+
+        const matched = list.filter((inv: any) => {
+          const invCustId = String(inv.customerId || inv.customer_id || inv.customer?.id || inv.customer?._id || '').toLowerCase();
+          if (targetId && invCustId && (invCustId === targetId || invCustId.includes(targetId) || targetId.includes(invCustId))) {
+            return true;
           }
-        }
-      } catch {}
-
-      // 2. NestJS Backend /sales endpoint (where all checkout invoices and items live!)
-      if (invData.length === 0) {
-        try {
-          const salesRes = await api.get('/sales', { params: { limit: 1000 } });
-          const d = salesRes.data;
-          let list: any[] = [];
-          if (Array.isArray(d?.data?.data?.items)) list = d.data.data.items;
-          else if (Array.isArray(d?.data?.items)) list = d.data.items;
-          else if (Array.isArray(d?.items)) list = d.items;
-          else if (Array.isArray(d?.data)) list = d.data;
-          else if (Array.isArray(d)) list = d;
-
-          const matched = list.filter((inv: any) => {
-            const invCustId = String(inv.customerId || inv.customer_id || inv.customer?.id || '').toLowerCase();
-            const targetId = String(customer.id || '').toLowerCase();
-            if (targetId && invCustId && (invCustId === targetId || invCustId.includes(targetId) || targetId.includes(invCustId))) {
-              return true;
-            }
-            const phone = String(inv.customerPhone || inv.customer_phone || inv.customer?.phone || '').replace(/\D/g, '');
-            if (cleanPhone && phone && (phone === cleanPhone || phone.includes(cleanPhone) || cleanPhone.includes(phone))) {
-              return true;
-            }
-            const name = String(inv.customerName || inv.customer_name || inv.customer?.name || '').trim().toLowerCase();
-            if (cleanName && name && (name === cleanName.toLowerCase() || name.includes(cleanName.toLowerCase()))) {
-              return true;
-            }
-            return false;
-          });
-
-          if (matched.length > 0) {
-            // For matched invoices, check if item names are present. If not, fetch /sales/:id
-            const detailed = await Promise.all(
-              matched.map(async (inv: any) => {
-                const realId = inv.id || inv._id || inv.invoice_id || inv.invoiceId;
-                const existingItems = extractItems(inv);
-                const hasItemNames =
-                  Array.isArray(existingItems) &&
-                  existingItems.length > 0 &&
-                  existingItems.some((it: any) => {
-                    const n = it.productName || it.name || it.product_name || it.itemName || it.item_name || it.product?.name;
-                    return n && n !== 'Product';
-                  });
-
-                if (hasItemNames) {
-                  return normalizeInvoice(inv);
-                }
-
-                if (realId) {
-                  try {
-                    const detailRes = await api.get(`/sales/${realId}`);
-                    const fullData = detailRes.data?.data || detailRes.data;
-                    return normalizeInvoice({ ...inv, ...fullData });
-                  } catch {}
-                }
-                return normalizeInvoice(inv);
-              })
-            );
-            invData = detailed;
+          const phone = String(inv.customerPhone || inv.customer_phone || inv.customer?.phone || '').replace(/\D/g, '');
+          if (cleanPhone && phone && (phone === cleanPhone || phone.includes(cleanPhone) || cleanPhone.includes(phone))) {
+            return true;
           }
-        } catch (backendErr) {
-          console.warn('[CustomerProfile] /sales backend fetch fallback:', backendErr);
+          const name = String(inv.customerName || inv.customer_name || inv.customer?.name || '').trim().toLowerCase();
+          if (cleanName && name && (name === cleanName.toLowerCase() || name.includes(cleanName.toLowerCase()))) {
+            return true;
+          }
+          return false;
+        });
+
+        if (matched.length > 0) {
+          // For each matched sale, fetch full details by ID or invoiceNumber (just like TransactionDetailsModal)
+          const detailed = await Promise.all(
+            matched.map(async (sale: any) => {
+              const saleId = sale.id || sale._id;
+              const saleNum = sale.invoiceNumber || sale.invoice_number;
+              for (const lookupKey of [saleId, saleNum].filter(Boolean)) {
+                try {
+                  const detailRes = await api.get(`/sales/${lookupKey}`);
+                  const fullInvoice = unwrapInvoice(detailRes.data);
+                  const rawItems = deepExtractItems(detailRes.data);
+                  if (rawItems.length > 0) {
+                    return normalizeInvoice({ ...sale, ...fullInvoice }, rawItems);
+                  }
+                } catch {}
+              }
+              return normalizeInvoice(sale);
+            })
+          );
+          invData = detailed;
         }
+      } catch (backendErr) {
+        console.warn('[CustomerProfile] /sales fetch error:', backendErr);
       }
 
-      // 3. Direct internal reconcile API route
+      // ── Strategy 2: Internal Next.js API route (Supabase) if NestJS returned 0 ──
+      if (invData.length === 0) {
+        try {
+          const res = await fetch(
+            `/api/customers/invoices?customerId=${encodeURIComponent(customer.id)}&name=${encodeURIComponent(cleanName)}&phone=${encodeURIComponent(cleanPhone)}&t=${Date.now()}`
+          );
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json.data) && json.data.length > 0) {
+              const enriched = await Promise.all(
+                json.data.map(async (rawInv: any) => {
+                  const invNum = rawInv.invoice_number;
+                  const invId = rawInv.id || rawInv.invoice_id;
+                  // Try to fetch full item details from NestJS /sales/:id or by invoiceNumber
+                  for (const lookupKey of [invId, invNum].filter(Boolean)) {
+                    try {
+                      const detailRes = await api.get(`/sales/${lookupKey}`);
+                      const fullInvoice = unwrapInvoice(detailRes.data);
+                      const rawItems = deepExtractItems(detailRes.data);
+                      if (rawItems.length > 0) {
+                        return normalizeInvoice({ ...rawInv, ...fullInvoice }, rawItems);
+                      }
+                    } catch {}
+                  }
+                  return normalizeInvoice(rawInv);
+                })
+              );
+              invData = enriched;
+            }
+          }
+        } catch {}
+      }
+
+      // ── Strategy 3: Direct internal reconcile API route fallback ──
       if (invData.length === 0) {
         try {
           const res = await fetch(
