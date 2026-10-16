@@ -53,7 +53,15 @@ export async function GET(req: Request) {
       .reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
     // Use the actual `balance` column directly for true outstanding
     const calculatedOutstanding = invoices.reduce(
-      (sum, inv) => sum + Math.max(0, Number(inv.balance ?? inv.total_amount - inv.paid_amount ?? 0)),
+      (sum, inv) =>
+        sum +
+        Math.max(
+          0,
+          Number(
+            inv.balance ??
+              (Number(inv.total_amount || 0) - Number(inv.paid_amount || 0))
+          )
+        ),
       0
     );
 
