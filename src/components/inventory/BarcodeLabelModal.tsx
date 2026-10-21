@@ -31,6 +31,7 @@ interface BarcodeLabelModalProps {
     unitCost?: string | number;
     sellingPrice?: number;
     purchasePrice?: number;
+    costPrice?: number;
     price?: number;
     cost?: number;
     category?: string;
@@ -215,21 +216,20 @@ export default function BarcodeLabelModal({
   const extractNumericPrice = (p: any): number => {
     if (!p) return 0;
 
-    // 1. Prefer explicit sellingPrice field (set by inventory page)
-    if (typeof p.sellingPrice === "number" && p.sellingPrice > 0) return p.sellingPrice;
+    // 1. Prefer cost/purchase price for the barcode price code (internal staff use)
+    if (typeof p.purchasePrice === "number" && p.purchasePrice > 0) return p.purchasePrice;
+    if (typeof p.costPrice === "number" && p.costPrice > 0) return p.costPrice;
+    if (typeof p.cost === "number" && p.cost > 0) return p.cost;
 
-    // 2. price field (generic selling price alias)
-    if (typeof p.price === "number" && p.price > 0) return p.price;
-
-    // 3. unitCost string like "Rs. 7,000" — parse it
+    // 2. unitCost string like "Rs. 7,000" — parse it
     if (p.unitCost !== undefined && p.unitCost !== null && p.unitCost !== "") {
       const parsed = parseFloat(String(p.unitCost).replace(/[^\d.]/g, "")) || 0;
       if (parsed > 0) return parsed;
     }
 
-    // 4. Last resort: purchase/cost price (avoid using this for the code because it encodes cost not selling price)
-    if (typeof p.purchasePrice === "number" && p.purchasePrice > 0) return p.purchasePrice;
-    if (typeof p.cost === "number" && p.cost > 0) return p.cost;
+    // 3. Fall back to selling price only if no cost price is available
+    if (typeof p.sellingPrice === "number" && p.sellingPrice > 0) return p.sellingPrice;
+    if (typeof p.price === "number" && p.price > 0) return p.price;
 
     return 0;
   };
