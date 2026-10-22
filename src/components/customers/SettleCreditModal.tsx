@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, CreditCard, Search, Check, RotateCcw, DollarSign, Wallet, ArrowDownRight } from 'lucide-react';
-import api from '@/api/axiosInstance';
+import api, { clearApiCache } from '@/api/axiosInstance';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { sendCreditSettlementSMS } from '@/utils/textlkSmsService';
 import { logActivity } from '@/utils/activityLogger';
@@ -113,16 +113,52 @@ export default function SettleCreditModal({
     const newOutstandingBalance = Math.max(0, currentOutstanding - settlingNum);
 
     try {
-      // 1. Primary POS Sales Engine Credit Settlement: Post negative credit transaction
+      // 1. Allocate settlement across unpaid customer credit invoices
+      let remainingToAllocate = settlingNum;
       try {
-        await api.post('/sales/credit', {
-          customerId: selectedCustomer.id,
-          amount: -settlingNum,
-          reference: reference || 'Credit Settlement Payment',
-          paymentTermsDays: 0,
+        const salesRes = await api.get('/sales', { params: { limit: 1000 } });
+        const d = salesRes.data;
+        let list: any[] = [];
+        if (Array.isArray(d?.data?.data?.items)) list = d.data.data.items;
+        else if (Array.isArray(d?.data?.items)) list = d.data.items;
+        else if (Array.isArray(d?.items)) list = d.items;
+        else if (Array.isArray(d?.data)) list = d.data;
+        else if (Array.isArray(d)) list = d;
+
+        const custId = selectedCustomer.id.toLowerCase();
+        const custPhone = (selectedCustomer.phone || '').replace(/\D/g, '');
+        const custName = (selectedCustomer.name || '').toLowerCase().trim();
+
+        const unpaidInvoices = list.filter((inv: any) => {
+          const invCustId = String(inv.customerId || inv.customer_id || inv.customer?.id || '').toLowerCase();
+          const phone = String(inv.customerPhone || inv.customer_phone || inv.customer?.phone || '').replace(/\D/g, '');
+          const name = String(inv.customerName || inv.customer_name || inv.customer?.name || '').toLowerCase().trim();
+          const matchesCust = (custId && invCustId === custId) || (custPhone && phone === custPhone) || (custName && name === custName);
+          const bal = Number(inv.balance || 0);
+          return matchesCust && bal > 0;
         });
-      } catch (errCredit) {
-        console.warn('[SettleCredit] /sales/credit endpoint fallback:', errCredit);
+
+        // Settle oldest invoices first
+        unpaidInvoices.sort((a, b) => {
+          const da = new Date(a.invoiceDate || a.createdAt || 0).getTime() || 0;
+          const db = new Date(b.invoiceDate || b.createdAt || 0).getTime() || 0;
+          return da - db;
+        });
+
+        for (const inv of unpaidInvoices) {
+          if (remainingToAllocate <= 0) break;
+          const bal = Number(inv.balance || 0);
+          const payPart = Math.min(remainingToAllocate, bal);
+          const lookupKey = inv.id || inv._id || inv.invoiceNumber;
+          try {
+            await api.patch(`/sales/${lookupKey}/add-credit`, { amount: payPart });
+            remainingToAllocate -= payPart;
+          } catch (patchErr) {
+            console.warn(`[SettleCredit] Failed to add credit to invoice ${lookupKey}:`, patchErr);
+          }
+        }
+      } catch (e) {
+        console.warn('[SettleCredit] Could not fetch invoices for automatic allocation:', e);
       }
 
       // 2. Direct customer record update via PATCH & PUT
@@ -149,30 +185,15 @@ export default function SettleCreditModal({
         }
       }
 
-      // 2. Also log credit payment transaction record if endpoint exists
-      try {
-        await api.post(`/customers/${selectedCustomer.id}/settle-credit`, {
-          amount: settlingNum,
-          paymentMethod,
-          reference: reference || 'Credit Settlement',
-        });
-      } catch {
-        try {
-          await api.post('/customers/credit-payment', {
-            customerId: selectedCustomer.id,
-            amount: settlingNum,
-            paymentMethod,
-            notes: reference || 'Credit Settlement',
-          });
-        } catch {}
-      }
+      clearApiCache('/customers');
+      clearApiCache('/sales');
 
       logActivity({
         action: 'CREDIT_SETTLEMENT',
-        details: `Received credit settlement payment of Rs. ${settlingNum.toLocaleString()} from customer "${selectedCustomer.name}" (Method: ${paymentMethod})`,
+        details: `Received credit settlement payment of Rs. ${settlingNum.toLocaleString()} from customer "${selectedCustomer.name}" (Method: ${paymentMethod}, Ref: ${reference || 'N/A'})`,
         amount: settlingNum,
-        httpMethod: 'POST',
-        endpoint: '/sales/credit',
+        httpMethod: 'PATCH',
+        endpoint: '/sales/:id/add-credit',
       });
 
       // 3. Send text.lk SMS payment receipt to customer
