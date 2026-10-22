@@ -474,6 +474,16 @@ export default function CustomersPage() {
   const handleReconcileCustomer = async (cust: Customer) => {
     try {
       toastInfo(`Recalculating and syncing balance for ${cust.name}...`);
+      try {
+        const backendRes = await api.post('/customers/reconcile', null, { params: { customerId: cust.id } });
+        if (backendRes.data?.status === 'success') {
+          toastSuccess(`Synced ${cust.name} balance successfully!`);
+          clearApiCache('/customers');
+          await fetchCustomers();
+          return;
+        }
+      } catch {}
+
       const res = await fetch(`/api/customers/reconcile?customerId=${cust.id}`, { method: 'POST' });
       const data = await res.json();
       if (data.success && data.results?.[0]) {
@@ -494,6 +504,16 @@ export default function CustomersPage() {
   const handleReconcileAll = async () => {
     try {
       toastInfo('Recalculating and syncing all customer balances from verified invoices...');
+      try {
+        const backendRes = await api.post('/customers/reconcile');
+        if (backendRes.data?.status === 'success') {
+          toastSuccess(`Reconciled all customer balances successfully!`);
+          clearApiCache('/customers');
+          await fetchCustomers();
+          return;
+        }
+      } catch {}
+
       const res = await fetch('/api/customers/reconcile?all=true', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
@@ -571,6 +591,13 @@ export default function CustomersPage() {
           customer={viewingCustomer}
           onClose={() => setViewingCustomer(null)}
           onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); }}
+          onCustomerUpdated={(updatedId, newBalance) => {
+            const updateFn = (c: Customer) =>
+              c.id === updatedId ? { ...c, outstanding: newBalance, isOverdue: newBalance > 0 } : c;
+            setCustomers(prev => prev.map(updateFn));
+            setViewingCustomer(prev => (prev && prev.id === updatedId ? updateFn(prev) : prev));
+            setTimeout(() => fetchCustomers(), 800);
+          }}
         />
       )}
       {editingCustomer && (

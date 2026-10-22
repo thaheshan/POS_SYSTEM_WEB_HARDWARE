@@ -7,10 +7,11 @@ import {
   ChevronDown, ChevronUp, ReceiptText, Banknote, ExternalLink, User, RotateCcw,
   Eye
 } from 'lucide-react';
-import api from '@/api/axiosInstance';
+import api, { clearApiCache } from '@/api/axiosInstance';
 import { shopApi } from '@/api/shop';
 import { openThermalPrintWindow } from '@/utils/thermalReceiptTemplate';
 import TransactionDetailsModal from '@/components/sales/TransactionDetailsModal';
+import { toastSuccess, toastError } from '@/lib/toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDisplayDate = (dateVal?: string): string => {
@@ -169,6 +170,7 @@ interface InvoiceItem {
 }
 
 interface Invoice {
+  id?: string;
   invoice_id: string;
   invoice_number: string;
   invoice_date: string;
@@ -188,9 +190,10 @@ interface CustomerProfileModalProps {
   customer: Customer;
   onClose: () => void;
   onEdit: () => void;
+  onCustomerUpdated?: (customerId: string, newBalance: number) => void;
 }
 
-export default function CustomerProfileModal({ customer, onClose, onEdit }: CustomerProfileModalProps) {
+export default function CustomerProfileModal({ customer, onClose, onEdit, onCustomerUpdated }: CustomerProfileModalProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
@@ -198,6 +201,11 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
   const [activeTab, setActiveTab] = useState<'all' | 'credit' | 'cash'>('all');
   const [productCatalog, setProductCatalog] = useState<Record<string, any>>({});
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
+  const [paymentRef, setPaymentRef] = useState<string>('');
+  const [paymentLoading, setPaymentLoading] = useState<boolean>(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -505,6 +513,71 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
     if (activeTab === 'cash') return String(inv.sale_type).toUpperCase() !== 'CREDIT';
     return true;
   });
+
+  const handleOpenPay = (inv: Invoice) => {
+    setPayingInvoice(inv);
+    setPaymentAmount(String(inv.balance || ''));
+    setPaymentMethod('Cash');
+    setPaymentRef('');
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!payingInvoice) return;
+    const payNum = parseFloat(paymentAmount);
+    const currentBal = Number(payingInvoice.balance || 0);
+    if (isNaN(payNum) || payNum <= 0) {
+      toastError(new Error('Please enter a valid payment amount greater than 0.'));
+      return;
+    }
+    if (payNum > currentBal) {
+      toastError(new Error(`Payment amount (Rs. ${payNum.toLocaleString()}) cannot exceed invoice balance (Rs. ${currentBal.toLocaleString()}).`));
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      const lookupKey = payingInvoice.invoice_id || payingInvoice.id || payingInvoice.invoice_number;
+      await api.patch(`/sales/${lookupKey}/add-credit`, { amount: payNum });
+
+      const newPaid = Number((Number(payingInvoice.paid_amount || 0) + payNum).toFixed(2));
+      const newBal = Math.max(0, Number((Number(payingInvoice.balance || 0) - payNum).toFixed(2)));
+      const newStatus = newBal <= 0 ? 'PAID' : 'PARTIAL';
+
+      setInvoices(prev => prev.map(inv => {
+        const matches = (inv.invoice_id && inv.invoice_id === payingInvoice.invoice_id) ||
+                        (inv.invoice_number && inv.invoice_number === payingInvoice.invoice_number);
+        if (matches) {
+          return {
+            ...inv,
+            paid_amount: newPaid,
+            balance: newBal,
+            payment_status: newStatus,
+          };
+        }
+        return inv;
+      }));
+
+      const prevCustOut = Number(customer.outstanding || 0);
+      const updatedCustBalance = Math.max(0, Number((prevCustOut - payNum).toFixed(2)));
+      customer.outstanding = updatedCustBalance;
+      customer.isOverdue = updatedCustBalance > 0;
+
+      if (onCustomerUpdated) {
+        onCustomerUpdated(customer.id, updatedCustBalance);
+      }
+
+      clearApiCache('/customers');
+      clearApiCache('/sales');
+
+      toastSuccess(`Payment of Rs. ${payNum.toLocaleString()} recorded for Invoice ${payingInvoice.invoice_number}! Remaining balance: Rs. ${newBal.toLocaleString()}`);
+      setPayingInvoice(null);
+    } catch (err: any) {
+      console.error('[PayInvoice Error]', err);
+      toastError(err, err?.response?.data?.message || 'Failed to record payment for invoice.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // ─── Store Name ───────────────────────────────────────────────────────────
   const storeName = (() => {
@@ -1105,7 +1178,20 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              {hasBalance && (
+                                <button
+                                  type="button"
+                                  title="Pay / Settle this invoice"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenPay(inv);
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-xs active:scale-95"
+                                >
+                                  <CreditCard className="w-3 h-3" /> Pay
+                                </button>
+                              )}
                               {inv.items?.length > 0 && (
                                 <span className="text-[10px] font-bold text-gray-400">
                                   {inv.items.length} item{inv.items.length !== 1 ? 's' : ''}
@@ -1203,9 +1289,18 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
                                       </tr>
                                       {Number(inv.balance) > 0 && (
                                         <tr className="bg-red-50">
-                                          <td colSpan={4} className="py-2 px-3 text-right font-black text-red-700 text-[12px]">Outstanding Balance</td>
+                                          <td colSpan={3} className="py-2 px-3 text-right font-black text-red-700 text-[12px]">Outstanding Balance</td>
                                           <td colSpan={2} className="py-2 px-3 text-right font-black text-red-700 font-mono text-[13px]">
                                             Rs. {Number(inv.balance).toLocaleString()}
+                                          </td>
+                                          <td className="py-2 px-3 text-right">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenPay(inv)}
+                                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black rounded-lg transition-all shadow-xs active:scale-95"
+                                            >
+                                              Pay Invoice
+                                            </button>
                                           </td>
                                         </tr>
                                       )}
@@ -1216,9 +1311,18 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
                                 <div className="flex items-center gap-3 text-[12px] text-gray-400 font-bold py-2">
                                   <Package className="w-4 h-4" />
                                   <span>No item-level details available for this invoice.</span>
-                                  <div className="ml-auto text-[11px] text-gray-400">
-                                    Total: <strong className="text-gray-700 font-mono">Rs. {Number(inv.total_amount || 0).toLocaleString()}</strong>
-                                    {inv.notes && <> • Notes: {inv.notes}</>}
+                                  <div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
+                                    <span>Total: <strong className="text-gray-700 font-mono">Rs. {Number(inv.total_amount || 0).toLocaleString()}</strong></span>
+                                    {inv.notes && <span>• Notes: {inv.notes}</span>}
+                                    {hasBalance && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenPay(inv)}
+                                        className="ml-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black rounded-lg transition-all shadow-xs active:scale-95"
+                                      >
+                                        Pay Invoice
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -1278,6 +1382,136 @@ export default function CustomerProfileModal({ customer, onClose, onEdit }: Cust
           </div>
         </div>
       </div>
+
+      {payingInvoice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[460px] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-black tracking-tight leading-tight">Pay Invoice</h3>
+                  <p className="text-[11px] text-emerald-200 font-mono mt-0.5">{payingInvoice.invoice_number}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPayingInvoice(null)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-2xl p-4 grid grid-cols-3 gap-2 text-center border border-gray-100">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</p>
+                  <p className="text-[13px] font-black text-gray-900 font-mono mt-0.5">Rs. {Number(payingInvoice.total_amount || 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Paid So Far</p>
+                  <p className="text-[13px] font-black text-emerald-600 font-mono mt-0.5">Rs. {Number(payingInvoice.paid_amount || 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-red-500 uppercase">Balance Due</p>
+                  <p className="text-[13px] font-black text-red-600 font-mono mt-0.5">Rs. {Number(payingInvoice.balance || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black text-gray-700 uppercase tracking-wider block mb-1.5">
+                  Payment Amount (LKR)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] font-black text-gray-400">Rs.</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={Number(payingInvoice.balance || 0)}
+                    step="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[14px] font-black text-gray-900 outline-none focus:border-emerald-600 transition-colors"
+                  />
+                </div>
+                <div className="flex gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentAmount(String(payingInvoice.balance || 0))}
+                    className="text-[10px] font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-200 transition-colors"
+                  >
+                    Pay Full Balance (Rs. {Number(payingInvoice.balance || 0).toLocaleString()})
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black text-gray-700 uppercase tracking-wider block mb-1.5">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Cash', 'Card', 'Bank Transfer', 'Cheque'].map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaymentMethod(m)}
+                      className={`py-2 px-1 text-center rounded-xl text-[11px] font-black transition-all border ${
+                        paymentMethod === m
+                          ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black text-gray-700 uppercase tracking-wider block mb-1.5">
+                  Reference / Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Bank slip #, Cashier note..."
+                  value={paymentRef}
+                  onChange={(e) => setPaymentRef(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[12px] font-semibold text-gray-900 outline-none focus:border-emerald-600 transition-colors"
+                />
+              </div>
+
+              {parseFloat(paymentAmount) > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between text-[12px]">
+                  <span className="font-bold text-blue-700">New Balance After Payment:</span>
+                  <span className="font-black text-blue-900 font-mono">
+                    Rs. {Math.max(0, Number(payingInvoice.balance || 0) - (parseFloat(paymentAmount) || 0)).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 pt-0 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPayingInvoice(null)}
+                className="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 py-2.5 rounded-xl text-[12px] font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                disabled={paymentLoading || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white py-2.5 rounded-xl text-[12px] font-black transition-all shadow-sm flex items-center justify-center gap-1.5"
+              >
+                {paymentLoading ? 'Recording...' : 'Confirm Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedInvoiceId && (
         <TransactionDetailsModal

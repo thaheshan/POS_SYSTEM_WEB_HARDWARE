@@ -29,6 +29,25 @@ async function handleReconcile(req: Request) {
     const customerName = url.searchParams.get("name") || url.searchParams.get("customerName");
     const all = url.searchParams.get("all") === "true";
 
+    // Try backend reconcile first if token is available
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+    const authHeader = req.headers.get("authorization");
+    if (authHeader) {
+      try {
+        const backendRes = await fetch(`${backendUrl}/customers/reconcile${customerId ? `?customerId=${customerId}` : ''}`, {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json"
+          }
+        });
+        const backendData = await backendRes.json();
+        if (backendData.status === "success") {
+          return NextResponse.json({ success: true, ...backendData });
+        }
+      } catch {}
+    }
+
     // 1. Fetch target customers
     let targetCustomersUrl = `${supabaseUrl}/rest/v1/customers?select=*`;
     if (customerId) {
