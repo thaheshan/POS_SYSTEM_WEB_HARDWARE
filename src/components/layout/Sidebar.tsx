@@ -136,14 +136,14 @@ export default function Sidebar({
       {/* Mobile Backdrop Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-black/50 z-[65] lg:hidden transition-opacity"
           onClick={onClose}
         />
       )}
 
       <aside
         className={cn(
-          "w-[260px] bg-gradient-to-b from-[#1E429F] to-[#1A56DB] text-white h-screen fixed left-0 top-0 flex flex-col z-50 overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "w-[260px] bg-gradient-to-b from-[#1E429F] to-[#1A56DB] text-white h-screen fixed left-0 top-0 flex flex-col z-[70] overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >

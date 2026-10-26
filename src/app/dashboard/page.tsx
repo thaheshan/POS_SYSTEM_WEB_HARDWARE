@@ -5,6 +5,9 @@ import MainLayout from "@/components/layout/MainLayout";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { Zap } from "lucide-react";
+import { openCashDrawer } from "@/utils/hardwareIntegration";
+import { toast } from "sonner";
 import {
   DollarSign,
   Package,
@@ -40,6 +43,16 @@ interface SubscriptionStatus {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+
+  const handleOpenDrawer = async () => {
+    toast.info("Sending drawer kick signal...");
+    const res = await openCashDrawer();
+    if (res.success) {
+      toast.success("Cash drawer opened!");
+    } else {
+      toast.error("Failed to open cash drawer.");
+    }
+  };
   const router = useRouter();
   const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
@@ -110,12 +123,23 @@ export default function DashboardPage() {
                     : `Welcome back, ${user?.name || "Member"}! Here are your service and sales stats.`}
               </p>
             </div>
-            <Link
-              href="/pos"
-              className="bg-[#2563eb] text-white px-8 py-3.5 rounded-[12px] font-black text-sm hover:bg-[#1d4ed8] transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2"
-            >
-              New Sale
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleOpenDrawer}
+                className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-5 py-3.5 rounded-[12px] font-black text-sm transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2"
+                title="Pop Open Physical Cash Drawer"
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                Open Cash Drawer
+              </button>
+              <Link
+                href="/pos"
+                className="bg-[#2563eb] text-white px-8 py-3.5 rounded-[12px] font-black text-sm hover:bg-[#1d4ed8] transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2"
+              >
+                New Sale
+              </Link>
+            </div>
           </div>
 
           {/* Subscription Alert Banner */}
