@@ -12,6 +12,9 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { Zap } from "lucide-react";
+import { openCashDrawer } from "@/utils/hardwareIntegration";
+import { toast } from "sonner";
 
 const actions = [
   {
@@ -74,6 +77,16 @@ const actions = [
     href: "/inventory?tab=approvals",
     roles: ["admin", "owner"],
   },
+  {
+    id: 7,
+    label: "Open Cash Drawer",
+    icon: Zap,
+    iconBg: "bg-amber-500",
+    iconColor: "text-white",
+    isPrimary: false,
+    isDrawerKick: true,
+    roles: ["admin", "owner", "manager", "staff", "cashier"],
+  },
 ];
 
 export default function QuickActions() {
@@ -124,6 +137,24 @@ export default function QuickActions() {
               ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/20"
               : "bg-gray-50 text-gray-900 hover:bg-gray-100 border border-gray-100 shadow-sm",
           );
+
+          if (action.isDrawerKick) {
+            return (
+              <button
+                key={action.id}
+                type="button"
+                onClick={async () => {
+                  toast.info("Sending drawer kick signal...");
+                  const res = await openCashDrawer();
+                  if (res.success) toast.success("Cash drawer opened!");
+                  else toast.error("Failed to open cash drawer.");
+                }}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          }
 
           if (action.href) {
             return (

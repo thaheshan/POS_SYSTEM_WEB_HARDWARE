@@ -21,6 +21,10 @@ import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import AddProductModal from '@/components/inventory/AddProductModal';
 import { useBarcodeScanner, openCashDrawer } from '@/utils/hardwareIntegration';
 import { matchAndScoreProduct } from '@/utils/searchUtils';
+import { PauseCircle, Clock, Play } from 'lucide-react';
+import HeldSalesModal, { HeldSale } from '@/components/pos/HeldSalesModal';
+import HoldConfirmModal from '@/components/pos/HoldConfirmModal';
+import HoldOverwriteModal from '@/components/pos/HoldOverwriteModal';
 
 
 type CartItem = {
@@ -1244,7 +1248,74 @@ export default function POSPage() {
     try { return localStorage.getItem(POS_DRAFT_NOTES) || ''; }
     catch { return ''; }
   });
-  const [heldOrders, setHeldOrders] = useState<CartItem[][]>([]);
+  const POS_HELD_SALES_KEY = 'pos_held_sales';
+
+  const [heldSales, setHeldSales] = useState<HeldSale[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem(POS_HELD_SALES_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Persist heldSales to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(POS_HELD_SALES_KEY, JSON.stringify(heldSales));
+    } catch (err) {
+      console.error('Failed to save held sales:', err);
+    }
+  }, [heldSales]);
+
+  // Sync held sales from backend on mount
+  useEffect(() => {
+    api.get('/sales/hold/list')
+      .then((res) => {
+        const serverSales = res.data?.data || [];
+        if (Array.isArray(serverSales) && serverSales.length > 0) {
+          setHeldSales((prev) => {
+            const existingIds = new Set(prev.map((s) => s.backendId || s.id));
+            const newEntries: HeldSale[] = [];
+            for (const s of serverSales) {
+              if (!existingIds.has(s.id)) {
+                newEntries.push({
+                  id: s.id,
+                  backendId: s.id,
+                  reference: s.reference || 'Server Hold',
+                  createdAt: s.createdAt,
+                  timeFormatted: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  dateFormatted: new Date(s.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+                  items: (s.items || []).map((i: any) => ({
+                    id: i.productId || i.id,
+                    name: i.name || 'Product',
+                    price: Number(i.price || 0),
+                    qty: Number(i.quantity || 1),
+                    img: '',
+                  })),
+                  itemCount: s.itemCount || s.items?.length || 0,
+                  subtotal: Number(s.totalAmount || 0),
+                  discountType: 'percentage',
+                  discountValue: 0,
+                  discountAmount: 0,
+                  total: Number(s.totalAmount || 0),
+                });
+              }
+            }
+            return newEntries.length > 0 ? [...newEntries, ...prev] : prev;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Modal states for Held Sales
+  const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
+  const [isHoldConfirmModalOpen, setIsHoldConfirmModalOpen] = useState(false);
+  const [defaultHoldRef, setDefaultHoldRef] = useState('');
+  const [isHoldOverwriteModalOpen, setIsHoldOverwriteModalOpen] = useState(false);
+  const [pendingLoadSale, setPendingLoadSale] = useState<HeldSale | null>(null);
 
   // Persist draft cart to localStorage on every change
   useEffect(() => {
@@ -1690,12 +1761,184 @@ export default function POSPage() {
 
   const removeFromCart = (id: string) => setCart((prev) => prev.filter(item => item.id !== id));
 
-  const handleHold = () => {
-    if (cart.length === 0) return;
-    setHeldOrders(prev => [...prev, cart]);
-    setCart([]);
-    toast.success('Transaction put on hold.');
+  // ── Held Sales Handlers ──────────────────────────────────────────────────
+  const handleOpenHold = () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty. Add products before holding.');
+      return;
+    }
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const defaultRef = selectedCustomer?.name
+      ? `${selectedCustomer.name} (${cart.length} item${cart.length > 1 ? 's' : ''})`
+      : `Hold #${heldSales.length + 1} (${timeStr})`;
+    setDefaultHoldRef(defaultRef);
+    setIsHoldConfirmModalOpen(true);
   };
+
+  const handleConfirmHold = async (customReference: string) => {
+    if (cart.length === 0) return;
+    const now = new Date();
+    const ref = customReference.trim() || defaultHoldRef;
+    const newHeldSale: HeldSale = {
+      id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      reference: ref,
+      createdAt: now.toISOString(),
+      timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dateFormatted: now.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+      customer: selectedCustomer,
+      items: [...cart],
+      itemCount: cart.reduce((sum, item) => sum + (item.qty || 1), 0),
+      subtotal,
+      discountType,
+      discountValue,
+      discountAmount,
+      total,
+      notes,
+    };
+
+    setHeldSales((prev) => [newHeldSale, ...prev]);
+    setCart([]);
+    setSelectedCustomer(null);
+    setDiscountValue(0);
+    setNotes('');
+    setIsHoldConfirmModalOpen(false);
+
+    toast.success(`Sale put on hold: "${ref}"`, {
+      description: `${cart.length} item(s) saved. You can load it back anytime.`,
+    });
+
+    // Asynchronously sync to backend
+    try {
+      const payload = {
+        reference: ref,
+        customerId: selectedCustomer?.id,
+        items: cart.map((it) => ({
+          productId: it.id,
+          quantity: it.qty,
+          price: it.price,
+          name: it.name,
+        })),
+        totalAmount: total,
+      };
+      const res = await api.post('/sales/hold', payload);
+      if (res.data?.holdId) {
+        setHeldSales((prev) =>
+          prev.map((s) => (s.id === newHeldSale.id ? { ...s, backendId: res.data.holdId } : s))
+        );
+      }
+    } catch {}
+  };
+
+  const handleLoadHeldSale = (sale: HeldSale) => {
+    if (cart.length > 0) {
+      setPendingLoadSale(sale);
+      setIsHoldOverwriteModalOpen(true);
+      return;
+    }
+    executeLoadHeldSale(sale);
+  };
+
+  const executeLoadHeldSale = (sale: HeldSale) => {
+    setCart(sale.items as CartItem[]);
+    setSelectedCustomer(sale.customer || null);
+    setDiscountType((sale.discountType as any) || 'percentage');
+    setDiscountValue(sale.discountValue || 0);
+    setNotes(sale.notes || '');
+
+    setHeldSales((prev) => prev.filter((s) => s.id !== sale.id));
+    if (sale.backendId) {
+      api.delete(`/sales/${sale.backendId}`).catch(() => {});
+    }
+
+    setIsHeldSalesModalOpen(false);
+    setIsHoldOverwriteModalOpen(false);
+    setPendingLoadSale(null);
+
+    toast.success(`Loaded "${sale.reference}" to cart!`, {
+      description: `${sale.items.length} item(s) restored. Total: Rs. ${sale.total.toLocaleString()}`,
+    });
+  };
+
+  const handleHoldCurrentAndLoad = async () => {
+    if (!pendingLoadSale) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const currentRef = selectedCustomer?.name
+      ? `${selectedCustomer.name} (${cart.length} items)`
+      : `Hold #${heldSales.length + 1} (${timeStr})`;
+
+    const currentHeld: HeldSale = {
+      id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      reference: currentRef,
+      createdAt: now.toISOString(),
+      timeFormatted: timeStr,
+      dateFormatted: now.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+      customer: selectedCustomer,
+      items: [...cart],
+      itemCount: cart.reduce((sum, item) => sum + (item.qty || 1), 0),
+      subtotal,
+      discountType,
+      discountValue,
+      discountAmount,
+      total,
+      notes,
+    };
+
+    const target = pendingLoadSale;
+    setHeldSales((prev) => [currentHeld, ...prev.filter((s) => s.id !== target.id)]);
+    setCart(target.items as CartItem[]);
+    setSelectedCustomer(target.customer || null);
+    setDiscountType((target.discountType as any) || 'percentage');
+    setDiscountValue(target.discountValue || 0);
+    setNotes(target.notes || '');
+
+    if (target.backendId) {
+      api.delete(`/sales/${target.backendId}`).catch(() => {});
+    }
+
+    setIsHeldSalesModalOpen(false);
+    setIsHoldOverwriteModalOpen(false);
+    setPendingLoadSale(null);
+
+    toast.success(`Current cart held as "${currentRef}" & loaded "${target.reference}"!`);
+  };
+
+  const handleDiscardCurrentAndLoad = () => {
+    if (!pendingLoadSale) return;
+    executeLoadHeldSale(pendingLoadSale);
+  };
+
+  const handleDeleteHeldSale = (sale: HeldSale) => {
+    setHeldSales((prev) => prev.filter((s) => s.id !== sale.id));
+    if (sale.backendId) {
+      api.delete(`/sales/${sale.backendId}`).catch(() => {});
+    }
+    toast.info(`Deleted held sale "${sale.reference}"`);
+  };
+
+  const handleOpenDrawer = async () => {
+    toast.info('Sending cash drawer kick signal...');
+    const res = await openCashDrawer();
+    if (res.success) {
+      toast.success('Cash drawer opened!');
+    } else {
+      toast.error('Failed to open cash drawer.');
+    }
+  };
+
+  // URL resume handler
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const resumeId = new URLSearchParams(window.location.search).get('resume');
+    if (!resumeId) return;
+
+    const target = heldSales.find((s) => s.id === resumeId || s.backendId === resumeId);
+    if (target) {
+      executeLoadHeldSale(target);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [heldSales]);
 
   const handlePrint = () => { window.print(); };
 
@@ -2157,6 +2400,15 @@ export default function POSPage() {
                     />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+<button
+                      type="button"
+                      onClick={handleOpenDrawer}
+                      className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-4 py-3.5 rounded-lg font-bold text-[14px] flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
+                      title="Kick Cash Drawer to Open"
+                    >
+                      <Zap className="w-4 h-4 fill-current" />
+                      <span>Open Drawer</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsAddProductModalOpen(true)}
@@ -2505,7 +2757,7 @@ export default function POSPage() {
                 )}
               </div>
               {/* Floating mobile cart trigger */}
-              {cart.length > 0 && (
+              {cart.length > 0 ? (
                 <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm">
                   <button
                     onClick={() => setIsMobileCartOpen(true)}
@@ -2518,12 +2770,27 @@ export default function POSPage() {
                     <span>Rs. {total.toLocaleString()}</span>
                   </button>
                 </div>
-              )}
+              ) : heldSales.length > 0 ? (
+                <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm">
+                  <button
+                    onClick={() => setIsHeldSalesModalOpen(true)}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3.5 px-6 rounded-2xl flex items-center justify-between shadow-2xl shadow-amber-500/40 font-black text-[14px] transition-all active:scale-[0.98] border border-amber-400"
+                  >
+                    <div className="flex items-center gap-2">
+                      <PauseCircle className="w-5 h-5" />
+                      <span>HELD SALES ({heldSales.length})</span>
+                    </div>
+                    <span className="bg-white text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-black">
+                      Open Queue
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </div>
             {/* END LEFT PANEL */}
 
             {/* Drawer Overlay */}
-            {cart.length > 0 && isMobileCartOpen && (
+            {isMobileCartOpen && (
               <div
                 className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
                 onClick={() => setIsMobileCartOpen(false)}
@@ -2531,8 +2798,7 @@ export default function POSPage() {
             )}
 
             {/* ── RIGHT: CART SIDEBAR ── */}
-            {cart.length > 0 && (
-              <div className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+            <div className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
 
                 {/* Sidebar Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
@@ -2545,14 +2811,89 @@ export default function POSPage() {
                       <p className="text-[10px] text-gray-400 font-semibold">Review basket items</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setCart([])} className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors">Clear All</button>
-                    <button onClick={() => setIsMobileCartOpen(false)} className="lg:hidden p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsHeldSalesModalOpen(true)}
+                      className="relative flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-all shadow-xs"
+                      title="View Held Sales Queue"
+                    >
+                      <PauseCircle className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Hold Items</span>
+                      {heldSales.length > 0 && (
+                        <span className="bg-amber-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-[17px] text-center">
+                          {heldSales.length}
+                        </span>
+                      )}
+                    </button>
+                    {cart.length > 0 && (
+                      <button
+                        onClick={() => setCart([])}
+                        className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsMobileCartOpen(false)}
+                      className="lg:hidden p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                    >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
+                {cart.length === 0 ? (
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
+                    {heldSales.length > 0 ? (
+                      <div className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 border border-amber-200/80 rounded-2xl p-5 shadow-sm text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center mx-auto mb-3 shadow-md shadow-amber-500/20">
+                          <PauseCircle className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-sm font-black text-gray-900 mb-1">
+                          {heldSales.length} Sale{heldSales.length > 1 ? 's' : ''} on Hold
+                        </h4>
+                        <p className="text-xs text-gray-500 font-medium mb-4">
+                          You have suspended customer carts waiting in queue.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setIsHeldSalesModalOpen(true)}
+                          className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          View & Load Held Sales ({heldSales.length})
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="py-16 text-center flex flex-col items-center justify-center my-auto">
+                        <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-3 text-[#059669]">
+                          <ShoppingCart className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <h4 className="text-sm font-black text-gray-900 mb-1">
+                          Your Cart Is Empty
+                        </h4>
+                        <p className="text-xs text-gray-400 max-w-[220px]">
+                          Click products from the catalog or scan barcodes to begin a sale.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 pt-4 border-t border-gray-100">
+                      {heldSales.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsHeldSalesModalOpen(true)}
+                          className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+                        >
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          Held Sales Queue ({heldSales.length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 {/* Scrollable Cart Content */}
                 <div className="flex-1 overflow-y-auto scroll-smooth p-4 space-y-4">
                   {hasLowStockItems && (
@@ -2772,22 +3113,32 @@ export default function POSPage() {
                     </button>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={handleHold}
-                        className="flex-1 bg-gray-50 border border-gray-100 hover:bg-gray-100 text-gray-500 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                        type="button"
+                        onClick={handleOpenHold}
+                        className="flex-1 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 py-2 rounded-lg font-black text-[11px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                       >
-                        <Pause className="w-3 h-3" /> Hold {heldOrders.length > 0 && `(${heldOrders.length})`}
+                        <Pause className="w-3.5 h-3.5 text-amber-600" /> Hold Current
                       </button>
                       <button
-                        onClick={handlePrint}
-                        className="flex-1 bg-gray-50 border border-gray-100 hover:bg-gray-100 text-gray-500 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                        type="button"
+                        onClick={() => setIsHeldSalesModalOpen(true)}
+                        className="flex-1 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 py-2 rounded-lg font-black text-[11px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                       >
-                        <Printer className="w-3 h-3" /> Print
+                        <Clock className="w-3.5 h-3.5 text-gray-500" /> Hold Items {heldSales.length > 0 && `(${heldSales.length})`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePrint}
+                        className="bg-gray-50 border border-gray-100 hover:bg-gray-100 text-gray-500 px-3 py-2 rounded-lg font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
+          </div>
             {/* END RIGHT SIDEBAR */}
 
           </div>
@@ -2795,6 +3146,33 @@ export default function POSPage() {
         )}
 
         <SuccessModal isOpen={showSuccess} total={total} />
+        <HeldSalesModal
+          isOpen={isHeldSalesModalOpen}
+          onClose={() => setIsHeldSalesModalOpen(false)}
+          heldSales={heldSales}
+          onLoadSale={handleLoadHeldSale}
+          onDeleteSale={handleDeleteHeldSale}
+        />
+        <HoldConfirmModal
+          isOpen={isHoldConfirmModalOpen}
+          onClose={() => setIsHoldConfirmModalOpen(false)}
+          onConfirm={handleConfirmHold}
+          defaultReference={defaultHoldRef}
+          itemCount={cart.length}
+          total={total}
+        />
+        <HoldOverwriteModal
+          isOpen={isHoldOverwriteModalOpen}
+          onClose={() => {
+            setIsHoldOverwriteModalOpen(false);
+            setPendingLoadSale(null);
+          }}
+          targetSale={pendingLoadSale}
+          currentCartItemCount={cart.length}
+          currentCartTotal={total}
+          onHoldCurrentAndLoad={handleHoldCurrentAndLoad}
+          onDiscardCurrentAndLoad={handleDiscardCurrentAndLoad}
+        />
         {selectedCartItemForDiscount && (
           <ProductDiscountModal
             item={selectedCartItemForDiscount}
