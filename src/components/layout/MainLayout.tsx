@@ -150,7 +150,7 @@ export default function MainLayout({
           <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </div>
         <div className="flex-1 lg:ml-[260px] ml-0 print:ml-0 flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible transition-all duration-300">
-          <div className="print:hidden">
+          <div className="print:hidden relative z-[60]">
             <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
           </div>
           {/* Main Scrollable Area */}

@@ -64,7 +64,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const logoUrl = formatImageUrl(shopProfile?.logo_url || user?.logoUrl) ?? undefined;
 
   return (
-    <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-40 shadow-sm border-b border-white/10 h-[96px]">
+    <header className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] sticky top-0 z-[60] shadow-sm border-b border-white/10 h-[96px]">
       <div className="flex justify-between items-center h-full px-4 md:px-10">
         
         {/* Left: Hamburger & System Title */}

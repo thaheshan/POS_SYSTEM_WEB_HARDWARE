@@ -2296,7 +2296,7 @@ export default function POSPage() {
 
       <MainLayout>
         {viewState === 'confirm' ? (
-          <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative z-50">
+          <div className="flex h-[calc(100vh-96px)] -m-4 md:-m-10 overflow-hidden bg-[#f8fafc] relative z-10">
             <PaymentConfirmation
               onBack={() => setViewState('pos')}
               onProcess={() => {
@@ -2798,7 +2798,7 @@ export default function POSPage() {
             )}
 
             {/* ── RIGHT: CART SIDEBAR ── */}
-            <div className={`fixed inset-y-0 right-0 z-50 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+            <div className={`fixed inset-y-0 right-0 z-40 w-full max-w-md lg:max-w-none lg:w-[400px] xl:w-[450px] lg:relative lg:translate-x-0 bg-white flex flex-col shadow-2xl border-l border-gray-200 h-full overflow-hidden transition-transform duration-300 ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
 
                 {/* Sidebar Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50 shrink-0">

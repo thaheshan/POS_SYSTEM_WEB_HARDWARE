@@ -69,7 +69,7 @@ export default function ProfileDropdown({ logoUrl, shopName }: ProfileDropdownPr
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="px-4 py-2 border-b border-gray-50 mb-1">
             <p className="text-[13.5px] font-black text-gray-900 truncate">{shopName || user?.name}</p>
             <p className="text-[11.5px] font-medium text-gray-500 truncate">{user?.name ? `${user.name} (${user.role || 'Member'})` : user?.email}</p>
