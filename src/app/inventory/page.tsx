@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useBarcodeScanner } from "@/utils/hardwareIntegration";
 import { matchAndScoreProduct } from "@/utils/searchUtils";
-import { exportInventoryToExcel } from "@/utils/inventoryExport";
+import { exportInventoryToExcel, exportInventoryToCSV } from "@/utils/inventoryExport";
 import { toast } from "sonner";
 import { logActivity } from "@/utils/activityLogger";
 import { formatImageUrl } from "@/utils/formatters";
@@ -1094,10 +1094,22 @@ export default function InventoryPage() {
             </Popover.Root>
 
             <button
-              onClick={() => exportInventoryToExcel(filteredData)}
+              onClick={() => {
+                const periodText = dateRange?.from
+                  ? dateRange.to
+                    ? `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
+                    : format(dateRange.from, "MMM d, yyyy")
+                  : undefined;
+                exportInventoryToExcel(
+                  filteredData,
+                  shopProfile?.name || "Trinco Hardware & Electricals",
+                  periodText
+                );
+              }}
               className="flex items-center gap-2 px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-[13px] font-black shadow-lg shadow-emerald-700/20 hover:bg-emerald-800 transition-all active:scale-95"
+              title="Download structured multi-sheet Excel valuation report (.xls)"
             >
-              <FileSpreadsheet className="w-4 h-4" /> Export Excel Sheet (.xlsx)
+              <FileSpreadsheet className="w-4 h-4" /> Export Excel Sheet (.xls)
             </button>
 
             <button
