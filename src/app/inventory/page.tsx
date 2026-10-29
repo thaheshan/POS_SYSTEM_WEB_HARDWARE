@@ -1803,7 +1803,7 @@ export default function InventoryPage() {
       />
 
       {/* HIDDEN PRINT VIEW */}
-      <InventoryReportView data={filteredData} dateRange={dateRange} />
+      <InventoryReportView data={filteredData} dateRange={dateRange} storeName={shopProfile?.name} />
     </MainLayout>
   );
 }

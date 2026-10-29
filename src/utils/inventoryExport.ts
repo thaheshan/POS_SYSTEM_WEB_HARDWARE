@@ -3,6 +3,8 @@
  * Generates structured, crash-proof Microsoft Excel (.xls XML Spreadsheet)
  * and CSV reports with complete valuation, stock status, category summary,
  * and reorder alerts.
+ *
+ * Fully sorted and split up by Category -> Subcategory -> Brand hierarchy.
  */
 
 export function escapeXml(str: any): string {
@@ -17,6 +19,33 @@ export function escapeXml(str: any): string {
     .replace(/'/g, '&apos;');
 }
 
+/**
+ * Sorts inventory products hierarchically by:
+ * 1. Category (A-Z)
+ * 2. Subcategory (A-Z)
+ * 3. Brand (A-Z)
+ * 4. Product Name (A-Z)
+ */
+export function sortInventoryHierarchy(items: any[]): any[] {
+  return [...items].sort((a, b) => {
+    const catA = String(a.category || 'Uncategorized').trim().toLowerCase();
+    const catB = String(b.category || 'Uncategorized').trim().toLowerCase();
+    if (catA !== catB) return catA.localeCompare(catB);
+
+    const subA = String(a.subCategory || a.subcategory || 'General').trim().toLowerCase();
+    const subB = String(b.subCategory || b.subcategory || 'General').trim().toLowerCase();
+    if (subA !== subB) return subA.localeCompare(subB);
+
+    const brandA = String(a.brand || 'Unbranded').trim().toLowerCase();
+    const brandB = String(b.brand || 'Unbranded').trim().toLowerCase();
+    if (brandA !== brandB) return brandA.localeCompare(brandB);
+
+    const nameA = String(a.name || a.product_name || '').trim().toLowerCase();
+    const nameB = String(b.name || b.product_name || '').trim().toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+}
+
 export function exportInventoryToExcel(
   inventoryData: any[],
   shopName: string = 'TRINCO HARDWARE & ELECTRICALS',
@@ -27,24 +56,38 @@ export function exportInventoryToExcel(
     return;
   }
 
-  // Calculate high-level inventory metrics
-  const totalSKUs = inventoryData.length;
+  // 1. Sort inventory by Category -> Subcategory -> Brand -> Product Name
+  const sortedData = sortInventoryHierarchy(inventoryData);
+
+  // 2. High-level totals & aggregation maps
+  const totalSKUs = sortedData.length;
   let totalUnits = 0;
   let totalValuation = 0;
   let inStockCount = 0;
   let lowStockCount = 0;
   let outOfStockCount = 0;
 
-  // Category Aggregator
-  const categorySummaryMap = new Map<
-    string,
-    { count: number; units: number; value: number; alertCount: number }
-  >();
+  // Pre-calculate Category, Subcategory, and Brand totals for splitup headers & subtotals
+  const catStatsMap = new Map<string, { displayName: string; count: number; units: number; val: number; alertCount: number }>();
+  const subStatsMap = new Map<string, { displayName: string; count: number; units: number; val: number }>();
+  const brandStatsMap = new Map<string, { displayName: string; count: number; units: number; val: number }>();
+
+  // Full Hierarchy Breakdown for Sheet 2
+  interface HierarchyRecord {
+    category: string;
+    subcategory: string;
+    brand: string;
+    skus: number;
+    units: number;
+    valuation: number;
+    alertCount: number;
+  }
+  const hierarchyMap = new Map<string, HierarchyRecord>();
 
   // Alerts List (Low Stock & Out of Stock)
   const alertsList: any[] = [];
 
-  inventoryData.forEach((item) => {
+  sortedData.forEach((item) => {
     const qty = Number(item.qty ?? item.quantity ?? 0);
     const rawCost = Number(item.cost ?? item.purchasePrice ?? item.price ?? 0);
     const rawSelling = Number(item.sellingPrice ?? 0);
@@ -68,14 +111,50 @@ export function exportInventoryToExcel(
       inStockCount++;
     }
 
-    // Category aggregation
     const catName = (item.category || 'Uncategorized').trim();
-    const existing = categorySummaryMap.get(catName) || { count: 0, units: 0, value: 0, alertCount: 0 };
-    existing.count += 1;
-    existing.units += qty;
-    existing.value += totalVal;
-    if (isOut || isLow) existing.alertCount += 1;
-    categorySummaryMap.set(catName, existing);
+    const catKey = catName.toLowerCase();
+    const subName = (item.subCategory || item.subcategory || 'General').trim();
+    const subKey = `${catKey}:::${subName.toLowerCase()}`;
+    const brandName = (item.brand || 'Unbranded').trim();
+    const brandKey = `${subKey}:::${brandName.toLowerCase()}`;
+
+    // Category stats
+    const catStats = catStatsMap.get(catKey) || { displayName: catName, count: 0, units: 0, val: 0, alertCount: 0 };
+    catStats.count += 1;
+    catStats.units += qty;
+    catStats.val += totalVal;
+    if (isOut || isLow) catStats.alertCount += 1;
+    catStatsMap.set(catKey, catStats);
+
+    // Subcategory stats
+    const subStats = subStatsMap.get(subKey) || { displayName: subName, count: 0, units: 0, val: 0 };
+    subStats.count += 1;
+    subStats.units += qty;
+    subStats.val += totalVal;
+    subStatsMap.set(subKey, subStats);
+
+    // Brand stats
+    const brandStats = brandStatsMap.get(brandKey) || { displayName: brandName, count: 0, units: 0, val: 0 };
+    brandStats.count += 1;
+    brandStats.units += qty;
+    brandStats.val += totalVal;
+    brandStatsMap.set(brandKey, brandStats);
+
+    // Sheet 2 Hierarchy breakdown
+    const hRecord = hierarchyMap.get(brandKey) || {
+      category: catName,
+      subcategory: subName,
+      brand: brandName,
+      skus: 0,
+      units: 0,
+      valuation: 0,
+      alertCount: 0,
+    };
+    hRecord.skus += 1;
+    hRecord.units += qty;
+    hRecord.valuation += totalVal;
+    if (isOut || isLow) hRecord.alertCount += 1;
+    hierarchyMap.set(brandKey, hRecord);
   });
 
   const nowFormatted = new Date().toLocaleString('en-GB', {
@@ -94,8 +173,8 @@ export function exportInventoryToExcel(
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:html="http://www.w3.org/TR/REC-html40">
  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
-  <Title>${escapeXml(shopName)} - Inventory Valuation Report</Title>
-  <Subject>Real-time Inventory Valuation and Stock Status</Subject>
+  <Title>${escapeXml(shopName)} - Inventory Hierarchy &amp; Valuation Report</Title>
+  <Subject>Real-time Inventory Grouped by Category, Subcategory and Brand</Subject>
   <Author>${escapeXml(shopName)}</Author>
   <Created>${new Date().toISOString()}</Created>
  </DocumentProperties>
@@ -156,7 +235,7 @@ export function exportInventoryToExcel(
    <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
   </Style>
 
-  <!-- Main Table Header -->
+  <!-- Table Headers -->
   <Style ss:ID="MainHeader">
    <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
    <Borders>
@@ -165,11 +244,9 @@ export function exportInventoryToExcel(
     <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
     <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10.5" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
    <Interior ss:Color="#047857" ss:Pattern="Solid"/>
   </Style>
-
-  <!-- Category Table Header -->
   <Style ss:ID="CatHeader">
    <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
    <Borders>
@@ -178,11 +255,9 @@ export function exportInventoryToExcel(
     <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1D4ED8"/>
     <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1D4ED8"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10.5" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
    <Interior ss:Color="#1D4ED8" ss:Pattern="Solid"/>
   </Style>
-
-  <!-- Alert Table Header -->
   <Style ss:ID="AlertHeader">
    <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
    <Borders>
@@ -191,8 +266,68 @@ export function exportInventoryToExcel(
     <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B91C1C"/>
     <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B91C1C"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10.5" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
    <Interior ss:Color="#B91C1C" ss:Pattern="Solid"/>
+  </Style>
+
+  <!-- Hierarchy Splitup Banners -->
+  <Style ss:ID="CategoryBanner">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A8A"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A8A"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#1E3A8A" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="SubcategoryBanner">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#93C5FD"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#93C5FD"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#1E40AF"/>
+   <Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="BrandBanner">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="9.5" ss:Bold="1" ss:Color="#334155"/>
+   <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+  </Style>
+
+  <!-- Category Subtotal Rows -->
+  <Style ss:ID="CatSubtotalLabel">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#1E3A8A"/>
+   <Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CatSubtotalNumber">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#1E3A8A"/>
+   <Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/>
+   <NumberFormat ss:Format="#,##0"/>
+  </Style>
+  <Style ss:ID="CatSubtotalCurrency">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#94A3B8"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#1E3A8A"/>
+   <Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/>
+   <NumberFormat ss:Format="&#34;Rs.&#34;\ #,##0.00"/>
   </Style>
 
   <!-- Data Rows Styles -->
@@ -222,7 +357,7 @@ export function exportInventoryToExcel(
    <Borders>
     <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
    </Borders>
-   <Font ss:FontName="Consolas" ss:Size="9.5" ss:Bold="1" ss:Color="#2563EB"/>
+   <Font ss:FontName="Consolas" ss:Size="9.5" ss:Bold="1" ss:Color="#0369A1"/>
   </Style>
   <Style ss:ID="CellNumber">
    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
@@ -237,7 +372,7 @@ export function exportInventoryToExcel(
    <Borders>
     <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#0F172A"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#334155"/>
    <NumberFormat ss:Format="&#34;Rs.&#34;\ #,##0.00"/>
   </Style>
   <Style ss:ID="CellCurrencyBold">
@@ -245,7 +380,7 @@ export function exportInventoryToExcel(
    <Borders>
     <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#047857"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#0F172A"/>
    <NumberFormat ss:Format="&#34;Rs.&#34;\ #,##0.00"/>
   </Style>
   <Style ss:ID="CellPercent">
@@ -253,11 +388,11 @@ export function exportInventoryToExcel(
    <Borders>
     <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
    </Borders>
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#0F172A"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#334155"/>
    <NumberFormat ss:Format="0.0%"/>
   </Style>
 
-  <!-- Status Badges -->
+  <!-- Stock Status Badges -->
   <Style ss:ID="StatusInStock">
    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
    <Borders>
@@ -316,7 +451,7 @@ export function exportInventoryToExcel(
  </Styles>`;
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // SHEET 1: Master Inventory List
+  // SHEET 1: Master Inventory List (Organized by Category -> Subcategory -> Brand)
   // ─────────────────────────────────────────────────────────────────────────────
   xml += `\n <Worksheet ss:Name="Master Inventory">`;
   xml += `\n  <Table>`;
@@ -345,7 +480,7 @@ export function exportInventoryToExcel(
 
   // Report Name Row
   xml += `\n   <Row ss:Height="20">`;
-  xml += `\n    <Cell ss:MergeAcross="15" ss:StyleID="ReportTitle"><Data ss:Type="String">INVENTORY VALUATION &amp; STOCK STATUS REPORT</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="15" ss:StyleID="ReportTitle"><Data ss:Type="String">INVENTORY LIST (BY CATEGORY &gt; SUBCATEGORY &gt; BRAND)</Data></Cell>`;
   xml += `\n   </Row>`;
 
   // Subtitle / Period Row
@@ -358,24 +493,24 @@ export function exportInventoryToExcel(
   xml += `\n   <Row ss:Height="18">`;
   xml += `\n    <Cell ss:MergeAcross="1" ss:StyleID="KpiLabel"><Data ss:Type="String">TOTAL SKUs</Data></Cell>`;
   xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">TOTAL STOCK VALUE</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">TOTAL UNITS IN STOCK</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">TOTAL UNITS ON HAND</Data></Cell>`;
   xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">IN STOCK</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">LOW STOCK ALERTS</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">LOW STOCK</Data></Cell>`;
   xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiLabel"><Data ss:Type="String">OUT OF STOCK</Data></Cell>`;
   xml += `\n   </Row>`;
 
   // KPI Summary Strip (Row 2: Values)
-  xml += `\n   <Row ss:Height="24">`;
-  xml += `\n    <Cell ss:MergeAcross="1" ss:StyleID="KpiValue"><Data ss:Type="String">${totalSKUs.toLocaleString()}</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">Rs. ${totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">${totalUnits.toLocaleString()}</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">${inStockCount.toLocaleString()}</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">${lowStockCount.toLocaleString()}</Data></Cell>`;
-  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">${outOfStockCount.toLocaleString()}</Data></Cell>`;
+  xml += `\n   <Row ss:Height="22">`;
+  xml += `\n    <Cell ss:MergeAcross="1" ss:StyleID="KpiValue"><Data ss:Type="Number">${totalSKUs}</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="String">Rs. ${totalValuation.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="Number">${totalUnits}</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="Number">${inStockCount}</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="Number">${lowStockCount}</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="2" ss:StyleID="KpiValue"><Data ss:Type="Number">${outOfStockCount}</Data></Cell>`;
   xml += `\n   </Row>`;
   xml += `\n   <Row ss:Height="12"/>`;
 
-  // Master Table Headers (16 columns)
+  // Master Column Headers
   const masterHeaders = [
     '#',
     'Product Name',
@@ -401,8 +536,12 @@ export function exportInventoryToExcel(
   });
   xml += `\n   </Row>`;
 
-  // Data Rows
-  inventoryData.forEach((item, idx) => {
+  // Track state for hierarchy splitup
+  let activeCatKey: string | null = null;
+  let activeSubKey: string | null = null;
+  let activeBrandKey: string | null = null;
+
+  sortedData.forEach((item, idx) => {
     const qty = Number(item.qty ?? item.quantity ?? 0);
     const rawCost = Number(item.cost ?? item.purchasePrice ?? item.price ?? 0);
     const rawSelling = Number(item.sellingPrice ?? 0);
@@ -421,14 +560,72 @@ export function exportInventoryToExcel(
     const barcodeVal = item.barcode || skuVal;
     const unitText = item.unit || item.measurementUnit || 'pcs';
 
+    const catName = (item.category || 'Uncategorized').trim();
+    const catKey = catName.toLowerCase();
+    const subName = (item.subCategory || item.subcategory || 'General').trim();
+    const subKey = `${catKey}:::${subName.toLowerCase()}`;
+    const brandName = (item.brand || 'Unbranded').trim();
+    const brandKey = `${subKey}:::${brandName.toLowerCase()}`;
+
+    // 1. Category Transition: Output previous subtotal & new Category Banner
+    if (catKey !== activeCatKey) {
+      if (activeCatKey !== null) {
+        // Output Category Subtotal for previous category
+        const prevStats = catStatsMap.get(activeCatKey)!;
+        xml += `\n   <Row ss:Height="22">`;
+        xml += `\n    <Cell ss:MergeAcross="7" ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">${escapeXml(prevStats.displayName)} Subtotal (${prevStats.count} SKUs)</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalNumber"><Data ss:Type="Number">${prevStats.units}</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">units</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalCurrency"><Data ss:Type="Number">${prevStats.val}</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+        xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+        xml += `\n   </Row>`;
+        xml += `\n   <Row ss:Height="8"/>`;
+      }
+
+      const cStats = catStatsMap.get(catKey)!;
+      xml += `\n   <Row ss:Height="24">`;
+      xml += `\n    <Cell ss:MergeAcross="15" ss:StyleID="CategoryBanner"><Data ss:Type="String">📁 CATEGORY: ${escapeXml(catName.toUpperCase())}  (${cStats.count} Products | ${cStats.units} Units | Rs. ${Math.round(cStats.val).toLocaleString('en-LK')})</Data></Cell>`;
+      xml += `\n   </Row>`;
+
+      activeCatKey = catKey;
+      activeSubKey = null;
+      activeBrandKey = null;
+    }
+
+    // 2. Subcategory Transition: Output Subcategory Banner
+    if (subKey !== activeSubKey) {
+      const sStats = subStatsMap.get(subKey)!;
+      xml += `\n   <Row ss:Height="20">`;
+      xml += `\n    <Cell ss:MergeAcross="15" ss:StyleID="SubcategoryBanner"><Data ss:Type="String">   ↳ SUBCATEGORY: ${escapeXml(subName.toUpperCase())}  (${sStats.count} Products | ${sStats.units} Units | Rs. ${Math.round(sStats.val).toLocaleString('en-LK')})</Data></Cell>`;
+      xml += `\n   </Row>`;
+
+      activeSubKey = subKey;
+      activeBrandKey = null;
+    }
+
+    // 3. Brand Transition: Output Brand Banner
+    if (brandKey !== activeBrandKey) {
+      const bStats = brandStatsMap.get(brandKey)!;
+      xml += `\n   <Row ss:Height="18">`;
+      xml += `\n    <Cell ss:MergeAcross="15" ss:StyleID="BrandBanner"><Data ss:Type="String">      🏷️ BRAND: ${escapeXml(brandName.toUpperCase())}  (${bStats.count} items | ${bStats.units} units)</Data></Cell>`;
+      xml += `\n   </Row>`;
+
+      activeBrandKey = brandKey;
+    }
+
+    // Product Data Row
     xml += `\n   <Row ss:Height="21">`;
     xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellLeftBold"><Data ss:Type="String">${escapeXml(item.name || item.product_name || 'Unknown')}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellCode"><Data ss:Type="String">${escapeXml(skuVal)}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXml(barcodeVal)}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.category || 'Uncategorized')}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.subCategory || item.subcategory || '—')}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.brand || '—')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(catName)}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(subName)}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(brandName)}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.warehouse || 'Main Warehouse')}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${qty}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXml(unitText)}</Data></Cell>`;
@@ -441,7 +638,23 @@ export function exportInventoryToExcel(
     xml += `\n   </Row>`;
   });
 
-  // Grand Total Summary Row (columns 1 to 8 merged, then Qty, Unit, Cost, Selling, TotalVal, Min, Status, Action)
+  // Final Category Subtotal Row
+  if (activeCatKey !== null) {
+    const lastStats = catStatsMap.get(activeCatKey)!;
+    xml += `\n   <Row ss:Height="22">`;
+    xml += `\n    <Cell ss:MergeAcross="7" ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">${escapeXml(lastStats.displayName)} Subtotal (${lastStats.count} SKUs)</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalNumber"><Data ss:Type="Number">${lastStats.units}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">units</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalCurrency"><Data ss:Type="Number">${lastStats.val}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CatSubtotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+    xml += `\n   </Row>`;
+  }
+
+  // Grand Total Summary Row
   xml += `\n   <Row ss:Height="26">`;
   xml += `\n    <Cell ss:MergeAcross="7" ss:StyleID="TotalLabel"><Data ss:Type="String">GRAND TOTAL (${totalSKUs} SKUs)</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${totalUnits}</Data></Cell>`;
@@ -458,68 +671,78 @@ export function exportInventoryToExcel(
   xml += `\n </Worksheet>`;
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // SHEET 2: Category Valuation Summary
+  // SHEET 2: Hierarchy Breakdown (Category > Subcategory > Brand Executive Split)
   // ─────────────────────────────────────────────────────────────────────────────
-  xml += `\n <Worksheet ss:Name="Category Summary">`;
+  xml += `\n <Worksheet ss:Name="Hierarchy Splitup">`;
   xml += `\n  <Table>`;
-  xml += `\n   <Column ss:Width="40"/>`;   // #
-  xml += `\n   <Column ss:Width="200"/>`;  // Category Name
-  xml += `\n   <Column ss:Width="100"/>`;  // SKU Count
-  xml += `\n   <Column ss:Width="110"/>`;  // Total Units
-  xml += `\n   <Column ss:Width="150"/>`;  // Total Valuation
-  xml += `\n   <Column ss:Width="110"/>`;  // % Share of Total
-  xml += `\n   <Column ss:Width="140"/>`;  // Low / Out of Stock
+  xml += `\n   <Column ss:Width="38"/>`;   // 1. #
+  xml += `\n   <Column ss:Width="160"/>`;  // 2. Category
+  xml += `\n   <Column ss:Width="140"/>`;  // 3. Subcategory
+  xml += `\n   <Column ss:Width="130"/>`;  // 4. Brand
+  xml += `\n   <Column ss:Width="80"/>`;   // 5. SKU Count
+  xml += `\n   <Column ss:Width="95"/>`;   // 6. Units in Stock
+  xml += `\n   <Column ss:Width="140"/>`;  // 7. Stock Valuation (Rs.)
+  xml += `\n   <Column ss:Width="120"/>`;  // 8. Avg Cost / Unit (Rs.)
+  xml += `\n   <Column ss:Width="105"/>`;  // 9. % of Total Value
+  xml += `\n   <Column ss:Width="130"/>`;  // 10. Low / Out of Stock
 
-  // Category Header Row
+  // Header Title
   xml += `\n   <Row ss:Height="24">`;
-  xml += `\n    <Cell ss:MergeAcross="6" ss:StyleID="CompanyTitle"><Data ss:Type="String">CATEGORY VALUATION &amp; DISTRIBUTION BREAKDOWN</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="9" ss:StyleID="CompanyTitle"><Data ss:Type="String">INVENTORY SPLITUP BY CATEGORY, SUBCATEGORY &amp; BRAND</Data></Cell>`;
   xml += `\n   </Row>`;
   xml += `\n   <Row ss:Height="18">`;
-  xml += `\n    <Cell ss:MergeAcross="6" ss:StyleID="Subtitle"><Data ss:Type="String">Summary of inventory investment, SKU volume, and stock risk by category.</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="9" ss:StyleID="Subtitle"><Data ss:Type="String">Executive hierarchical distribution breakdown showing SKU counts, units, and inventory value share.</Data></Cell>`;
   xml += `\n   </Row>`;
   xml += `\n   <Row ss:Height="10"/>`;
 
   // Headers
-  const catHeaders = [
+  const splitHeaders = [
     '#',
-    'Category Name',
+    'Category',
+    'Subcategory',
+    'Brand',
     'Total SKUs',
     'Units in Stock',
     'Stock Value (Rs.)',
+    'Avg Unit Cost (Rs.)',
     '% Share of Value',
     'Alert Items (Low/Out)',
   ];
 
   xml += `\n   <Row ss:Height="26">`;
-  catHeaders.forEach((h) => {
+  splitHeaders.forEach((h) => {
     xml += `\n    <Cell ss:StyleID="CatHeader"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`;
   });
   xml += `\n   </Row>`;
 
-  // Sorted Categories by valuation descending
-  const sortedCategories = Array.from(categorySummaryMap.entries()).sort(
-    (a, b) => b[1].value - a[1].value
-  );
+  // Sorted list of hierarchy records by Valuation descending
+  const sortedHierarchy = Array.from(hierarchyMap.values()).sort((a, b) => b.valuation - a.valuation);
 
-  sortedCategories.forEach(([name, stats], idx) => {
-    const percentShare = totalValuation > 0 ? stats.value / totalValuation : 0;
+  sortedHierarchy.forEach((rec, idx) => {
+    const percentShare = totalValuation > 0 ? rec.valuation / totalValuation : 0;
+    const avgCost = rec.units > 0 ? rec.valuation / rec.units : 0;
+
     xml += `\n   <Row ss:Height="20">`;
     xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellLeftBold"><Data ss:Type="String">${escapeXml(name)}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${stats.count}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${stats.units}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="CellCurrencyBold"><Data ss:Type="Number">${stats.value}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeftBold"><Data ss:Type="String">${escapeXml(rec.category)}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(rec.subcategory)}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(rec.brand)}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${rec.skus}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${rec.units}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellCurrencyBold"><Data ss:Type="Number">${rec.valuation}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellCurrency"><Data ss:Type="Number">${avgCost}</Data></Cell>`;
     xml += `\n    <Cell ss:StyleID="CellPercent"><Data ss:Type="Number">${percentShare}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="${stats.alertCount > 0 ? 'StatusLowStock' : 'CellCenter'}"><Data ss:Type="Number">${stats.alertCount}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="${rec.alertCount > 0 ? 'StatusLowStock' : 'CellCenter'}"><Data ss:Type="Number">${rec.alertCount}</Data></Cell>`;
     xml += `\n   </Row>`;
   });
 
-  // Category Total Row
+  // Hierarchy Total Row
   xml += `\n   <Row ss:Height="24">`;
-  xml += `\n    <Cell ss:MergeAcross="1" ss:StyleID="TotalLabel"><Data ss:Type="String">TOTAL</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="3" ss:StyleID="TotalLabel"><Data ss:Type="String">TOTAL</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${totalSKUs}</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${totalUnits}</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${totalValuation}</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${totalUnits > 0 ? totalValuation / totalUnits : 0}</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">100.0%</Data></Cell>`;
   xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${lowStockCount + outOfStockCount}</Data></Cell>`;
   xml += `\n   </Row>`;
@@ -528,7 +751,7 @@ export function exportInventoryToExcel(
   xml += `\n </Worksheet>`;
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // SHEET 3: Stock Alerts & Restock Queue
+  // SHEET 3: Stock Alerts & Restock Queue (Organized by Category Hierarchy)
   // ─────────────────────────────────────────────────────────────────────────────
   xml += `\n <Worksheet ss:Name="Stock Alerts">`;
   xml += `\n  <Table>`;
@@ -536,38 +759,38 @@ export function exportInventoryToExcel(
   xml += `\n   <Column ss:Width="230"/>`;  // Product Name
   xml += `\n   <Column ss:Width="95"/>`;   // SKU
   xml += `\n   <Column ss:Width="130"/>`;  // Category
-  xml += `\n   <Column ss:Width="120"/>`;  // Warehouse
+  xml += `\n   <Column ss:Width="120"/>`;  // Subcategory
+  xml += `\n   <Column ss:Width="110"/>`;  // Brand
+  xml += `\n   <Column ss:Width="110"/>`;  // Warehouse
   xml += `\n   <Column ss:Width="75"/>`;   // Current Qty
-  xml += `\n   <Column ss:Width="80"/>`;   // Min Stock
-  xml += `\n   <Column ss:Width="85"/>`;   // Shortage Qty
+  xml += `\n   <Column ss:Width="75"/>`;   // Min Level
+  xml += `\n   <Column ss:Width="75"/>`;   // Deficit
   xml += `\n   <Column ss:Width="105"/>`;  // Unit Cost
-  xml += `\n   <Column ss:Width="130"/>`;  // Est. Reorder Cost
-  xml += `\n   <Column ss:Width="110"/>`;  // Status
-  xml += `\n   <Column ss:Width="140"/>`;  // Supplier
+  xml += `\n   <Column ss:Width="125"/>`;  // Est. Restock Cost
+  xml += `\n   <Column ss:Width="120"/>`;  // Alert Level
 
-  // Alert Header Row
   xml += `\n   <Row ss:Height="24">`;
-  xml += `\n    <Cell ss:MergeAcross="11" ss:StyleID="CompanyTitle"><Data ss:Type="String">CRITICAL STOCK ALERTS &amp; REORDER RECOMMENDATIONS</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="12" ss:StyleID="CompanyTitle"><Data ss:Type="String">CRITICAL STOCK ALERTS &amp; REORDER QUEUE</Data></Cell>`;
   xml += `\n   </Row>`;
   xml += `\n   <Row ss:Height="18">`;
-  xml += `\n    <Cell ss:MergeAcross="11" ss:StyleID="Subtitle"><Data ss:Type="String">Requires immediate purchasing. Total items needing attention: ${alertsList.length} (Out of Stock: ${outOfStockCount}, Low Stock: ${lowStockCount})</Data></Cell>`;
+  xml += `\n    <Cell ss:MergeAcross="12" ss:StyleID="Subtitle"><Data ss:Type="String">Products currently out of stock or below minimum stock threshold, ordered by category and brand.</Data></Cell>`;
   xml += `\n   </Row>`;
   xml += `\n   <Row ss:Height="10"/>`;
 
-  // Headers
   const alertHeaders = [
     '#',
     'Product Name',
     'SKU',
     'Category',
+    'Subcategory',
+    'Brand',
     'Warehouse',
     'Current Qty',
-    'Min Stock',
+    'Min Level',
     'Deficit Qty',
     'Unit Cost (Rs.)',
     'Est. Restock Cost (Rs.)',
     'Alert Status',
-    'Primary Supplier',
   ];
 
   xml += `\n   <Row ss:Height="26">`;
@@ -576,65 +799,58 @@ export function exportInventoryToExcel(
   });
   xml += `\n   </Row>`;
 
-  let totalRestockDeficitUnits = 0;
-  let totalRestockEstCost = 0;
+  let totalAlertRestockCost = 0;
+  let totalDeficitUnits = 0;
 
-  if (alertsList.length === 0) {
-    xml += `\n   <Row ss:Height="24">`;
-    xml += `\n    <Cell ss:MergeAcross="11" ss:StyleID="CellCenter"><Data ss:Type="String">No stock alerts! All products are currently adequately stocked.</Data></Cell>`;
+  alertsList.forEach((alertItem, idx) => {
+    const deficit = Math.max(0, alertItem.minStock - alertItem.computedQty);
+    const restockCost = deficit * alertItem.computedCost;
+    totalDeficitUnits += deficit;
+    totalAlertRestockCost += restockCost;
+
+    const isOut = alertItem.alertType === 'OUT OF STOCK';
+
+    xml += `\n   <Row ss:Height="20">`;
+    xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeftBold"><Data ss:Type="String">${escapeXml(alertItem.name || alertItem.product_name || 'Unknown')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellCode"><Data ss:Type="String">${escapeXml(alertItem.sku || alertItem.skuInfo || 'N/A')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(alertItem.category || 'Uncategorized')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(alertItem.subCategory || alertItem.subcategory || '—')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(alertItem.brand || '—')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(alertItem.warehouse || 'Main Warehouse')}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${alertItem.computedQty}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${alertItem.minStock}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${deficit}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellCurrency"><Data ss:Type="Number">${alertItem.computedCost}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="CellCurrencyBold"><Data ss:Type="Number">${restockCost}</Data></Cell>`;
+    xml += `\n    <Cell ss:StyleID="${isOut ? 'StatusOutOfStock' : 'StatusLowStock'}"><Data ss:Type="String">${escapeXml(alertItem.alertType)}</Data></Cell>`;
     xml += `\n   </Row>`;
-  } else {
-    alertsList.forEach((item, idx) => {
-      const qty = item.computedQty;
-      const min = item.minStock;
-      const deficit = Math.max(0, min - qty);
-      const cost = item.computedCost;
-      const reorderCost = deficit * cost;
+  });
 
-      totalRestockDeficitUnits += deficit;
-      totalRestockEstCost += reorderCost;
-
-      const isOut = item.alertType === 'OUT OF STOCK';
-
-      xml += `\n   <Row ss:Height="20">`;
-      xml += `\n    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellLeftBold"><Data ss:Type="String">${escapeXml(item.name || item.product_name || 'Unknown')}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellCode"><Data ss:Type="String">${escapeXml(item.sku || item.skuInfo || 'N/A')}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.category || 'Uncategorized')}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.warehouse || 'Main Warehouse')}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${qty}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${min}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">${deficit}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellCurrency"><Data ss:Type="Number">${cost}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellCurrencyBold"><Data ss:Type="Number">${reorderCost}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="${isOut ? 'StatusOutOfStock' : 'StatusLowStock'}"><Data ss:Type="String">${escapeXml(item.alertType)}</Data></Cell>`;
-      xml += `\n    <Cell ss:StyleID="CellLeft"><Data ss:Type="String">${escapeXml(item.supplier || '—')}</Data></Cell>`;
-      xml += `\n   </Row>`;
-    });
-
-    // Total Row for Alerts
-    xml += `\n   <Row ss:Height="24">`;
-    xml += `\n    <Cell ss:MergeAcross="6" ss:StyleID="TotalLabel"><Data ss:Type="String">TOTAL RESTOCK INVESTMENT NEEDED</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${totalRestockDeficitUnits}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${totalRestockEstCost}</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
-    xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
-    xml += `\n   </Row>`;
-  }
+  // Alerts Total Row
+  xml += `\n   <Row ss:Height="24">`;
+  xml += `\n    <Cell ss:MergeAcross="6" ss:StyleID="TotalLabel"><Data ss:Type="String">TOTAL RESTOCK DEFICIT</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${totalDeficitUnits}</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">—</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${totalAlertRestockCost}</Data></Cell>`;
+  xml += `\n    <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">${alertsList.length} items</Data></Cell>`;
+  xml += `\n   </Row>`;
 
   xml += `\n  </Table>`;
   xml += `\n </Worksheet>`;
 
   xml += `\n</Workbook>`;
 
-  // Create downloadable Blob
-  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  // Create downloadable file blob
+  const blob = new Blob([xml], {
+    type: 'application/vnd.ms-excel;charset=utf-8',
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
 
-  // Clean filename: Replace non-alphanumeric with underscores
   const cleanShopName = shopName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').slice(0, 30);
   const dateStamp = new Date().toISOString().split('T')[0];
   link.download = `${cleanShopName}_Inventory_Report_${dateStamp}.xls`;
@@ -646,8 +862,8 @@ export function exportInventoryToExcel(
 }
 
 /**
- * Universal CSV Export with UTF-8 BOM
- * Guaranteed to open cleanly in Excel, Numbers, and Google Sheets
+ * Clean UTF-8 CSV Export (Fallback / Universal spreadsheet export)
+ * Also sorted hierarchically by Category -> Subcategory -> Brand -> Product Name
  */
 export function exportInventoryToCSV(
   inventoryData: any[],
@@ -658,14 +874,17 @@ export function exportInventoryToCSV(
     return;
   }
 
+  // Sort inventory by Category -> Subcategory -> Brand -> Product Name
+  const sortedData = sortInventoryHierarchy(inventoryData);
+
   const headers = [
     'No',
-    'Product Name',
-    'SKU',
-    'Barcode',
     'Category',
     'Subcategory',
     'Brand',
+    'Product Name',
+    'SKU',
+    'Barcode',
     'Warehouse',
     'Available Qty',
     'Unit',
@@ -678,7 +897,7 @@ export function exportInventoryToCSV(
     'Supplier',
   ];
 
-  const rows = inventoryData.map((item: any, idx: number) => {
+  const rows = sortedData.map((item: any, idx: number) => {
     const qty = Number(item.qty ?? item.quantity ?? 0);
     const rawCost = Number(item.cost ?? item.purchasePrice ?? item.price ?? 0);
     const rawSelling = Number(item.sellingPrice ?? 0);
@@ -693,12 +912,12 @@ export function exportInventoryToCSV(
 
     return [
       idx + 1,
+      item.category || 'Uncategorized',
+      item.subCategory || item.subcategory || 'General',
+      item.brand || 'Unbranded',
       item.name || item.product_name || '',
       item.sku || item.skuInfo || '',
       item.barcode || item.sku || '',
-      item.category || '',
-      item.subCategory || item.subcategory || '—',
-      item.brand || '—',
       item.warehouse || 'Main Warehouse',
       qty,
       item.unit || item.measurementUnit || 'pcs',
