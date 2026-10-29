@@ -23,12 +23,14 @@ import {
   TrendingUp,
   ShoppingBag,
   FileDown,
+  FileSpreadsheet,
   MoreVertical,
   Edit3,
   MessageSquare,
   RotateCcw,
 } from 'lucide-react';
 import api, { clearApiCache } from '@/api/axiosInstance';
+import { shopApi } from '@/api/shop';
 import * as Popover from '@radix-ui/react-popover';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -36,6 +38,8 @@ import SalesDatePicker from '@/components/sales/SalesDatePicker';
 import AddCustomerModal from '@/components/customers/AddCustomerModal';
 import SettleCreditModal from '@/components/customers/SettleCreditModal';
 import CustomerProfileModal from '@/components/customers/CustomerProfileModal';
+import CustomerReportView from '@/components/customers/CustomerReportView';
+import { exportCustomersToExcel } from '@/utils/customerExport';
 import { triggerBatchCreditReminders, sendSingleCreditReminderSMS } from '@/utils/textlkSmsService';
 import { toastInfo, toastSuccess, toastError } from '@/lib/toast';
 
@@ -416,9 +420,12 @@ export default function CustomersPage() {
     to: new Date()
   });
 
+  const [shopProfile, setShopProfile] = useState<{ name?: string } | null>(null);
+
   useEffect(() => {
     clearApiCache('/customers');
     fetchCustomers();
+    shopApi.getProfile().then(setShopProfile).catch(() => {});
   }, []);
 
   const fetchCustomers = async () => {
@@ -629,7 +636,7 @@ export default function CustomersPage() {
         />
       )}
 
-      <div className="max-w-[1600px] mx-auto pb-20">
+      <div className="max-w-[1600px] mx-auto pb-20 print:hidden">
 
         {/* ── HEADER ── */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
@@ -667,10 +674,30 @@ export default function CustomersPage() {
             </button>
 
             <button
+              onClick={() => {
+                const periodText = dateRange?.from
+                  ? dateRange.to
+                    ? `${format(dateRange.from, 'MMM d, yyyy')} - ${format(dateRange.to, 'MMM d, yyyy')}`
+                    : format(dateRange.from, 'MMM d, yyyy')
+                  : undefined;
+                exportCustomersToExcel(
+                  sorted,
+                  shopProfile?.name || 'Trinco Hardware & Electricals',
+                  periodText
+                );
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-[13px] font-black shadow-lg shadow-emerald-700/20 hover:bg-emerald-800 transition-all active:scale-95"
+              title="Download structured multi-sheet Excel customer credit report (.xls)"
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Export Excel Sheet (.xls)
+            </button>
+
+            <button
               onClick={() => window.print()}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-900 text-white rounded-xl text-[13px] font-black shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-95"
+              title="Print or Save as PDF customer accounts report"
             >
-              <FileDown className="w-4 h-4" /> Download Report
+              <FileDown className="w-4 h-4" /> Download Report (PDF)
             </button>
           </div>
         </div>
@@ -998,6 +1025,13 @@ export default function CustomersPage() {
         }}
         initialCustomer={settleCreditCustomer}
         allCustomers={customers}
+      />
+
+      {/* ── HIDDEN PRINT VIEW FOR SAVE AS PDF ── */}
+      <CustomerReportView
+        customers={sorted}
+        dateRange={dateRange}
+        storeName={shopProfile?.name}
       />
     </MainLayout>
   );

@@ -172,7 +172,7 @@ export default function TransferStockModal({ isOpen, onClose, onSuccess, initial
   const toWarehouses = warehouses.length > 0 ? warehouses : Array.from(new Map(stockItems.map(i => [i.warehouseId, { id: i.warehouseId, name: i.warehouseName }])).values());
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
 

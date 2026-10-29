@@ -180,7 +180,7 @@ export default function AddSupplierModal({ isOpen, onClose, supplier }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100000] flex items-center justify-center p-4 print:hidden">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => onClose()}

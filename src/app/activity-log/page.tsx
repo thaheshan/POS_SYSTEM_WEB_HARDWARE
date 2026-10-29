@@ -55,6 +55,9 @@ const ACTION_META: Record<string, { label: string; color: string; Icon: any }> =
   USER_LOGIN:             { label: 'Staff Login',       color: 'bg-slate-100 text-slate-800 border-slate-200',         Icon: Key },
   USER_LOGOUT:            { label: 'Staff Logout',      color: 'bg-slate-100 text-slate-600 border-slate-200',         Icon: Key },
   UPDATE_STAFF:           { label: 'Staff Updated',     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',       Icon: Users },
+
+  // Hardware & POS
+  OPEN_CASH_DRAWER:       { label: 'Cash Drawer',       color: 'bg-amber-100 text-amber-800 border-amber-200',          Icon: Coins },
 };
 
 function ActionBadge({ action }: { action: string }) {
@@ -257,6 +260,9 @@ export default function ActivityLogPage() {
                   <optgroup label="🔒 System & Staff Audit">
                     <option value="USER_LOGIN">Staff Logins</option>
                     <option value="UPDATE_STAFF">Staff Management & Permissions</option>
+                  </optgroup>
+                  <optgroup label="🖥️ Hardware & POS">
+                    <option value="OPEN_CASH_DRAWER">Cash Drawer Opens</option>
                   </optgroup>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
