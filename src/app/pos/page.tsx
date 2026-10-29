@@ -1919,7 +1919,7 @@ export default function POSPage() {
 
   const handleOpenDrawer = async () => {
     toast.info('Sending cash drawer kick signal...');
-    const res = await openCashDrawer();
+    const res = await openCashDrawer('POS Screen Action Bar');
     if (res.success) {
       toast.success('Cash drawer opened!');
     } else {

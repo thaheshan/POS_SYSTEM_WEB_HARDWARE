@@ -544,7 +544,7 @@ export default function PaymentConfirmation({
   // Execute Hardware Cash Drawer Kick (ESC/POS)
   const handleDrawerKick = async () => {
     toastInfo("Sending Cash Drawer Kick signal...");
-    const res = await openCashDrawer();
+    const res = await openCashDrawer('POS Payment Screen Manual Kick');
     if (res.success) {
       toastSuccess("Cash drawer opened!");
     }
@@ -765,7 +765,7 @@ export default function PaymentConfirmation({
       await api.post("/sales/checkout", payload);
 
       // 1. Automatically trigger Hardware Cash Drawer Kick
-      openCashDrawer();
+      openCashDrawer('POS Auto-kick on Sale Completion');
 
       // 2. Automatically trigger ESC/POS Thermal Receipt Print
       await handleESCPrint(freshTotalOutstanding);

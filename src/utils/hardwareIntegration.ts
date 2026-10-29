@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import api from "@/api/axiosInstance";
 import { formatESCPosTextStream, printThermalHTMLReceipt } from "./thermalReceiptTemplate";
+import { logActivity } from "./activityLogger";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -66,8 +67,17 @@ export const ESC_POS_COMMANDS = {
 /**
  * 1. Open Cash Drawer Utility
  * Sends raw ESC/POS kick command to physical printer port (RJ11/RJ12 cable)
+ * and records the event in the system Activity Log audit trail.
  */
-export async function openCashDrawer(): Promise<{ success: boolean; message: string }> {
+export async function openCashDrawer(source?: string): Promise<{ success: boolean; message: string }> {
+  // Fire-and-forget activity audit logging
+  logActivity({
+    action: "OPEN_CASH_DRAWER",
+    details: `Cash drawer opened (${source || "Manual Action"})`,
+    endpoint: "/hardware/open-drawer",
+    httpMethod: "POST",
+  }).catch(() => {});
+
   try {
     // Attempt 1: Contact local print agent on till PC
     const agentRes = await fetch(`${LOCAL_PRINT_AGENT_URL}/drawer-kick`, {

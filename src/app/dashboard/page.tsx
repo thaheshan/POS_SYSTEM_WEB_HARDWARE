@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
   const handleOpenDrawer = async () => {
     toast.info("Sending drawer kick signal...");
-    const res = await openCashDrawer();
+    const res = await openCashDrawer("Dashboard Header");
     if (res.success) {
       toast.success("Cash drawer opened!");
     } else {

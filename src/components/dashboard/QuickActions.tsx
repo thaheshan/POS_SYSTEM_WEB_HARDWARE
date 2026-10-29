@@ -145,7 +145,7 @@ export default function QuickActions() {
                 type="button"
                 onClick={async () => {
                   toast.info("Sending drawer kick signal...");
-                  const res = await openCashDrawer();
+                  const res = await openCashDrawer("Dashboard Quick Actions");
                   if (res.success) toast.success("Cash drawer opened!");
                   else toast.error("Failed to open cash drawer.");
                 }}
