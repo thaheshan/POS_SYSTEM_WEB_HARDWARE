@@ -370,6 +370,9 @@ export default function PaymentConfirmation({
   const [processing, setProcessing] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<string>(paymentMethod || "cash");
   const [creditPaidInput, setCreditPaidInput] = useState<string>("0");
+  const [cashTenderedInput, setCashTenderedInput] = useState<string>(
+    amountTendered > 0 ? String(amountTendered) : ""
+  );
   const [customerAccount, setCustomerAccount] = useState<any>(null);
   const [shopProfile, setShopProfile] = useState<any>(() => {
     if (typeof window !== "undefined") {
@@ -489,16 +492,25 @@ export default function PaymentConfirmation({
   }, []);
 
   // Effective payment calculation
+  const cashTenderedValue = parseFloat(cashTenderedInput) || 0;
+
   const effectivePaidAmount = useMemo(() => {
     if (selectedMethod.toLowerCase() === "credit") {
       const parsed = parseFloat(creditPaidInput);
       return isNaN(parsed) ? 0 : Math.min(total, Math.max(0, parsed));
     }
     if (selectedMethod.toLowerCase() === "cash") {
+      const parsed = parseFloat(cashTenderedInput);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
       return amountTendered > 0 ? amountTendered : total;
     }
     return total;
-  }, [selectedMethod, creditPaidInput, amountTendered, total]);
+  }, [selectedMethod, creditPaidInput, cashTenderedInput, amountTendered, total]);
+
+  // Change to give back to customer (cash only, positive when overpaid)
+  const cashChange = selectedMethod.toLowerCase() === "cash"
+    ? Math.max(0, effectivePaidAmount - total)
+    : 0;
 
   const isCreditSale = selectedMethod.toLowerCase() === "credit";
   const creditLeftover = isCreditSale ? Math.max(0, total - effectivePaidAmount) : 0;
@@ -608,7 +620,7 @@ export default function PaymentConfirmation({
       discount,
       total,
       amountTendered: effectivePaidAmount,
-      change: isCreditSale ? 0 : change,
+      change: isCreditSale ? 0 : cashChange,
       creditLeftover,
       totalOutstandingCredit: activeTotalOutstanding,
       notes,
@@ -630,7 +642,7 @@ export default function PaymentConfirmation({
         customerType,
         paymentMethod: selectedMethod,
         amountTendered: effectivePaidAmount,
-        change: isCreditSale ? 0 : change,
+        change: isCreditSale ? 0 : cashChange,
         creditLeftover,
         totalOutstandingCredit: activeTotalOutstanding,
         subtotal,
@@ -750,7 +762,7 @@ export default function PaymentConfirmation({
         discount,
         total,
         paidAmount: effectivePaidAmount,
-        change: isCreditSale ? 0 : change,
+        change: isCreditSale ? 0 : cashChange,
         paymentMethod: selectedMethod.toUpperCase(),
         notes,
         customerId: validCustomerId,
@@ -864,7 +876,7 @@ export default function PaymentConfirmation({
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedMethod("cash")}
+                onClick={() => { setSelectedMethod("cash"); setCashTenderedInput(""); }}
                 className={`py-3.5 px-4 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 border transition-all ${
                   selectedMethod === "cash"
                     ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
@@ -875,7 +887,7 @@ export default function PaymentConfirmation({
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedMethod("card")}
+                onClick={() => { setSelectedMethod("card"); setCashTenderedInput(""); }}
                 className={`py-3.5 px-4 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 border transition-all ${
                   selectedMethod === "card"
                     ? "bg-blue-600 text-white border-blue-600 shadow-md"
@@ -1088,125 +1100,255 @@ export default function PaymentConfirmation({
                 </div>
               )}
             </div>
-            <div className="flex justify-between items-center pt-4">
+            <div className="flex justify-between items-center pt-4 pb-3 border-b border-gray-100">
               <span className="text-[15px] font-black text-gray-900">Grand Total</span>
               <span className="text-[18px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
             </div>
+
+            {/* Amount Tendered + Change – Cash/Card */}
+            {!isCreditSale && (
+              <div className="pt-3 space-y-2">
+                <div className="flex justify-between text-[13px] font-bold text-gray-600">
+                  <span>Customer Paid</span>
+                  <span className={effectivePaidAmount >= total ? "text-emerald-600" : "text-orange-500"}>
+                    Rs. {effectivePaidAmount > 0 ? effectivePaidAmount.toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className={`text-[13px] font-black ${cashChange > 0 ? "text-blue-700" : "text-gray-400"}`}>
+                    Change to Return
+                  </span>
+                  <span className={`text-[16px] font-black font-mono ${cashChange > 0 ? "text-blue-700" : "text-gray-400"}`}>
+                    Rs. {cashChange.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* RIGHT COLUMN: Transaction Summary Panel */}
-      <div className="w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col p-6 shadow-xl relative z-10 shrink-0">
-        <div className="bg-[#059669] rounded-2xl p-6 text-white shadow-md mb-4 mt-4 lg:mt-6">
-          <h3 className="text-[15px] font-black tracking-tight mb-6">Transaction Summary</h3>
-          <div className="space-y-4 mb-6 text-[12px] font-bold text-emerald-100">
-            <div className="flex justify-between">
-              <span>Invoice Ref.</span>
-              <span className="text-white font-mono text-[11px]">{invoiceRef}</span>
+      <div className="w-full lg:w-[380px] xl:w-[400px] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col h-auto lg:h-full shadow-xl relative z-10 shrink-0 overflow-hidden">
+        {/* Scrollable Body Content */}
+        <div className="flex-1 lg:overflow-y-auto p-4 sm:p-5 space-y-3">
+          {/* Compact Transaction Summary */}
+          <div className="bg-[#059669] rounded-xl p-4 text-white shadow-sm">
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="text-[12px] font-black uppercase tracking-wider text-emerald-100">
+                Transaction Summary
+              </h3>
+              <span className="text-[10px] font-mono bg-emerald-800/70 text-emerald-100 px-2 py-0.5 rounded">
+                {invoiceRef}
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span>Cashier</span>
-              <span className="text-white">{cashierName}</span>
+
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] font-semibold text-emerald-100 mb-3 pb-2.5 border-b border-emerald-500/50">
+              <div>
+                <span className="text-emerald-200 text-[10px] block font-normal">Cashier</span>
+                <span className="text-white font-bold truncate block">{cashierName}</span>
+              </div>
+              <div>
+                <span className="text-emerald-200 text-[10px] block font-normal">Method</span>
+                <span className="text-white font-bold capitalize block">{selectedMethod}</span>
+              </div>
+              <div>
+                <span className="text-emerald-200 text-[10px] block font-normal">Items</span>
+                <span className="text-white font-bold block">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div>
+                <span className="text-emerald-200 text-[10px] block font-normal">Type</span>
+                <span className="text-white font-bold truncate block">{customerType || "Walk-In"}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span>Payment Method</span>
-              <span className="text-white capitalize">{selectedMethod}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Total Items</span>
-              <span className="text-white">{items.length}</span>
+
+            <div className="flex items-baseline justify-between pt-0.5">
+              <span className="text-[12px] font-black uppercase tracking-wider text-emerald-100">Amount Due</span>
+              <span className="text-[20px] font-black text-white tracking-tight">Rs. {total.toLocaleString()}</span>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-emerald-500 flex items-center justify-between">
-            <span className="text-[14px] font-black">Amount Due</span>
-            <span className="text-[20px] font-black">Rs. {total.toLocaleString()}</span>
-          </div>
-        </div>
+          {/* Customer Paid Amount + Change – Cash & Card only */}
+          {!isCreditSale && (
+            <div className="bg-gray-50/90 border border-gray-200 rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                  Customer Paid Amount
+                </label>
+                <span className="text-[10.5px] font-bold text-gray-400">
+                  Due: <strong className="text-gray-800 font-black">Rs. {total.toLocaleString()}</strong>
+                </span>
+              </div>
 
-        {/* Hardware Action Buttons inside Right Sidebar */}
-        <div className="space-y-2 mt-auto mb-4">
-          <div className="grid grid-cols-2 gap-2">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-black text-xs pointer-events-none">
+                  Rs.
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={cashTenderedInput}
+                  onChange={(e) => setCashTenderedInput(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder={total.toString()}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-base font-black text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-2xs"
+                />
+              </div>
+
+              {/* Quick-fill preset buttons */}
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setCashTenderedInput(String(total))}
+                  className="flex-1 min-w-[50px] py-1 px-1.5 bg-emerald-50 border border-emerald-200 rounded-md text-[10.5px] font-black text-emerald-700 hover:bg-emerald-100 transition-all active:scale-95"
+                >
+                  Exact
+                </button>
+                {[
+                  Math.ceil(total / 100) * 100,
+                  Math.ceil(total / 500) * 500,
+                  Math.ceil(total / 1000) * 1000,
+                ]
+                  .filter((v, i, a) => v > total && a.indexOf(v) === i)
+                  .slice(0, 3)
+                  .map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCashTenderedInput(String(preset))}
+                      className={`flex-1 min-w-[60px] py-1 px-1.5 border rounded-md text-[10.5px] font-black transition-all active:scale-95 ${
+                        cashTenderedValue === preset
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50"
+                      }`}
+                    >
+                      Rs. {preset.toLocaleString()}
+                    </button>
+                  ))}
+              </div>
+
+              {/* Change display */}
+              <div
+                className={`rounded-lg p-2.5 flex items-center justify-between border transition-all ${
+                  cashChange > 0
+                    ? "bg-blue-50 border-blue-200 text-blue-900"
+                    : cashTenderedValue > 0 && cashTenderedValue < total
+                    ? "bg-rose-50 border-rose-200 text-rose-900"
+                    : "bg-white border-gray-200 text-gray-600"
+                }`}
+              >
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider">
+                    {cashTenderedValue > 0 && cashTenderedValue < total
+                      ? "⚠ Insufficient"
+                      : cashChange > 0
+                      ? "Change to Return"
+                      : "Change"}
+                  </p>
+                  {cashTenderedValue > 0 && cashTenderedValue < total && (
+                    <p className="text-[9.5px] text-rose-600 font-bold mt-0.5">
+                      Short by Rs. {(total - cashTenderedValue).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`text-[17px] font-black font-mono ${
+                    cashChange > 0
+                      ? "text-blue-700"
+                      : cashTenderedValue > 0 && cashTenderedValue < total
+                      ? "text-rose-600"
+                      : "text-gray-400"
+                  }`}
+                >
+                  Rs. {cashChange.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Hardware Action Buttons inside Right Sidebar */}
+          <div className="space-y-1.5 pt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleDrawerKick}
+                className="py-2 px-2 bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" /> Kick Drawer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleESCPrint()}
+                className="py-2 px-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Printer className="w-3.5 h-3.5 shrink-0" /> ESC/POS Print
+              </button>
+            </div>
             <button
               type="button"
-              onClick={handleDrawerKick}
-              className="py-3 px-3 bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-            >
-              <Zap className="w-4 h-4 text-amber-600" /> Kick Cash Drawer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleESCPrint()}
-              className="py-3 px-3 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors shadow-md"
-            >
-              <Printer className="w-4 h-4" /> ESC/POS Print
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              let activeStoreName = storeName;
-              let activeStoreAddress = storeAddress;
-              let activeStorePhone = storePhone;
-              try {
-                const liveData = await shopApi.getProfile();
-                if (liveData?.name && !liveData.name.toLowerCase().includes("futura") && !liveData.name.toLowerCase().includes("user's")) {
-                  activeStoreName = liveData.name;
-                  if (liveData.address) activeStoreAddress = liveData.address;
-                  if (liveData.phone) activeStorePhone = liveData.phone;
-                  setShopProfile(liveData);
-                  localStorage.setItem("pos_shop_profile", JSON.stringify(liveData));
+              onClick={async () => {
+                let activeStoreName = storeName;
+                let activeStoreAddress = storeAddress;
+                let activeStorePhone = storePhone;
+                try {
+                  const liveData = await shopApi.getProfile();
+                  if (liveData?.name && !liveData.name.toLowerCase().includes("futura") && !liveData.name.toLowerCase().includes("user's")) {
+                    activeStoreName = liveData.name;
+                    if (liveData.address) activeStoreAddress = liveData.address;
+                    if (liveData.phone) activeStorePhone = liveData.phone;
+                    setShopProfile(liveData);
+                    localStorage.setItem("pos_shop_profile", JSON.stringify(liveData));
+                  }
+                } catch {}
+                if (!activeStoreName || activeStoreName.toLowerCase().includes("futura") || activeStoreName.toLowerCase().includes("user's")) {
+                  activeStoreName = "Trinco Hardware & Electricals";
                 }
-              } catch {}
-              if (!activeStoreName || activeStoreName.toLowerCase().includes("futura") || activeStoreName.toLowerCase().includes("user's")) {
-                activeStoreName = "Trinco Hardware & Electricals";
-              }
-              downloadInvoicePDF({
-                storeName: activeStoreName,
-                storeAddress: activeStoreAddress,
-                storePhone: activeStorePhone,
-                items,
-                customerName,
-                customerPhone,
-                customerType,
-                paymentMethod: selectedMethod,
-                amountTendered: effectivePaidAmount,
-                change: isCreditSale ? 0 : change,
-                creditLeftover,
-                totalOutstandingCredit: getActiveTotalOutstanding(),
-                subtotal,
-                discount,
-                total,
-                notes,
-              });
-            }}
-            className="w-full py-2.5 px-3 bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <FileText className="w-4 h-4 text-gray-500" /> Download Invoice PDF
-          </button>
+                downloadInvoicePDF({
+                  storeName: activeStoreName,
+                  storeAddress: activeStoreAddress,
+                  storePhone: activeStorePhone,
+                  items,
+                  customerName,
+                  customerPhone,
+                  customerType,
+                  paymentMethod: selectedMethod,
+                  amountTendered: effectivePaidAmount,
+                  change: isCreditSale ? 0 : cashChange,
+                  creditLeftover,
+                  totalOutstandingCredit: getActiveTotalOutstanding(),
+                  subtotal,
+                  discount,
+                  total,
+                  notes,
+                });
+              }}
+              className="w-full py-1.5 px-2 bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5 text-gray-500 shrink-0" /> Download Invoice PDF
+            </button>
+          </div>
         </div>
 
-        {/* Action Footer */}
-        <div className="pt-3 border-t border-gray-100 flex items-center gap-3">
+        {/* Pinned Action Footer */}
+        <div className="p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 z-20 flex items-center gap-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
           <button
             type="button"
             onClick={onBack}
-            className="flex-1 h-14 px-3 border border-red-200 text-red-500 font-bold text-[12px] leading-tight rounded-xl hover:bg-red-50 transition-colors bg-white flex items-center justify-center gap-2"
+            className="w-24 sm:w-28 h-12 px-2 border border-red-200 text-red-500 font-bold text-[11.5px] rounded-xl hover:bg-red-50 transition-colors bg-white flex items-center justify-center gap-1.5 shrink-0"
           >
-            <X className="w-5 h-5 shrink-0" strokeWidth={2.5} />
-            <span className="text-left">
-              Cancel<br />Transaction
-            </span>
+            <X className="w-4 h-4 shrink-0" strokeWidth={2.5} />
+            <span>Cancel</span>
           </button>
           <button
             type="button"
             onClick={handleProcess}
             disabled={processing}
-            className="flex-[1.5] h-14 bg-[#059669] hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+            className="flex-1 h-12 bg-[#059669] hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[13.5px] rounded-xl transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            {processing ? "Processing..." : "Process Payment"}
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{processing ? "Processing..." : "Process Payment"}</span>
           </button>
         </div>
       </div>
