@@ -370,6 +370,9 @@ export default function PaymentConfirmation({
   const [processing, setProcessing] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<string>(paymentMethod || "cash");
   const [creditPaidInput, setCreditPaidInput] = useState<string>("0");
+  const [cashTenderedInput, setCashTenderedInput] = useState<string>(
+    amountTendered > 0 ? String(amountTendered) : ""
+  );
   const [customerAccount, setCustomerAccount] = useState<any>(null);
   const [shopProfile, setShopProfile] = useState<any>(() => {
     if (typeof window !== "undefined") {
@@ -489,16 +492,25 @@ export default function PaymentConfirmation({
   }, []);
 
   // Effective payment calculation
+  const cashTenderedValue = parseFloat(cashTenderedInput) || 0;
+
   const effectivePaidAmount = useMemo(() => {
     if (selectedMethod.toLowerCase() === "credit") {
       const parsed = parseFloat(creditPaidInput);
       return isNaN(parsed) ? 0 : Math.min(total, Math.max(0, parsed));
     }
     if (selectedMethod.toLowerCase() === "cash") {
+      const parsed = parseFloat(cashTenderedInput);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
       return amountTendered > 0 ? amountTendered : total;
     }
     return total;
-  }, [selectedMethod, creditPaidInput, amountTendered, total]);
+  }, [selectedMethod, creditPaidInput, cashTenderedInput, amountTendered, total]);
+
+  // Change to give back to customer (cash only, positive when overpaid)
+  const cashChange = selectedMethod.toLowerCase() === "cash"
+    ? Math.max(0, effectivePaidAmount - total)
+    : 0;
 
   const isCreditSale = selectedMethod.toLowerCase() === "credit";
   const creditLeftover = isCreditSale ? Math.max(0, total - effectivePaidAmount) : 0;
@@ -608,7 +620,7 @@ export default function PaymentConfirmation({
       discount,
       total,
       amountTendered: effectivePaidAmount,
-      change: isCreditSale ? 0 : change,
+      change: isCreditSale ? 0 : cashChange,
       creditLeftover,
       totalOutstandingCredit: activeTotalOutstanding,
       notes,
@@ -630,7 +642,7 @@ export default function PaymentConfirmation({
         customerType,
         paymentMethod: selectedMethod,
         amountTendered: effectivePaidAmount,
-        change: isCreditSale ? 0 : change,
+        change: isCreditSale ? 0 : cashChange,
         creditLeftover,
         totalOutstandingCredit: activeTotalOutstanding,
         subtotal,
@@ -750,7 +762,7 @@ export default function PaymentConfirmation({
         discount,
         total,
         paidAmount: effectivePaidAmount,
-        change: isCreditSale ? 0 : change,
+        change: isCreditSale ? 0 : cashChange,
         paymentMethod: selectedMethod.toUpperCase(),
         notes,
         customerId: validCustomerId,
@@ -864,7 +876,7 @@ export default function PaymentConfirmation({
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedMethod("cash")}
+                onClick={() => { setSelectedMethod("cash"); setCashTenderedInput(""); }}
                 className={`py-3.5 px-4 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 border transition-all ${
                   selectedMethod === "cash"
                     ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
@@ -875,7 +887,7 @@ export default function PaymentConfirmation({
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedMethod("card")}
+                onClick={() => { setSelectedMethod("card"); setCashTenderedInput(""); }}
                 className={`py-3.5 px-4 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 border transition-all ${
                   selectedMethod === "card"
                     ? "bg-blue-600 text-white border-blue-600 shadow-md"
@@ -1088,10 +1100,30 @@ export default function PaymentConfirmation({
                 </div>
               )}
             </div>
-            <div className="flex justify-between items-center pt-4">
+            <div className="flex justify-between items-center pt-4 pb-3 border-b border-gray-100">
               <span className="text-[15px] font-black text-gray-900">Grand Total</span>
               <span className="text-[18px] font-black text-[#059669]">Rs. {total.toLocaleString()}</span>
             </div>
+
+            {/* Amount Tendered + Change – Cash/Card */}
+            {!isCreditSale && (
+              <div className="pt-3 space-y-2">
+                <div className="flex justify-between text-[13px] font-bold text-gray-600">
+                  <span>Customer Paid</span>
+                  <span className={effectivePaidAmount >= total ? "text-emerald-600" : "text-orange-500"}>
+                    Rs. {effectivePaidAmount > 0 ? effectivePaidAmount.toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className={`text-[13px] font-black ${cashChange > 0 ? "text-blue-700" : "text-gray-400"}`}>
+                    Change to Return
+                  </span>
+                  <span className={`text-[16px] font-black font-mono ${cashChange > 0 ? "text-blue-700" : "text-gray-400"}`}>
+                    Rs. {cashChange.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1124,6 +1156,102 @@ export default function PaymentConfirmation({
             <span className="text-[20px] font-black">Rs. {total.toLocaleString()}</span>
           </div>
         </div>
+
+        {/* Customer Paid Amount + Change – Cash & Card only */}
+        {!isCreditSale && (
+          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider">
+              Customer Paid Amount
+            </p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 font-black text-sm pointer-events-none">
+                Rs.
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={cashTenderedInput}
+                onChange={(e) => setCashTenderedInput(e.target.value)}
+                placeholder={total.toString()}
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-lg font-black text-gray-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all"
+              />
+            </div>
+
+            {/* Quick-fill preset buttons */}
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                Math.ceil(total / 100) * 100,
+                Math.ceil(total / 500) * 500,
+                Math.ceil(total / 1000) * 1000,
+              ]
+                .filter((v, i, a) => v >= total && a.indexOf(v) === i)
+                .slice(0, 3)
+                .map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setCashTenderedInput(String(preset))}
+                    className="flex-1 py-1.5 px-2 bg-white border border-gray-200 rounded-lg text-[11px] font-black text-gray-700 hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
+                  >
+                    Rs. {preset.toLocaleString()}
+                  </button>
+                ))}
+              <button
+                type="button"
+                onClick={() => setCashTenderedInput(String(total))}
+                className="flex-1 py-1.5 px-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-black text-emerald-700 hover:bg-emerald-100 transition-all"
+              >
+                Exact
+              </button>
+            </div>
+
+            {/* Change display */}
+            <div
+              className={`rounded-xl p-3 flex items-center justify-between border transition-all ${
+                cashChange > 0
+                  ? "bg-blue-50 border-blue-200"
+                  : cashTenderedValue > 0 && cashTenderedValue < total
+                  ? "bg-red-50 border-red-200"
+                  : "bg-gray-100 border-gray-200"
+              }`}
+            >
+              <div>
+                <p
+                  className={`text-[10px] font-black uppercase tracking-wider ${
+                    cashChange > 0
+                      ? "text-blue-700"
+                      : cashTenderedValue > 0 && cashTenderedValue < total
+                      ? "text-red-600"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {cashTenderedValue > 0 && cashTenderedValue < total
+                    ? "⚠ Insufficient — Amount Short"
+                    : cashChange > 0
+                    ? "Change to Return"
+                    : "Change"}
+                </p>
+                {cashTenderedValue > 0 && cashTenderedValue < total && (
+                  <p className="text-[10px] text-red-500 font-semibold mt-0.5">
+                    Short by Rs. {(total - cashTenderedValue).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <span
+                className={`text-[22px] font-black font-mono ${
+                  cashChange > 0
+                    ? "text-blue-700"
+                    : cashTenderedValue > 0 && cashTenderedValue < total
+                    ? "text-red-600"
+                    : "text-gray-400"
+                }`}
+              >
+                Rs. {cashChange.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Hardware Action Buttons inside Right Sidebar */}
         <div className="space-y-2 mt-auto mb-4">
@@ -1172,7 +1300,7 @@ export default function PaymentConfirmation({
                 customerType,
                 paymentMethod: selectedMethod,
                 amountTendered: effectivePaidAmount,
-                change: isCreditSale ? 0 : change,
+                change: isCreditSale ? 0 : cashChange,
                 creditLeftover,
                 totalOutstandingCredit: getActiveTotalOutstanding(),
                 subtotal,

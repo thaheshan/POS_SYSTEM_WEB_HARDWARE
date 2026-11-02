@@ -105,14 +105,18 @@ export default function ActivityLogPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const fetchLogs = useCallback(async (isRefresh = false) => {
+  const fetchLogs = useCallback(async (isRefresh = false, overrides?: { startDate?: string; endDate?: string; search?: string }) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
+      const activeStartDate = overrides ? overrides.startDate : startDate;
+      const activeEndDate = overrides ? overrides.endDate : endDate;
+      const activeSearch = overrides ? overrides.search : search;
+
       const params: any = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (search) params.searchUser = search;
+      if (activeStartDate) params.startDate = activeStartDate;
+      if (activeEndDate) params.endDate = activeEndDate;
+      if (activeSearch && activeSearch.trim()) params.searchUser = activeSearch.trim();
       const res = await api.get('/activity-logs', { params });
       const data = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
       setLogs(data);
@@ -134,9 +138,20 @@ export default function ActivityLogPage() {
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
-  const filteredLogs = actionFilter
-    ? logs.filter(l => (l.action || '').toUpperCase() === actionFilter.toUpperCase())
-    : logs;
+  const filteredLogs = logs.filter(l => {
+    if (actionFilter && (l.action || '').toUpperCase() !== actionFilter.toUpperCase()) {
+      return false;
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      const matchStaff = (l.userName || '').toLowerCase().includes(q) || (l.userRole || '').toLowerCase().includes(q);
+      const matchDetails = (l.details || '').toLowerCase().includes(q);
+      const matchAction = (l.action || '').toLowerCase().includes(q);
+      const matchAmount = l.amount !== null && l.amount !== undefined && String(l.amount).includes(q);
+      if (!matchStaff && !matchDetails && !matchAction && !matchAmount) return false;
+    }
+    return true;
+  });
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -180,12 +195,12 @@ export default function ActivityLogPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-              {/* Search by user */}
+              {/* Search by staff, product, SKU, invoice */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by staff name…"
+                  placeholder="Search by staff, product, SKU, invoice…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && fetchLogs()}
@@ -277,7 +292,13 @@ export default function ActivityLogPage() {
                 Apply Filters
               </button>
               <button
-                onClick={() => { setStartDate(''); setEndDate(''); setSearch(''); setActionFilter(''); }}
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                  setSearch('');
+                  setActionFilter('');
+                  fetchLogs(false, { startDate: '', endDate: '', search: '' });
+                }}
                 className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all"
               >
                 Clear
