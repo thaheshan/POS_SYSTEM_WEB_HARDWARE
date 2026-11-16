@@ -42,8 +42,23 @@ export interface HardwarePrintReceiptPayload {
   openDrawer?: boolean;
 }
 
-// Default Local Print Agent URL on Till PC
-const LOCAL_PRINT_AGENT_URL = "http://localhost:9100";
+// ─────────────────────────────────────────────────────────────────────────────
+// Print Agent URL — configurable per till PC
+// Set in POS Settings → Hardware → Print Agent URL
+// Stored in localStorage key: "pos_print_agent_url"
+// Default: http://localhost:9100  (works when POS is opened ON the till PC)
+// Remote devices (tablets/phones on LAN): set to http://<TILL_PC_IP>:9100
+// ─────────────────────────────────────────────────────────────────────────────
+function getAgentUrl(): string {
+  if (typeof window === "undefined") return "http://localhost:9100";
+  const saved = localStorage.getItem("pos_print_agent_url");
+  return saved && saved.startsWith("http") ? saved.replace(/\/$/, "") : "http://localhost:9100";
+}
+
+export function getConfiguredAgentUrl(): string { return getAgentUrl(); }
+export function setConfiguredAgentUrl(url: string): void {
+  if (typeof window !== "undefined") localStorage.setItem("pos_print_agent_url", url);
+}
 
 /**
  * ESC/POS Command Constants for Thermal Printer & Cash Drawer Kick
@@ -70,6 +85,8 @@ export const ESC_POS_COMMANDS = {
  * and records the event in the system Activity Log audit trail.
  */
 export async function openCashDrawer(source?: string): Promise<{ success: boolean; message: string }> {
+  console.log(`[Hardware Integration] 💰 Cash drawer kick triggered (${source || "Manual Action"})...`);
+
   // Fire-and-forget activity audit logging
   logActivity({
     action: "OPEN_CASH_DRAWER",
@@ -78,35 +95,49 @@ export async function openCashDrawer(source?: string): Promise<{ success: boolea
     httpMethod: "POST",
   }).catch(() => {});
 
+  // Primary Path: Use integrated NestJS Backend Hardware API (POST /api/v1/hardware/open-drawer)
+  // Clean request, no browser port-hunting, works seamlessly across all devices & browsers
   try {
-    // Attempt 1: Contact local print agent on till PC
-    const agentRes = await fetch(`${LOCAL_PRINT_AGENT_URL}/drawer-kick`, {
+    const apiRes = await api.post("/hardware/open-drawer");
+    const resData = apiRes.data?.data || apiRes.data;
+    if (resData && (resData.success !== false) && (apiRes.status === 200 || apiRes.status === 201)) {
+      console.log(`[Hardware Integration] ✅ Cash drawer kick successful via Backend API [HTTP ${apiRes.status}]:`, resData);
+      return {
+        success: true,
+        message: resData.message || "Cash drawer opened.",
+      };
+    }
+  } catch (err: any) {
+    console.warn("[Hardware Integration] Backend hardware endpoint unavailable, attempting direct agent fallback...", err?.message || err);
+  }
+
+  // Fallback Path: Direct fetch to Print Agent (if configured in Settings or running on LAN till PC)
+  const agentUrl = getAgentUrl();
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 2000);
+    const agentRes = await fetch(`${agentUrl}/drawer-kick`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ command: ESC_POS_COMMANDS.CASH_DRAWER_KICK_PIN2 }),
+      signal: ctrl.signal,
     });
+    clearTimeout(tid);
 
     if (agentRes.ok) {
-      return { success: true, message: "Cash drawer kick pulse sent via local agent." };
+      const data = await agentRes.json().catch(() => ({}));
+      console.log(`[Hardware Integration] ✅ Cash drawer kick sent via agent (${agentUrl}) [HTTP ${agentRes.status}]:`, data);
+      return { success: true, message: `Cash drawer kick sent via agent (${agentUrl}).` };
     }
-  } catch (err) {
-    console.warn("[Hardware Integration] Local agent unreachable, attempting API fallback...");
+  } catch (err: any) {
+    console.warn(`[Hardware Integration] Agent fallback at ${agentUrl} unreachable:`, err?.message || err);
   }
 
-  try {
-    // Attempt 2: Fallback to NestJS API printer service endpoint
-    const apiRes = await api.post("/hardware/open-drawer");
-    if (apiRes.status === 200 || apiRes.status === 201) {
-      return { success: true, message: "Cash drawer opened successfully." };
-    }
-  } catch (err) {
-    console.warn("[Hardware Integration] API hardware endpoint fallback unsuccessful.");
-  }
-
-  // Attempt 3: Software Simulated Drawer Notification
+  // Both paths failed
+  console.warn(`[Hardware Integration] ❌ Cash drawer trigger unsuccessful.`);
   return {
-    success: true,
-    message: "Cash drawer kick command dispatched (Simulated / Local Fallback).",
+    success: false,
+    message: `Could not reach cash drawer. Check printer connection in Settings → Hardware.`,
   };
 }
 
@@ -119,11 +150,12 @@ export async function printThermalReceipt(
 ): Promise<{ success: boolean; message: string }> {
   const rawTextStream = formatESCPosTextStream(payload, 48);
 
-  // Attempt 1: Fast check if Local Till Agent is running on localhost:9100 (200ms max)
+  // Attempt 1: Fast check if Print Agent is running (200ms max)
+  const agentUrl = getAgentUrl();
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 200);
-    const agentRes = await fetch(`${LOCAL_PRINT_AGENT_URL}/print`, {
+    const agentRes = await fetch(`${agentUrl}/print`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, escposText: rawTextStream }),
