@@ -1008,12 +1008,7 @@ export default function POSPage() {
   const [activeBrand, setActiveBrand] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('pos_draft_cart');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1222,43 +1217,45 @@ export default function POSPage() {
   const POS_DRAFT_NOTES = 'pos_draft_notes';
   const POS_DRAFT_CUSTOMER = 'pos_draft_customer';
 
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerMin | null>(() => {
-    try {
-      const saved = localStorage.getItem(POS_DRAFT_CUSTOMER);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerMin | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'credit'>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>(() => {
-    try {
-      const saved = localStorage.getItem(POS_DRAFT_DISCOUNT_TYPE);
-      return (saved === 'fixed' ? 'fixed' : 'percentage') as 'percentage' | 'fixed';
-    } catch { return 'percentage'; }
-  });
-  const [discountValue, setDiscountValue] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(POS_DRAFT_DISCOUNT_VALUE);
-      return saved ? Number(saved) : 0;
-    } catch { return 0; }
-  });
-  const [notes, setNotes] = useState(() => {
-    try { return localStorage.getItem(POS_DRAFT_NOTES) || ''; }
-    catch { return ''; }
-  });
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [notes, setNotes] = useState('');
   const POS_HELD_SALES_KEY = 'pos_held_sales';
+  const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
 
-  const [heldSales, setHeldSales] = useState<HeldSale[]>(() => {
-    if (typeof window === 'undefined') return [];
+  // ── Restore draft state from localStorage after client-side mount (avoids SSR hydration mismatch)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(POS_HELD_SALES_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+      const savedCart = localStorage.getItem(POS_DRAFT_KEY);
+      if (savedCart) setCart(JSON.parse(savedCart));
+    } catch {}
+    try {
+      const savedCustomer = localStorage.getItem(POS_DRAFT_CUSTOMER);
+      if (savedCustomer) setSelectedCustomer(JSON.parse(savedCustomer));
+    } catch {}
+    try {
+      const savedDiscountType = localStorage.getItem(POS_DRAFT_DISCOUNT_TYPE);
+      if (savedDiscountType === 'fixed' || savedDiscountType === 'percentage') setDiscountType(savedDiscountType);
+    } catch {}
+    try {
+      const savedDiscountValue = localStorage.getItem(POS_DRAFT_DISCOUNT_VALUE);
+      if (savedDiscountValue) setDiscountValue(Number(savedDiscountValue));
+    } catch {}
+    try {
+      const savedNotes = localStorage.getItem(POS_DRAFT_NOTES);
+      if (savedNotes) setNotes(savedNotes);
+    } catch {}
+    try {
+      const savedHeld = localStorage.getItem(POS_HELD_SALES_KEY);
+      if (savedHeld) setHeldSales(JSON.parse(savedHeld));
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist heldSales to localStorage on every change
   useEffect(() => {
@@ -2722,7 +2719,7 @@ export default function POSPage() {
                                   {product.sku}
                                 </span>
                               </div>
-                              <h3 className="text-[14px] font-black text-gray-900 leading-tight h-10 overflow-hidden line-clamp-2 flex items-center">
+                              <h3 className="text-[11.5px] font-black text-gray-900 leading-snug break-words" title={product.name}>
                                 {product.name}
                               </h3>
                             </div>
